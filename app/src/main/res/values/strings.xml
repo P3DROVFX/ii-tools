@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ii tools</string>
+    <string name="app_tagline">The ii shell\'s companion to KDE Connect</string>
+
+    <string name="kdeconnect_ok_title">Rides on KDE Connect</string>
+    <string name="kdeconnect_ok_body">Everything here travels over your KDE Connect pairing. Keep its notification sync on for the shell to receive it.</string>
+    <string name="kdeconnect_missing_title">KDE Connect is not installed</string>
+    <string name="kdeconnect_missing_body">ii tools only talks to the ii shell through KDE Connect. Install it and pair it with your computer.</string>
+
+    <string name="section_integrations">Shell integrations</string>
+    <string name="status_on">On</string>
+    <string name="status_needs_setup">Needs setup</string>
+    <string name="status_relaying">Relaying %1$d</string>
+
+    <string name="live_title">Live notifications</string>
+    <string name="live_summary">Orders, rides and Live Updates on the shell, kept in step with the phone.</string>
+    <string name="live_explainer">KDE Connect drops ongoing notifications. ii tools reads them, including apps that draw their own layout, and sends a silent copy the ii shell turns into a live card.</string>
+    <string name="channel_name">Live notification relay</string>
+    <string name="channel_desc">Silent copies of live notifications that KDE Connect forwards to the ii shell.</string>
+
+    <string name="setup_title">Setup</string>
+    <string name="perm_listener">Notification access</string>
+    <string name="perm_listener_body">To see ongoing notifications from other apps.</string>
+    <string name="perm_post">Post notifications</string>
+    <string name="perm_post_body">The relay copy KDE Connect forwards.</string>
+    <string name="grant">Allow</string>
+    <string name="granted">Allowed</string>
+
+    <string name="now_title">On the shell now</string>
+    <string name="now_empty">Nothing live right now. Start an order or a ride and it shows up here.</string>
+    <string name="apps_title">Apps with ongoing notifications</string>
+    <string name="apps_hint">Auto relays what looks live: Android Live Updates, progress, or apps that call it live. Always and Never override it per app.</string>
+    <string name="apps_empty">No ongoing notifications.</string>
+    <string name="mode_auto">Auto</string>
+    <string name="mode_always">Always</string>
+    <string name="mode_never">Never</string>
+    <string name="looks_live">Looks live</string>
+    <string name="back">Back</string>
+</resources>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_tagline">O parceiro do KDE Connect para o shell ii</string>
+
+    <string name="kdeconnect_ok_title">Funciona sobre o KDE Connect</string>
+    <string name="kdeconnect_ok_body">Tudo aqui viaja pelo pareamento do KDE Connect. Deixe a sincronização de notificações dele ligada para o shell receber.</string>
+    <string name="kdeconnect_missing_title">KDE Connect não instalado</string>
+    <string name="kdeconnect_missing_body">O ii tools só fala com o shell ii através do KDE Connect. Instale e pareie com o computador.</string>
+
+    <string name="section_integrations">Integrações com o shell</string>
+    <string name="status_on">Ligado</string>
+    <string name="status_needs_setup">Precisa configurar</string>
+    <string name="status_relaying">Repassando %1$d</string>
+
+    <string name="live_title">Notificações ao vivo</string>
+    <string name="live_summary">Pedidos, corridas e Live Updates no shell, acompanhando o celular.</string>
+    <string name="live_explainer">O KDE Connect descarta notificações fixas. O ii tools as lê, inclusive de apps com layout próprio, e envia uma cópia silenciosa que o shell ii transforma num cartão ao vivo.</string>
+    <string name="channel_name">Repasse de notificações ao vivo</string>
+    <string name="channel_desc">Cópias silenciosas das notificações ao vivo que o KDE Connect leva ao shell ii.</string>
+
+    <string name="setup_title">Configuração</string>
+    <string name="perm_listener">Acesso às notificações</string>
+    <string name="perm_listener_body">Para ver as notificações fixas dos outros apps.</string>
+    <string name="perm_post">Publicar notificações</string>
+    <string name="perm_post_body">A cópia que o KDE Connect repassa.</string>
+    <string name="grant">Permitir</string>
+    <string name="granted">Permitido</string>
+
+    <string name="now_title">No shell agora</string>
+    <string name="now_empty">Nada ao vivo agora. Faça um pedido ou chame uma corrida e ele aparece aqui.</string>
+    <string name="apps_title">Apps com notificações fixas</string>
+    <string name="apps_hint">Auto repassa o que parece ao vivo: Live Updates do Android, progresso ou apps que chamam de live. Sempre e Nunca forçam por app.</string>
+    <string name="apps_empty">Nenhuma notificação fixa.</string>
+    <string name="mode_auto">Auto</string>
+    <string name="mode_always">Sempre</string>
+    <string name="mode_never">Nunca</string>
+    <string name="looks_live">Parece ao vivo</string>
+    <string name="back">Voltar</string>
+</resources>

@@ -1,20 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="dev.ii.tools"
-    android:versionCode="1"
-    android:versionName="0.1.0">
-
-    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="36" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Lists launchable apps by label in the picker. -->
+    <!-- App labels/icons for the apps that post live notifications, and the
+         KDE Connect install check. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <application
         android:label="@string/app_name"
-        android:icon="@drawable/ic_live"
+        android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
-        android:theme="@android:style/Theme.DeviceDefault.DayNight">
+        android:theme="@style/Theme.IiTools">
 
         <activity
             android:name=".MainActivity"
@@ -26,8 +22,8 @@
         </activity>
 
         <service
-            android:name=".LiveListener"
-            android:label="@string/app_name"
+            android:name=".live.LiveListener"
+            android:label="@string/live_title"
             android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>

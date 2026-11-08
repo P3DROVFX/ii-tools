@@ -1,8 +1,15 @@
 # ii tools
 
-Android companion for the [ii](https://github.com/P3DROVFX/ii-vynx) Quickshell desktop.
+Android companion for the [ii](https://github.com/P3DROVFX/ii-vynx) Quickshell desktop: a
+helper alongside KDE Connect for the things it does not do and that only make sense
+with the ii shell. Everything travels over the existing KDE Connect pairing.
 
-## Live updates relay
+Kotlin + Jetpack Compose, Material 3 Expressive with Material You dynamic colour.
+Each integration is a destination on the home hub (`Destination` in `MainActivity`).
+
+## Integrations
+
+### Live updates relay
 
 Android live notifications (an iFood order on its way, a ride arriving, Android 16+
 Live Updates) are *ongoing* notifications, and KDE Connect never forwards ongoing
@@ -16,14 +23,14 @@ over the existing pairing; the ii shell recognises it and shows it as a live upd
 (a shell notification kept in step with the phone, an entry in the Phone tab and a
 glance on the dynamic island). Nothing to configure on the desktop.
 
-### What counts as live
+#### What counts as live
 
 *Auto* (default) relays ongoing notifications that are promoted Live Updates, use
 `ProgressStyle`, or whose channel/group id contains the word `live`. Media players and
 group summaries are skipped. In the app, each app with an ongoing notification can be
 switched to *Always* or *Never*.
 
-### Wire format
+#### Wire format
 
     title: "<App> · <headline>"
     text:  "iilive1:" + base64url(JSON)
@@ -40,11 +47,12 @@ Optional keys: `sub`, `crit` (Live Updates short critical text), `indeterminate`
 
 ## Build
 
-Needs only the Android SDK (`$ANDROID_HOME`, default `~/Android/Sdk`) and a JDK 17+;
-no Gradle.
+Needs the Android SDK (`sdk.dir` in `local.properties` or `$ANDROID_HOME`) and a JDK 17+.
 
-    ./build.sh            # build/ii-tools.apk, signed with the debug key
-    ./build.sh --install  # + adb install, and grant notification access
+    ./gradlew assembleDebug
+    adb install -r app/build/outputs/apk/debug/app-debug.apk
+    adb shell cmd notification allow_listener dev.ii.tools/dev.ii.tools.live.LiveListener
 
 Sideloaded apps on Android 13+ need *Allow restricted settings* (App info → ⋮) before
-notification access can be switched on from the phone; `--install` grants it over adb.
+notification access can be switched on from the phone; the `allow_listener` line does
+it over adb.
