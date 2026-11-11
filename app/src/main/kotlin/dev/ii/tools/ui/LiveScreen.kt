@@ -64,7 +64,6 @@ import dev.ii.tools.live.RelayMode
 import dev.ii.tools.live.view
 
 /** Live notifications: setup, what the shell shows right now, and the per-app rule. */
-/** Live notifications: setup, what the shell shows right now, and the per-app rule. */
 @Composable
 fun LiveScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
@@ -124,7 +123,7 @@ fun LiveScreen(onBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PermissionRow(title: String, body: String, icon: Int, granted: Boolean, onGrant: () -> Unit) {
+internal fun PermissionRow(title: String, body: String, icon: Int, granted: Boolean, onGrant: () -> Unit) {
     ToolRow(
         title = title,
         summary = body,

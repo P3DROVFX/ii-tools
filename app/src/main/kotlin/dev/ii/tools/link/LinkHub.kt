@@ -19,6 +19,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import dev.ii.tools.calls.CallWatcher
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -76,6 +77,8 @@ data class ShellInfo(val name: String, val caps: Set<String>, val actions: List<
 object LinkHub {
     private const val PATH = "/iilink/1"
     private const val BACKGROUND_GRACE_MS = 30_000L
+    /** After a call: long enough for the PC to see the end and a call back. */
+    private const val HOLD_GRACE_MS = 10_000L
     private const val REPLY_TIMEOUT_MS = 5_000L
     private const val FILE_CHUNK = 256 * 1024
     /** OkHttp closes a socket whose queue passes 16 MiB; stay well under it. */
@@ -147,11 +150,50 @@ object LinkHub {
 
     fun onBackground() {
         foreground = false
+        scheduleStop(BACKGROUND_GRACE_MS)
+    }
+
+    private fun scheduleStop(after: Long) {
         stopJob?.cancel()
+        if (holds.isNotEmpty()) return
         stopJob = scope.launch {
-            delay(BACKGROUND_GRACE_MS)
-            endSession()
+            delay(after)
+            if (!foreground && holds.isEmpty()) endSession()
         }
+    }
+
+    /**
+     * Reasons, besides the app being in front, to keep the link up: a call ringing or
+     * in progress. Each comes from a part of the app that is alive in the background
+     * anyway (the notification listener), so nothing extra is kept running for it.
+     */
+    private val holds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    private fun hold(reason: String) {
+        if (holds.add(reason)) {
+            stopJob?.cancel()
+            ensureSession()
+        }
+    }
+
+    private fun release(reason: String) {
+        if (holds.remove(reason) && !foreground) scheduleStop(HOLD_GRACE_MS)
+    }
+
+    // ── Calls ─────────────────────────────────────────────────────────────
+
+    /** The call state changed: tell the PC, opening the link for it if needed. */
+    fun reportCall(state: String, name: String) {
+        if (_pc.value == null) return
+        socket?.send(JSONObject().put("t", "call").put("state", state).put("name", name).toString())
+        if (state == "idle") release("call") else hold("call")
+    }
+
+    /** What this phone can do for the PC, sent on connect and when it changes. */
+    fun announceCaps() {
+        val caps = org.json.JSONArray()
+        if (CallWatcher.running.value) caps.put("calls")
+        socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
     /** Try again now, skipping whatever backoff is running. */
@@ -307,6 +349,10 @@ object LinkHub {
                     socket = s.ws
                     _status.value = LinkStatus.Online(host)
                     Symbols.flush()
+                    announceCaps()
+                    CallWatcher.current()?.let { (state, name) ->
+                        s.ws.send(JSONObject().put("t", "call").put("state", state).put("name", name).toString())
+                    }
                     try {
                         s.closed.await()
                     } finally {
@@ -377,6 +423,7 @@ object LinkHub {
             "ok" -> pending.remove(m.optInt("id"))?.complete(null)
             "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
             "unpaired" -> unpairedByPc = true
+            "phone" -> CallWatcher.command(m.optString("a"), m.optString("arg").ifEmpty { null })
         }
     }
 

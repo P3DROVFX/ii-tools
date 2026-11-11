@@ -109,4 +109,10 @@
     <string name="wallpaper_off">Wallpapers do celular estão desligados no PC (Configurações → ii tools).</string>
     <string name="wallpaper_too_large">A imagem é grande demais (máximo de 64 MB).</string>
     <string name="wallpaper_failed">Não deu para aplicar. Tente de novo.</string>
+    <string name="calls_title">Ligações</string>
+    <string name="calls_hint">O card de ligação do PC acompanha o celular, e atende, recusa e disca por ele.</string>
+    <string name="calls_report">Avisar o PC das ligações</string>
+    <string name="perm_phone">Telefone</string>
+    <string name="perm_phone_body">Para ver o estado da ligação e atender, encerrar ou fazer ligações.</string>
+    <string name="perm_listener_calls">Mantém o app ouvindo as ligações sem um serviço em segundo plano.</string>
 </resources>

@@ -6,6 +6,11 @@
          behind ACCESS_LOCAL_NETWORK, a runtime permission). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <!-- Calls (Fase 1.4): the call state, answer / end, and placing a call from the PC. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <!-- App labels/icons for the apps that post live notifications, and the
          KDE Connect install check. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
@@ -51,6 +56,10 @@
 
         <activity
             android:name=".AudioActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".CallsActivity"
             android:exported="false" />
 
         <!-- In the share sheet as "Set on PC" for images. -->

@@ -110,4 +110,10 @@
     <string name="wallpaper_off">Wallpapers from the phone are switched off on the PC (Settings → ii tools).</string>
     <string name="wallpaper_too_large">The image is too large (64 MB at most).</string>
     <string name="wallpaper_failed">Couldn\'t set it. Try again.</string>
+    <string name="calls_title">Calls</string>
+    <string name="calls_hint">The PC\'s call card follows the phone, and answers, declines and dials through it.</string>
+    <string name="calls_report">Report calls to the PC</string>
+    <string name="perm_phone">Phone</string>
+    <string name="perm_phone_body">To see the call state and answer, end or place calls.</string>
+    <string name="perm_listener_calls">Keeps the app listening for calls without a background service.</string>
 </resources>

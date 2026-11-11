@@ -42,6 +42,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Wallpaper:** share an image to *Set on PC* (or pick one in the app) and choose desktop,
   lock screen or both. The original file goes over the link in 256 KiB frames; the shell
   saves it with the other wallpapers and applies it, and the colours follow.
+- **Calls:** with *Phone* permissions and notification access, the app watches the call
+  state from its notification listener (no background service) and opens the link itself
+  when a call rings. The shell's call card then follows the phone, and its Answer,
+  Decline and Silence buttons work without ADB; a contact's call button on the PC places
+  the call from the phone while the link is up.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

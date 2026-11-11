@@ -1,5 +1,7 @@
 package dev.ii.tools.live
 
+import dev.ii.tools.calls.CallWatcher
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -63,15 +65,19 @@ class LiveListener : NotificationListenerService() {
         LiveHub.listener = this
         LiveHub.setConnected(true)
         rescan()
+        // The one always-bound part of the app: calls are watched from here.
+        CallWatcher.start(this)
     }
 
     override fun onListenerDisconnected() {
         if (LiveHub.listener === this) LiveHub.listener = null
         LiveHub.setConnected(false)
+        CallWatcher.onListenerGone(this)
     }
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        CallWatcher.onListenerGone(this)
         if (LiveHub.listener === this) {
             LiveHub.listener = null
             LiveHub.setConnected(false)
@@ -102,6 +108,7 @@ class LiveListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        CallWatcher.onNotification(sbn)
         if (sbn.packageName == packageName) return
         if (shouldRelay(sbn)) schedule(sbn, DEBOUNCE_MS)
         else if (sbn.key in lastSent) retire(sbn.key) // stopped being live

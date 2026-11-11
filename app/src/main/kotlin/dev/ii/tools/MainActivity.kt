@@ -19,6 +19,7 @@ import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.PairingUri
 import dev.ii.tools.live.LiveListener
 import dev.ii.tools.ui.AudioScreen
+import dev.ii.tools.ui.CallsScreen
 import dev.ii.tools.ui.DeckScreen
 import dev.ii.tools.ui.HomeScreen
 import dev.ii.tools.ui.LinkScreen
@@ -53,6 +54,7 @@ class MainActivity : ScreenActivity() {
         onOpenAudio = { open(AudioActivity::class.java) },
         onOpenDeck = { open(DeckActivity::class.java) },
         onOpenWallpaper = { open(WallpaperActivity::class.java) },
+        onOpenCalls = { open(CallsActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -150,4 +152,9 @@ class WallpaperActivity : ScreenActivity() {
         onBack = ::finish,
         onDone = ::finish,
     )
+}
+
+class CallsActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = CallsScreen(onBack = ::finish)
 }

@@ -205,6 +205,14 @@ O celular deitado vira um Stream Deck.
 
 ### 1.4 Controle de ligações · **M**
 
+> **Status (2026-11-11): implementado**, menos mutar o microfone (só o discador padrão
+> controla o áudio da chamada). O vigia mora no `NotificationListenerService` (sempre
+> vinculado, sem foreground service) e abre o link sozinho quando toca. Atender, encerrar e
+> silenciar via `TelecomManager`; o shell usa o estado do celular no lugar do polling por
+> ADB, que fica como fallback. Discar do PC funciona quando o link está aberto; com o app
+> fechado e sem chamada, o PC ainda não tem como acordar o celular (fica para 3.5, que
+> precisa de um canal sempre disponível).
+
 Substitui o ADB do `PhoneCallService`.
 
 - Estado da chamada via `TelephonyCallback`; atender e recusar via `TelecomManager`
