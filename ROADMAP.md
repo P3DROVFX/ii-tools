@@ -181,6 +181,15 @@ polling. Vai além do plugin de volume do KDE Connect.
 
 ### 1.3 Deck · **M**
 
+> **Status (2026-11-11): implementado** (sem pastas). Catálogo do shell = ações de gesto +
+> Discord + comandos do usuário (editor na página `ii tools`) + apps sob demanda; modes,
+> presets e workspaces entram pelos tópicos que o app já tem. No app: teclas em páginas que
+> se ajustam à tela, editar (adicionar por seletor com busca, remover, arrastar para
+> reordenar), modo dock (paisagem, tela ligada, brilho baixo, barras escondidas), sem
+> serviço em segundo plano. Ícones de qualquer Material Symbol desenhados pelo helper a
+> partir da fonte do PC e guardados no celular. Pendências: pastas e ícones reais dos apps
+> (hoje inicial do nome).
+
 O celular deitado vira um Stream Deck.
 
 - **Catálogo no shell:** cada ação tem id, ícone, rótulo e, quando é um toggle, **estado ao

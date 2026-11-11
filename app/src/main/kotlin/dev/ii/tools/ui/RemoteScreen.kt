@@ -156,7 +156,7 @@ private fun ActionTile(action: ShellAction, on: Boolean, note: String?, modifier
         modifier = modifier.height(96.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(painterResource(symbolIcon(action.icon)), contentDescription = null, modifier = Modifier.size(28.dp))
+            Icon(symbolPainter(action.icon), contentDescription = null, modifier = Modifier.size(28.dp))
             Text(
                 note ?: action.name,
                 style = MaterialTheme.typography.labelLarge,
@@ -242,7 +242,7 @@ private fun ModeGroup(modes: Modes) {
         modes.list.forEach { mode ->
             ToolRow(
                 title = mode.name,
-                icon = symbolIcon(mode.icon, fallback = R.drawable.rounded_tune),
+                painter = symbolPainter(mode.icon, fallback = R.drawable.rounded_tune),
                 tint = if (mode.id == current) Tint.PRIMARY else Tint.SECONDARY,
                 onClick = { toggle(mode.id) },
                 trailing = { Switch(checked = mode.id == current, onCheckedChange = { toggle(mode.id) }) },

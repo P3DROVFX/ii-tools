@@ -71,3 +71,36 @@ internal object Topics {
         return List(length()) { optString(it) }
     }
 }
+
+/** A key the shell offers for the deck; [toggle] keys light up from `state`. */
+data class DeckAction(val id: String, val name: String, val icon: String, val group: String, val toggle: Boolean)
+
+/** An installed app on the PC, listed only while the deck's picker asks. */
+data class PcApp(val id: String, val name: String)
+
+internal object DeckTopics {
+    fun deck(m: JSONObject): List<DeckAction> {
+        val list = m.optJSONArray("list") ?: return emptyList()
+        return buildList {
+            for (i in 0 until list.length()) {
+                val a = list.optJSONObject(i) ?: continue
+                add(DeckAction(a.optString("id"), a.optString("name"), a.optString("icon"), a.optString("group"), a.optBoolean("toggle")))
+            }
+        }
+    }
+
+    fun apps(m: JSONObject): List<PcApp> {
+        val list = m.optJSONArray("list") ?: return emptyList()
+        return buildList {
+            for (i in 0 until list.length()) {
+                val a = list.optJSONObject(i) ?: continue
+                add(PcApp(a.optString("id"), a.optString("name")))
+            }
+        }
+    }
+
+    fun paths(m: JSONObject): Map<String, String> {
+        val o = m.optJSONObject("paths") ?: return emptyMap()
+        return buildMap { o.keys().forEach { put(it, o.optString(it)) } }
+    }
+}

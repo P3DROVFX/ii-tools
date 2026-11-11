@@ -1,15 +1,25 @@
 package dev.ii.tools
 
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import dev.ii.tools.deck.DeckStore
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.PairingUri
 import dev.ii.tools.live.LiveListener
 import dev.ii.tools.ui.AudioScreen
+import dev.ii.tools.ui.DeckScreen
 import dev.ii.tools.ui.HomeScreen
 import dev.ii.tools.ui.LinkScreen
 import dev.ii.tools.ui.LiveScreen
@@ -40,6 +50,7 @@ class MainActivity : ScreenActivity() {
         onOpenLink = { open(LinkActivity::class.java) },
         onOpenRemote = { open(RemoteActivity::class.java) },
         onOpenAudio = { open(AudioActivity::class.java) },
+        onOpenDeck = { open(DeckActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -79,4 +90,51 @@ class RemoteActivity : ScreenActivity() {
 class AudioActivity : ScreenActivity() {
     @Composable
     override fun Screen() = AudioScreen(onBack = ::finish)
+}
+
+/**
+ * The deck. Dock mode is a window state, so it lives here: sideways, screen kept on and
+ * dimmed, system bars hidden. Nothing runs in the background for it: the deck is only
+ * alive while it is on screen.
+ */
+class DeckActivity : ScreenActivity() {
+    private var dock by mutableStateOf(false)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Loaded here, not at app start: only the deck needs its layout.
+        DeckStore.init(this)
+        super.onCreate(savedInstanceState)
+        dock = savedInstanceState?.getBoolean(DOCK) ?: false
+        applyDock()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(DOCK, dock)
+    }
+
+    @Composable
+    override fun Screen() = DeckScreen(onBack = ::finish, dock = dock, onDock = {
+        dock = it
+        applyDock()
+    })
+
+    private fun applyDock() {
+        requestedOrientation = if (dock) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        if (dock) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        window.attributes = window.attributes.apply {
+            screenBrightness = if (dock) DOCK_BRIGHTNESS else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        }
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            if (dock) hide(WindowInsetsCompat.Type.systemBars()) else show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    private companion object {
+        const val DOCK = "dock"
+        /** Low enough to sit on a desk all day, still readable at a glance. */
+        const val DOCK_BRIGHTNESS = 0.08f
+    }
 }

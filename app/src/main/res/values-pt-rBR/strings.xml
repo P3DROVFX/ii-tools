@@ -77,4 +77,24 @@
     <string name="remote_presets">Presets</string>
     <string name="remote_modes_off">Os modos estão desligados no PC.</string>
     <string name="link_needed">Conecte ao PC primeiro.</string>
+    <string name="deck_title">Deck</string>
+    <string name="deck_off">O deck está desligado no PC (Configurações → ii tools).</string>
+    <string name="deck_edit">Editar</string>
+    <string name="deck_done">Concluir</string>
+    <string name="deck_add">Adicionar tecla</string>
+    <string name="deck_remove">Remover</string>
+    <string name="deck_dock">Modo dock</string>
+    <string name="deck_exit_dock">Sair do modo dock</string>
+    <string name="deck_empty">Nenhuma tecla ainda. Toque em Editar para adicionar.</string>
+    <string name="deck_search">Buscar</string>
+    <string name="deck_group_shell">Shell</string>
+    <string name="deck_group_capture">Captura</string>
+    <string name="deck_group_media">Mídia</string>
+    <string name="deck_group_windows">Janelas</string>
+    <string name="deck_group_look">Aparência</string>
+    <string name="deck_group_discord">Discord</string>
+    <string name="deck_group_custom">Seus comandos</string>
+    <string name="deck_group_apps">Apps</string>
+    <string name="deck_unavailable">Indisponível agora</string>
+    <string name="deck_page">Página %1$d de %2$d</string>
 </resources>

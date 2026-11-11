@@ -53,6 +53,13 @@
             android:name=".AudioActivity"
             android:exported="false" />
 
+        <!-- Turning into dock mode rotates the screen: keep the deck, its page and its
+             drag, instead of rebuilding the activity. -->
+        <activity
+            android:name=".DeckActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="false" />
+
         <!-- Fetch the scanner module with the app rather than at first scan. -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"

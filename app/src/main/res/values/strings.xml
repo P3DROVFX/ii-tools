@@ -78,4 +78,24 @@
     <string name="remote_presets">Presets</string>
     <string name="remote_modes_off">Modes are switched off on the PC.</string>
     <string name="link_needed">Connect to the PC first.</string>
+    <string name="deck_title">Deck</string>
+    <string name="deck_off">The deck is switched off on the PC (Settings → ii tools).</string>
+    <string name="deck_edit">Edit</string>
+    <string name="deck_done">Done</string>
+    <string name="deck_add">Add a key</string>
+    <string name="deck_remove">Remove</string>
+    <string name="deck_dock">Dock mode</string>
+    <string name="deck_exit_dock">Exit dock mode</string>
+    <string name="deck_empty">No keys yet. Tap Edit to add some.</string>
+    <string name="deck_search">Search</string>
+    <string name="deck_group_shell">Shell</string>
+    <string name="deck_group_capture">Capture</string>
+    <string name="deck_group_media">Media</string>
+    <string name="deck_group_windows">Windows</string>
+    <string name="deck_group_look">Look</string>
+    <string name="deck_group_discord">Discord</string>
+    <string name="deck_group_custom">Your commands</string>
+    <string name="deck_group_apps">Apps</string>
+    <string name="deck_unavailable">Not available now</string>
+    <string name="deck_page">Page %1$d of %2$d</string>
 </resources>

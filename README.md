@@ -34,6 +34,13 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   volume and mute per app, and EasyEffects (on/bypass and output preset). Live from the
   shell's PipeWire state; a slider follows the finger while held and sends at most ~20
   values a second.
+- **Deck:** the phone as a stream deck. Keys come from the shell's catalog (screenshots,
+  recording, media, windows, look, Discord, your own commands from *Settings → ii tools*),
+  modes, presets, workspaces and apps. Toggle keys light up with the shell's real state.
+  Pages fit the screen; *Edit* adds, removes and reorders (long press, drag); *Dock mode*
+  turns the phone sideways, keeps the screen on and dims it. The layout lives on the phone.
+- **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
+  font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach
   the LAN.
 

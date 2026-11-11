@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -146,10 +147,13 @@ private fun tintColors(tint: Tint): Pair<Color, Color> {
 
 /** A 24 dp glyph in a 40 dp tinted circle: what leads every row. */
 @Composable
-fun IconBadge(@DrawableRes icon: Int, tint: Tint) {
+fun IconBadge(@DrawableRes icon: Int, tint: Tint) = IconBadge(painterResource(icon), tint)
+
+@Composable
+fun IconBadge(icon: Painter, tint: Tint) {
     val (container, content) = tintColors(tint)
     Box(Modifier.size(40.dp).clip(CircleShape).background(container), contentAlignment = Alignment.Center) {
-        Icon(painterResource(icon), null, tint = content, modifier = Modifier.size(24.dp))
+        Icon(icon, null, tint = content, modifier = Modifier.size(24.dp))
     }
 }
 
@@ -162,6 +166,7 @@ fun ToolRow(
     summary: String? = null,
     @DrawableRes icon: Int? = null,
     tint: Tint = Tint.SECONDARY,
+    painter: Painter? = null,
     leading: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
@@ -170,6 +175,7 @@ fun ToolRow(
     val haptics = LocalHapticFeedback.current
     val leadingContent: (@Composable () -> Unit)? = when {
         leading != null -> leading
+        painter != null -> { { IconBadge(painter, tint) } }
         icon != null -> { { IconBadge(icon, tint) } }
         else -> null
     }

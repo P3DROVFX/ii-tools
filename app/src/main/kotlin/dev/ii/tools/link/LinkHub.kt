@@ -100,6 +100,10 @@ object LinkHub {
     val presets: StateFlow<Presets?> = _presets.asStateFlow()
     private val _audio = MutableStateFlow<PcAudio?>(null)
     val audio: StateFlow<PcAudio?> = _audio.asStateFlow()
+    private val _deck = MutableStateFlow<List<DeckAction>?>(null)
+    val deck: StateFlow<List<DeckAction>?> = _deck.asStateFlow()
+    private val _apps = MutableStateFlow<List<PcApp>?>(null)
+    val apps: StateFlow<List<PcApp>?> = _apps.asStateFlow()
 
     private lateinit var app: Context
     private var session: Job? = null
@@ -124,6 +128,7 @@ object LinkHub {
     fun init(ctx: Context) {
         if (::app.isInitialized) return
         app = ctx.applicationContext
+        Symbols.init(app)
         _pc.value = LinkPrefs.load(app)
         _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Idle
     }
@@ -297,6 +302,7 @@ object LinkHub {
                     unpairedByPc = false
                     socket = s.ws
                     _status.value = LinkStatus.Online(host)
+                    Symbols.flush()
                     try {
                         s.closed.await()
                     } finally {
@@ -326,6 +332,8 @@ object LinkHub {
         _modes.value = null
         _presets.value = null
         _audio.value = null
+        _deck.value = null
+        _apps.value = null
     }
 
     private fun remember(pc: PairedPc, host: String) {
@@ -359,6 +367,9 @@ object LinkHub {
             "modes" -> _modes.value = Topics.modes(m)
             "presets" -> _presets.value = Topics.presets(m)
             "audio" -> _audio.value = Topics.audio(m)
+            "deck" -> _deck.value = DeckTopics.deck(m)
+            "apps" -> _apps.value = DeckTopics.apps(m)
+            "icons" -> Symbols.put(DeckTopics.paths(m))
             "ok" -> pending.remove(m.optInt("id"))?.complete(null)
             "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
             "unpaired" -> unpairedByPc = true
@@ -388,6 +399,17 @@ object LinkHub {
      */
     fun send(actionId: String, arg: Any? = null) {
         socket?.send(command(nextId.getAndIncrement(), actionId, arg))
+    }
+
+    /** The PC's installed apps; they arrive in [apps]. */
+    fun requestApps() {
+        socket?.send(JSONObject().put("t", "get").put("what", "apps").toString())
+    }
+
+    /** Outlines of Material Symbols the app does not carry; they arrive in [Symbols]. */
+    internal fun requestSymbols(names: Collection<String>): Boolean {
+        val ws = socket ?: return false
+        return ws.send(JSONObject().put("t", "icons").put("names", org.json.JSONArray(names)).toString())
     }
 
     private fun command(id: Int, actionId: String, arg: Any?): String {
