@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
+import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.live.LiveHub
 import dev.ii.tools.notify.NotifMirror
 import okhttp3.OkHttpClient
@@ -232,6 +233,7 @@ object LinkHub {
         val caps = org.json.JSONArray()
         if (CallWatcher.running.value) caps.put("calls")
         if (NotifMirror.running.value) caps.put("notifs")
+        if (ClipSync.receives(app)) caps.put("clip")
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -482,6 +484,7 @@ object LinkHub {
             "unpaired" -> unpairedByPc = true
             "phone" -> CallWatcher.command(m.optString("a"), m.optString("arg").ifEmpty { null })
             "notifAct" -> NotifMirror.command(m)
+            "clip" -> ClipSync.receive(app, m)
         }
     }
 

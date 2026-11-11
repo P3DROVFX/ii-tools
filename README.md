@@ -60,6 +60,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   its AI chat; text becomes a note, a reminder or a task; a photo or any file goes
   to `~/Downloads` as KDE Connect does (never overwriting), to the shell's file shelf, or
   (images) to the AI chat.
+- **Clipboard:** what you copy on the PC (text or image) lands on the phone's clipboard
+  while the link is up, and the latest copy when it connects. The phone's clipboard goes
+  to the PC on request (Android only lets a focused app read it): the *Clipboard to PC*
+  tile, *Copy on the PC* in the share sheet, or the Clipboard screen.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

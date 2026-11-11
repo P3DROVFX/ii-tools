@@ -133,3 +133,21 @@ class MediaModeTile : ShellTile("mediaMode", R.string.tile_media, R.drawable.rou
 class PresetTile : ShellTile("preset", R.string.tile_preset, R.drawable.rounded_palette) {
     override fun target(): Pair<Any?, String>? = FavoritePreset.load(this)?.let { it to it }
 }
+
+/**
+ * Sends the phone's clipboard to the PC. Reading it needs a focused window, so the tile
+ * opens [dev.ii.tools.clip.ClipActivity] for an instant.
+ */
+class ClipTile : TileService() {
+    override fun onStartListening() {
+        qsTile?.apply {
+            state = if (LinkHub.pc.value == null) Tile.STATE_UNAVAILABLE else Tile.STATE_INACTIVE
+            updateTile()
+        }
+    }
+
+    override fun onClick() {
+        val intent = Intent(this, dev.ii.tools.clip.ClipActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivityAndCollapse(PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE))
+    }
+}

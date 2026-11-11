@@ -288,6 +288,12 @@ anexo da IA; arquivo vai para o `FileShelf`.
 
 ### 2.3 Clipboard com imagens · **S**
 
+> **Status (2026-11-11): implementado.** PC → celular automático enquanto o link está aberto
+> (e a última cópia ao conectar), texto e imagem (até 5 MiB), direto no clipboard do Android.
+> Celular → PC por ação explícita (o Android só deixa ler o clipboard com o app em foco):
+> tile "Copiar para o PC" (abre uma tela invisível por um instante), "Copiar no PC" no
+> compartilhar e a tela Área de transferência. Sem eco nos dois sentidos.
+
 Texto e imagem nos dois sentidos, integrado ao `Cliphist`. Só sincroniza o que o usuário copia
 com o app em primeiro plano ou por ação explícita (o Android restringe ler o clipboard em
 segundo plano).

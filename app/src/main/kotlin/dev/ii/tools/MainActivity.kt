@@ -20,6 +20,7 @@ import dev.ii.tools.link.PairingUri
 import dev.ii.tools.live.LiveListener
 import dev.ii.tools.ui.AudioScreen
 import dev.ii.tools.ui.CallsScreen
+import dev.ii.tools.ui.ClipboardScreen
 import dev.ii.tools.ui.DeckScreen
 import dev.ii.tools.ui.HomeScreen
 import dev.ii.tools.ui.LinkScreen
@@ -59,6 +60,7 @@ class MainActivity : ScreenActivity() {
         onOpenWallpaper = { open(WallpaperActivity::class.java) },
         onOpenCalls = { open(CallsActivity::class.java) },
         onOpenNotifs = { open(NotifsActivity::class.java) },
+        onOpenClipboard = { open(ClipboardActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -172,4 +174,9 @@ class NotifsActivity : ScreenActivity() {
 class ShareActivity : ScreenActivity() {
     @Composable
     override fun Screen() = ShareScreen(shared = Shared.from(intent), onBack = ::finish, onDone = ::finish)
+}
+
+class ClipboardActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = ClipboardScreen(onBack = ::finish)
 }

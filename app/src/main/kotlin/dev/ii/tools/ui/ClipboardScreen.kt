@@ -1,0 +1,98 @@
+package dev.ii.tools.ui
+
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.ii.tools.R
+import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.link.LinkHub
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/** Clipboard: receiving the PC's, and sending this phone's (the app is in focus here). */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun ClipboardScreen(onBack: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val status by LinkHub.status.collectAsStateWithLifecycle()
+    val pc by LinkHub.pc.collectAsStateWithLifecycle()
+    val shell by LinkHub.shell.collectAsStateWithLifecycle()
+    var receives by remember { mutableStateOf(ClipSync.receives(ctx)) }
+    var sending by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(result) {
+        if (result != null) {
+            delay(2_500)
+            result = null
+        }
+    }
+
+    ToolScaffold(title = stringResource(R.string.clip_title), onBack = onBack) {
+        item { Hint(stringResource(R.string.clip_hint)) }
+        val ready = linkGate(pc, status, shell != null)
+        if (ready && shell?.caps?.contains("clip") != true) {
+            item { Hint(stringResource(R.string.clip_off)) }
+            return@ToolScaffold
+        }
+        item {
+            CardGroup {
+                ToolRow(
+                    title = stringResource(R.string.clip_send),
+                    summary = result?.let { stringResource(it) },
+                    icon = R.drawable.rounded_content_paste,
+                    tint = if (result == R.string.clip_sent) Tint.PRIMARY else Tint.SECONDARY,
+                    onClick = if (sending) null else {
+                        {
+                            sending = true
+                            scope.launch {
+                                result = when (ClipSync.sendCurrent(ctx)) {
+                                    null -> R.string.clip_sent
+                                    "empty" -> R.string.clip_empty
+                                    else -> R.string.clip_failed
+                                }
+                                sending = false
+                            }
+                        }
+                    },
+                    trailing = when {
+                        sending -> {
+                            { LoadingIndicator(Modifier.size(32.dp)) }
+                        }
+                        result == R.string.clip_sent -> {
+                            { Icon(painterResource(R.drawable.rounded_check), null, tint = MaterialTheme.colorScheme.primary) }
+                        }
+                        else -> null
+                    },
+                )
+                val toggle = { on: Boolean ->
+                    receives = on
+                    ClipSync.setReceives(ctx, on)
+                }
+                ToolRow(
+                    title = stringResource(R.string.clip_receive),
+                    icon = R.drawable.rounded_download,
+                    tint = if (receives) Tint.PRIMARY else Tint.SECONDARY,
+                    onClick = { toggle(!receives) },
+                    trailing = { Switch(checked = receives, onCheckedChange = toggle) },
+                )
+            }
+        }
+    }
+}

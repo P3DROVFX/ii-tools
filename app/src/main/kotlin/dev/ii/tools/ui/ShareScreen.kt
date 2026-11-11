@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
+import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.link.LinkHub
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -104,6 +105,7 @@ fun ShareScreen(shared: Shared?, onBack: () -> Unit, onDone: () -> Unit) {
         shared == null -> emptyList()
         shared.file != null && shared.isImage -> listOf(
             Target("downloads", R.string.share_downloads, R.drawable.rounded_download),
+            Target("clip", R.string.share_clip, R.drawable.rounded_content_paste),
             Target("ai", R.string.share_ai, R.drawable.rounded_smart_toy),
             Target("shelf", R.string.share_shelf, R.drawable.rounded_inventory),
         )
@@ -113,10 +115,12 @@ fun ShareScreen(shared: Shared?, onBack: () -> Unit, onDone: () -> Unit) {
         )
         shared.isLink -> listOf(
             Target("browser", R.string.share_browser, R.drawable.rounded_open_in_browser),
+            Target("clip", R.string.share_clip, R.drawable.rounded_content_paste),
             Target("ai", R.string.share_ai, R.drawable.rounded_smart_toy),
             Target("note", R.string.share_note, R.drawable.rounded_sticky_note_2),
         )
         else -> listOfNotNull(
+            Target("clip", R.string.share_clip, R.drawable.rounded_content_paste),
             Target("note", R.string.share_note, R.drawable.rounded_sticky_note_2),
             Target("reminder", R.string.share_reminder, R.drawable.rounded_alarm),
             Target("task", R.string.share_task, R.drawable.rounded_task_alt),
@@ -132,7 +136,9 @@ fun ShareScreen(shared: Shared?, onBack: () -> Unit, onDone: () -> Unit) {
         sending = target
         problem = null
         scope.launch {
-            val why = if (s.file != null) {
+            val why = if (target == "clip") {
+                if (s.file != null) ClipSync.sendImage(ctx, s.file, s.mime ?: "image/jpeg") else ClipSync.sendText(s.text.orEmpty())
+            } else if (s.file != null) {
                 val (name, size) = describeFile(ctx, s.file, s.mime)
                 LinkHub.upload(name, size, { ctx.contentResolver.openInputStream(s.file) }, "share", target) { }
             } else {

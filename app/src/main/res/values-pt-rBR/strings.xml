@@ -141,4 +141,14 @@
     <string name="share_off">O envio ao PC está desligado no PC (Configurações → ii tools).</string>
     <string name="share_nothing">Nada para enviar.</string>
     <string name="share_downloads">Downloads</string>
+    <string name="clip_title">Área de transferência</string>
+    <string name="clip_hint">O que você copia no PC chega a este celular enquanto o app está conectado. Envie a área de transferência daqui pelo tile, pelo compartilhar ou por aqui.</string>
+    <string name="clip_receive">Receber a área de transferência do PC</string>
+    <string name="clip_send">Enviar a área de transferência ao PC</string>
+    <string name="clip_sent">Área de transferência enviada ao PC</string>
+    <string name="clip_empty">A área de transferência está vazia</string>
+    <string name="clip_failed">Não deu para falar com o PC</string>
+    <string name="clip_off">A área de transferência está desligada no PC (Configurações → ii tools).</string>
+    <string name="tile_clip">Copiar para o PC</string>
+    <string name="share_clip">Copiar no PC</string>
 </resources>

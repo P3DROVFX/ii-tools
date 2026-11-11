@@ -142,4 +142,14 @@
     <string name="share_off">Sending to the PC is switched off on the PC (Settings → ii tools).</string>
     <string name="share_nothing">Nothing to send.</string>
     <string name="share_downloads">Downloads</string>
+    <string name="clip_title">Clipboard</string>
+    <string name="clip_hint">What you copy on the PC reaches this phone while the app is connected. Send this phone\'s clipboard with the tile, the share sheet or here.</string>
+    <string name="clip_receive">Receive the PC\'s clipboard</string>
+    <string name="clip_send">Send the clipboard to the PC</string>
+    <string name="clip_sent">Clipboard sent to the PC</string>
+    <string name="clip_empty">The clipboard is empty</string>
+    <string name="clip_failed">Couldn\'t reach the PC</string>
+    <string name="clip_off">The clipboard is switched off on the PC (Settings → ii tools).</string>
+    <string name="tile_clip">Clipboard to PC</string>
+    <string name="share_clip">Copy on the PC</string>
 </resources>

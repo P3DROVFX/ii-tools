@@ -4,4 +4,12 @@
     <style name="Theme.IiTools" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@android:color/system_neutral1_10</item>
     </style>
+
+    <!-- The clipboard tile's moment on screen: invisible, no animation. Android lets an
+         app read the clipboard only while it has a window in focus. -->
+    <style name="Theme.IiTools.Invisible" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowNoDisplay">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>

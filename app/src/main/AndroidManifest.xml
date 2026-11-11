@@ -66,6 +66,30 @@
             android:name=".NotifsActivity"
             android:exported="false" />
 
+        <!-- The clipboard tile opens this for a moment: only a focused window may read
+             the clipboard. -->
+        <activity
+            android:name=".clip.ClipActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.IiTools.Invisible" />
+
+        <activity
+            android:name=".ClipboardActivity"
+            android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- In the share sheet as "Send to PC": text, links, images and files. -->
         <activity
             android:name=".ShareActivity"
@@ -150,6 +174,17 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
             <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+
+        <service
+            android:name=".tiles.ClipTile"
+            android:exported="true"
+            android:icon="@drawable/rounded_content_paste"
+            android:label="@string/tile_clip"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
         </service>
 
         <service
