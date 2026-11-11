@@ -1,20 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ii tools</string>
-    <string name="app_tagline">The ii shell\'s companion to KDE Connect</string>
 
-    <string name="kdeconnect_ok_title">Rides on KDE Connect</string>
-    <string name="kdeconnect_ok_body">Everything here travels over your KDE Connect pairing. Keep its notification sync on for the shell to receive it.</string>
-    <string name="kdeconnect_missing_title">KDE Connect is not installed</string>
-    <string name="kdeconnect_missing_body">ii tools only talks to the ii shell through KDE Connect. Install it and pair it with your computer.</string>
-
-    <string name="section_integrations">Shell integrations</string>
     <string name="status_on">On</string>
     <string name="status_needs_setup">Needs setup</string>
-    <string name="status_relaying">Relaying %1$d</string>
 
     <string name="live_title">Live notifications</string>
-    <string name="live_summary">Orders, rides and Live Updates on the shell, kept in step with the phone.</string>
     <string name="live_explainer">KDE Connect drops ongoing notifications. ii tools reads them, including apps that draw their own layout, and sends a silent copy the ii shell turns into a live card.</string>
     <string name="channel_name">Live notification relay</string>
     <string name="channel_desc">Silent copies of live notifications that KDE Connect forwards to the ii shell.</string>
@@ -37,4 +28,37 @@
     <string name="mode_never">Never</string>
     <string name="looks_live">Looks live</string>
     <string name="back">Back</string>
+
+    <string name="link_title">Connect to PC</string>
+    <string name="pair_title">Pair with your PC</string>
+    <string name="pair_body">On the PC, open Settings → ii tools → Pair a phone, then scan the code it shows.</string>
+    <string name="pair_scan">Scan QR code</string>
+    <string name="pair_working">Pairing…</string>
+    <string name="pair_invalid">That is not an ii tools pairing code.</string>
+    <string name="problem_unreachable">Can’t reach the PC. Is it on, and on the same network?</string>
+    <string name="problem_rejected">The PC no longer knows this phone. Forget it here and pair again.</string>
+    <string name="problem_pairing">Pairing failed: the code expired or was already used. Show a new one on the PC.</string>
+    <string name="problem_permission">Android needs the nearby devices permission to reach your PC.</string>
+    <string name="perm_network">Nearby devices</string>
+    <string name="perm_network_body">To reach your PC on the local network.</string>
+    <string name="status_online">Connected</string>
+    <string name="status_connecting">Connecting</string>
+    <string name="status_offline">Offline</string>
+    <string name="status_idle">Paired</string>
+    <string name="status_unpaired">Not paired</string>
+    <string name="retry">Retry</string>
+    <string name="remote_title">Remote control</string>
+    <string name="remote_off">Remote control is switched off on the PC (Settings → ii tools).</string>
+    <string name="remote_waiting">Connect to the PC to use the remote.</string>
+    <string name="forget_pc">Forget this PC</string>
+    <string name="action_failed">Didn’t run</string>
+    <string name="section_this_pc">This PC</string>
+    <string name="link_hero_paired">Paired · connects while the app is open</string>
+    <string name="link_address">Address</string>
+    <string name="forget_confirm">This phone and the PC will forget each other. Pair again with a new QR code.</string>
+    <string name="forget_action">Forget</string>
+    <string name="cancel">Cancel</string>
+    <string name="action_locked">Unlock on the PC</string>
+    <string name="kdeconnect">KDE Connect</string>
+    <string name="kdeconnect_missing_short">Not installed: live notifications need it</string>
 </resources>

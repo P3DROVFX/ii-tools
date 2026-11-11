@@ -2,12 +2,34 @@
 
 Android companion for the [ii](https://github.com/P3DROVFX/ii-vynx) Quickshell desktop: a
 helper alongside KDE Connect for the things it does not do and that only make sense
-with the ii shell. Everything travels over the existing KDE Connect pairing.
+with the ii shell. It talks to the shell over its own encrypted link (**ii link**), and
+the live notification relay still rides on the KDE Connect pairing. The plan is in
+[ROADMAP.md](ROADMAP.md).
 
 Kotlin + Jetpack Compose, Material 3 Expressive with Material You dynamic colour.
 Each integration is a destination on the home hub (`Destination` in `MainActivity`).
 
 ## Integrations
+
+### ii link (connection to the PC)
+
+A TLS WebSocket straight to the shell's `ii_link` helper, on the LAN (or Tailscale).
+The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
+
+- **Pairing:** on the PC, *Settings → ii tools → Pair a phone* shows a QR code. The app
+  scans it with Google's code scanner (no camera permission), or opens the same
+  `iilink://pair?…` link sent from the PC over KDE Connect. The PC's self-signed
+  certificate is pinned by its SHA-256; the PC keeps only a hash of this phone's token.
+- **Lifetime:** the socket is open only while the app is in front, plus 30 s. No
+  service, wakelock or socket otherwise. If the PC's address changed, the app finds it
+  again with a UDP broadcast on the link's port.
+- **Remote control:** lock, lock + always-on display, always-on display, media mode.
+  Each is a toggle that shows the shell's real state (`state`), whatever changed it: a
+  lock from a keybind lights the tile up too. Unlocking is refused on purpose; it stays
+  with the PC's own authentication. The shell announces which actions exist (`hello`),
+  so switching an integration off on the PC hides it here.
+- Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach
+  the LAN.
 
 ### Live updates relay
 
@@ -52,6 +74,10 @@ Needs the Android SDK (`sdk.dir` in `local.properties` or `$ANDROID_HOME`) and a
     ./gradlew assembleDebug
     adb install -r app/build/outputs/apk/debug/app-debug.apk
     adb shell cmd notification allow_listener dev.ii.tools/dev.ii.tools.live.LiveListener
+    adb shell pm grant dev.ii.tools android.permission.ACCESS_LOCAL_NETWORK
+
+`tools/measure.sh` checks the performance budgets (helper RSS, CPU, wakeups; app PSS
+and wakelocks).
 
 Sideloaded apps on Android 13+ need *Allow restricted settings* (App info → ⋮) before
 notification access can be switched on from the phone; the `allow_listener` line does

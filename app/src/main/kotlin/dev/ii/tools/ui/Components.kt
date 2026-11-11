@@ -26,23 +26,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 
-/** A glyph inside an expressive shape (cookie, sunny…), the app's icon vocabulary. */
-@Composable
-fun ShapedIcon(
-    @DrawableRes icon: Int,
-    shape: Shape,
-    container: Color,
-    content: Color,
-    size: Dp = 56.dp,
-) {
-    Box(
-        modifier = Modifier.size(size).clip(shape).background(container),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(painterResource(icon), contentDescription = null, tint = content, modifier = Modifier.size(size * 0.45f))
-    }
-}
-
 /** Another app's launcher icon, loaded once per package. */
 @Composable
 fun AppIcon(pkg: String, size: Dp = 40.dp) {
@@ -68,15 +51,4 @@ fun Pill(text: String, container: Color, content: Color) {
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
-}
-
-@Composable
-fun SectionHeader(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(start = 8.dp, top = 20.dp, bottom = 8.dp),
-    )
 }

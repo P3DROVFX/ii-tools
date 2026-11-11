@@ -157,7 +157,7 @@ class LiveListener : NotificationListenerService() {
                 Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING,
             )
             val b = Notification.Builder(this, CHANNEL)
-                .setSmallIcon(R.drawable.ic_live)
+                .setSmallIcon(R.drawable.rounded_notifications_active)
                 .setContentTitle(if (headline.isEmpty()) payload.app else "${payload.app} · $headline")
                 .setContentText(MARKER + encoded)
                 .setOnlyAlertOnce(true)

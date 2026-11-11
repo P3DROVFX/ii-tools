@@ -1,0 +1,462 @@
+package dev.ii.tools.link
+
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import org.json.JSONObject
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+import java.net.SocketTimeoutException
+import java.security.MessageDigest
+import java.security.cert.CertificateException
+import java.security.cert.X509Certificate
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import javax.net.ssl.SSLContext
+import javax.net.ssl.X509TrustManager
+
+sealed interface LinkStatus {
+    data object Unpaired : LinkStatus
+    /** Paired, and nothing on screen needs the link: no socket is open. */
+    data object Idle : LinkStatus
+    data object Pairing : LinkStatus
+    data object Connecting : LinkStatus
+    data class Online(val host: String) : LinkStatus
+    data class Offline(val problem: LinkProblem) : LinkStatus
+}
+
+enum class LinkProblem {
+    /** No address answered, and discovery found nothing. */
+    UNREACHABLE,
+    /** The PC no longer knows this phone. */
+    REJECTED,
+    /** The pairing code expired, was used, or the PC was not pairing. */
+    PAIRING_FAILED,
+    /** Android 17+: nearby devices / local network access not granted. */
+    NO_PERMISSION,
+}
+
+/** [toggle] actions have an on/off state the shell keeps the phone told about. */
+data class ShellAction(val id: String, val name: String, val icon: String, val toggle: Boolean)
+
+/** What the shell announced in its `hello`: what it can do right now. */
+data class ShellInfo(val name: String, val caps: Set<String>, val actions: List<ShellAction>)
+
+/**
+ * The ii link (see the shell's scripts/iiLink/PROTOCOL.md): one TLS WebSocket to the
+ * paired PC, open only while the app is in front (and for a short grace after), so an
+ * idle phone holds no socket, thread or wakelock for it.
+ *
+ * The PC's certificate is self-signed; it is trusted only when its SHA-256 matches the
+ * fingerprint from the pairing QR code.
+ */
+object LinkHub {
+    private const val PATH = "/iilink/1"
+    private const val BACKGROUND_GRACE_MS = 30_000L
+    private const val REPLY_TIMEOUT_MS = 5_000L
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val _status = MutableStateFlow<LinkStatus>(LinkStatus.Unpaired)
+    val status: StateFlow<LinkStatus> = _status.asStateFlow()
+
+    private val _pc = MutableStateFlow<PairedPc?>(null)
+    val pc: StateFlow<PairedPc?> = _pc.asStateFlow()
+
+    private val _shell = MutableStateFlow<ShellInfo?>(null)
+    val shell: StateFlow<ShellInfo?> = _shell.asStateFlow()
+
+    /** The toggle actions that are on right now (the PC locked, media mode open…). */
+    private val _active = MutableStateFlow<Set<String>>(emptySet())
+    val active: StateFlow<Set<String>> = _active.asStateFlow()
+
+    private lateinit var app: Context
+    private var session: Job? = null
+    private var stopJob: Job? = null
+    private var foreground = false
+
+    @Volatile private var socket: WebSocket? = null
+    @Volatile private var unpairedByPc = false
+    private val pending = ConcurrentHashMap<Int, CompletableDeferred<String?>>()
+    private val nextId = AtomicInteger(1)
+
+    // Shared pool and dispatcher; each PC gets a thin copy carrying its pinned trust.
+    private val baseClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(0, TimeUnit.SECONDS)
+            .pingInterval(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(false)
+            .build()
+    }
+
+    fun init(ctx: Context) {
+        if (::app.isInitialized) return
+        app = ctx.applicationContext
+        _pc.value = LinkPrefs.load(app)
+        _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Idle
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────
+
+    fun onForeground() {
+        foreground = true
+        stopJob?.cancel()
+        ensureSession()
+    }
+
+    fun onBackground() {
+        foreground = false
+        stopJob?.cancel()
+        stopJob = scope.launch {
+            delay(BACKGROUND_GRACE_MS)
+            endSession()
+        }
+    }
+
+    /** Try again now, skipping whatever backoff is running. */
+    fun retry() {
+        endSession()
+        _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Connecting
+        if (foreground) ensureSession() else _status.value = LinkStatus.Idle.takeIf { _pc.value != null } ?: LinkStatus.Unpaired
+    }
+
+    private fun ensureSession() {
+        if (session?.isActive == true || _pc.value == null) return
+        session = scope.launch { runSession() }
+    }
+
+    private fun endSession() {
+        session?.cancel()
+        session = null
+        socket?.close(1000, null)
+        socket = null
+        _shell.value = null
+        _active.value = emptySet()
+        if (_pc.value != null && _status.value !is LinkStatus.Offline) _status.value = LinkStatus.Idle
+    }
+
+    // ── Pairing ───────────────────────────────────────────────────────────
+
+    fun pair(uri: PairingUri) {
+        session?.cancel()
+        socket?.close(1000, null)
+        session = scope.launch { runPairing(uri) }
+    }
+
+    /** Forgets the PC here, and asks it to forget this phone too when it can hear us. */
+    fun forget() {
+        socket?.send(JSONObject().put("t", "unpair").toString())
+        scope.launch {
+            delay(300)
+            forgetLocally()
+        }
+    }
+
+    private fun forgetLocally() {
+        session?.cancel()
+        session = null
+        socket?.close(1000, null)
+        socket = null
+        LinkPrefs.clear(app)
+        _pc.value = null
+        _shell.value = null
+        _status.value = LinkStatus.Unpaired
+    }
+
+    /** A pairing link that arrived before the network permission did. */
+    private var pendingPairing: PairingUri? = null
+
+    /** The UI got the network permission: carry on with whatever was waiting for it. */
+    fun onPermissionGranted() {
+        val uri = pendingPairing
+        pendingPairing = null
+        if (uri != null) pair(uri) else retry()
+    }
+
+    private suspend fun runPairing(uri: PairingUri) {
+        if (!hasNetworkPermission(app)) {
+            pendingPairing = uri
+            _status.value = LinkStatus.Offline(LinkProblem.NO_PERMISSION)
+            return
+        }
+        _status.value = LinkStatus.Pairing
+        val client = clientFor(uri.fingerprint)
+        val hello = JSONObject()
+            .put("t", "pair")
+            .put("secret", uri.secret)
+            .put("name", deviceName())
+            .put("model", Build.MODEL)
+        for (host in uri.hosts) {
+            val s = open(client, host, uri.port)
+            s.ws.send(hello.toString())
+            val reply = withTimeoutOrNull(6_000) { s.first.await() }
+            s.ws.close(1000, null)
+            when (reply?.optString("t")) {
+                "paired" -> {
+                    val pc = PairedPc(
+                        id = reply.getString("id"),
+                        token = reply.getString("token"),
+                        fingerprint = uri.fingerprint,
+                        hosts = listOf(host) + uri.hosts.filter { it != host },
+                        port = uri.port,
+                        name = reply.optString("name").ifEmpty { uri.pcName },
+                    )
+                    LinkPrefs.save(app, pc)
+                    _pc.value = pc
+                    runSession()
+                    return
+                }
+                "authErr" -> {
+                    _status.value = LinkStatus.Offline(LinkProblem.PAIRING_FAILED)
+                    return
+                }
+            }
+        }
+        _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE)
+    }
+
+    // ── Session ───────────────────────────────────────────────────────────
+
+    private enum class Outcome { ENDED, UNREACHABLE, REJECTED, UNPAIRED }
+
+    private suspend fun runSession() {
+        var failures = 0
+        while (currentCoroutineContext().isActive) {
+            val pc = _pc.value ?: return
+            if (!hasNetworkPermission(app)) {
+                _status.value = LinkStatus.Offline(LinkProblem.NO_PERMISSION)
+                return
+            }
+            if (_status.value !is LinkStatus.Online) _status.value = LinkStatus.Connecting
+            when (connectOnce(pc)) {
+                Outcome.ENDED -> failures = 0
+                Outcome.REJECTED -> {
+                    _status.value = LinkStatus.Offline(LinkProblem.REJECTED)
+                    return
+                }
+                Outcome.UNPAIRED -> {
+                    forgetLocally()
+                    return
+                }
+                Outcome.UNREACHABLE -> {
+                    // The PC may have a new address: ask the LAN before backing off.
+                    val found = discover(pc)
+                    if (found != null && found != pc.hosts.firstOrNull()) {
+                        remember(pc, found)
+                        continue
+                    }
+                    failures++
+                    _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE)
+                }
+            }
+            delay(if (failures == 0) 1_000L else minOf(30_000L, 2_000L shl minOf(failures - 1, 4)))
+        }
+    }
+
+    private suspend fun connectOnce(pc: PairedPc): Outcome {
+        val client = clientFor(pc.fingerprint)
+        val auth = JSONObject().put("t", "auth").put("id", pc.id).put("token", pc.token).toString()
+        for (host in pc.hosts) {
+            val s = open(client, host, pc.port)
+            s.ws.send(auth)
+            val reply = withTimeoutOrNull(5_000) { s.first.await() }
+            when (reply?.optString("t")) {
+                "authOk" -> {
+                    if (host != pc.hosts.first()) remember(pc, host)
+                    unpairedByPc = false
+                    socket = s.ws
+                    _status.value = LinkStatus.Online(host)
+                    try {
+                        s.closed.await()
+                    } finally {
+                        if (socket === s.ws) socket = null
+                        s.ws.close(1000, null)
+                        _shell.value = null
+                        _active.value = emptySet()
+                        pending.values.forEach { it.complete("offline") }
+                        pending.clear()
+                    }
+                    return if (unpairedByPc) Outcome.UNPAIRED else Outcome.ENDED
+                }
+                "authErr" -> {
+                    s.ws.cancel()
+                    return Outcome.REJECTED
+                }
+                else -> s.ws.cancel()
+            }
+        }
+        return Outcome.UNREACHABLE
+    }
+
+    private fun remember(pc: PairedPc, host: String) {
+        val updated = pc.copy(hosts = listOf(host) + pc.hosts.filter { it != host })
+        LinkPrefs.save(app, updated)
+        _pc.value = updated
+    }
+
+    private fun handle(m: JSONObject) {
+        when (m.optString("t")) {
+            "hello" -> {
+                val actions = m.optJSONArray("actions")
+                val list = buildList {
+                    if (actions != null) for (i in 0 until actions.length()) {
+                        val a = actions.optJSONObject(i) ?: continue
+                        add(ShellAction(a.optString("id"), a.optString("name"), a.optString("icon"), a.optBoolean("toggle")))
+                    }
+                }
+                val caps = m.optJSONArray("caps")
+                _shell.value = ShellInfo(
+                    name = m.optString("name"),
+                    caps = buildSet { if (caps != null) for (i in 0 until caps.length()) add(caps.optString(i)) },
+                    actions = list,
+                )
+            }
+            "state" -> {
+                val on = m.optJSONArray("on")
+                _active.value = buildSet { if (on != null) for (i in 0 until on.length()) add(on.optString(i)) }
+            }
+            "ok" -> pending.remove(m.optInt("id"))?.complete(null)
+            "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
+            "unpaired" -> unpairedByPc = true
+        }
+    }
+
+    // ── Commands ──────────────────────────────────────────────────────────
+
+    /** Asks the shell to run [actionId]: null once it confirms, else why not ("locked"…). */
+    suspend fun run(actionId: String): String? {
+        val ws = socket ?: return "offline"
+        val id = nextId.getAndIncrement()
+        val reply = CompletableDeferred<String?>()
+        pending[id] = reply
+        ws.send(JSONObject().put("t", "cmd").put("id", id).put("a", actionId).toString())
+        // Wrapped: a null reply means "done", which a bare withTimeoutOrNull would confuse with a timeout.
+        val outcome = withTimeoutOrNull(REPLY_TIMEOUT_MS) { Reply(reply.await()) }
+        pending.remove(id)
+        return if (outcome == null) "timeout" else outcome.code
+    }
+
+    private class Reply(val code: String?)
+
+    // ── Transport ─────────────────────────────────────────────────────────
+
+    private class Session(
+        val ws: WebSocket,
+        val first: CompletableDeferred<JSONObject?>,
+        val closed: CompletableDeferred<Unit>,
+    )
+
+    private fun open(client: OkHttpClient, host: String, port: Int): Session {
+        val first = CompletableDeferred<JSONObject?>()
+        val closed = CompletableDeferred<Unit>()
+        val listener = object : WebSocketListener() {
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                val m = runCatching { JSONObject(text) }.getOrNull() ?: return
+                if (!first.isCompleted) first.complete(m) else handle(m)
+            }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(1000, null)
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                first.complete(null)
+                closed.complete(Unit)
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                first.complete(null)
+                closed.complete(Unit)
+            }
+        }
+        val host6 = if (':' in host) "[$host]" else host
+        val request = Request.Builder().url("https://$host6:$port$PATH").build()
+        return Session(client.newWebSocket(request, listener), first, closed)
+    }
+
+    private fun clientFor(fingerprint: String): OkHttpClient {
+        val trust = PinnedTrust(fingerprint)
+        val ssl = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trust), null) }
+        return baseClient.newBuilder()
+            .sslSocketFactory(ssl.socketFactory, trust)
+            // The certificate names nothing; the pinned fingerprint is the identity.
+            .hostnameVerifier { _, _ -> true }
+            .build()
+    }
+
+    /** Trusts exactly one certificate: the one whose SHA-256 the QR code carried. */
+    private class PinnedTrust(private val fingerprint: String) : X509TrustManager {
+        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+            val leaf = chain?.firstOrNull() ?: throw CertificateException("no certificate")
+            val digest = MessageDigest.getInstance("SHA-256").digest(leaf.encoded)
+            val hex = digest.joinToString("") { "%02x".format(it) }
+            if (!MessageDigest.isEqual(hex.toByteArray(), fingerprint.toByteArray())) {
+                throw CertificateException("certificate does not match the paired PC")
+            }
+        }
+
+        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) =
+            throw CertificateException("not a server")
+
+        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+    }
+
+    /** "iilink?" to the LAN broadcast; the PC answers with its fingerprint and port. */
+    private suspend fun discover(pc: PairedPc): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            DatagramSocket().use { sock ->
+                sock.broadcast = true
+                sock.soTimeout = 1_500
+                val probe = "iilink?".toByteArray()
+                sock.send(DatagramPacket(probe, probe.size, InetAddress.getByName("255.255.255.255"), pc.port))
+                val buf = ByteArray(512)
+                var found: String? = null
+                while (found == null) {
+                    val packet = DatagramPacket(buf, buf.size)
+                    try {
+                        sock.receive(packet)
+                    } catch (_: SocketTimeoutException) {
+                        break
+                    }
+                    val reply = runCatching { JSONObject(String(packet.data, 0, packet.length)) }.getOrNull() ?: continue
+                    if (reply.optString("fp") == pc.fingerprint) found = packet.address.hostAddress
+                }
+                found
+            }
+        }.getOrNull()
+    }
+
+    private fun deviceName(): String =
+        Settings.Global.getString(app.contentResolver, Settings.Global.DEVICE_NAME)?.takeIf { it.isNotBlank() } ?: Build.MODEL
+
+    /** Android 17 puts the LAN behind a runtime permission (nearby devices group). */
+    const val LOCAL_NETWORK_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
+
+    fun needsNetworkPermission(): Boolean = Build.VERSION.SDK_INT >= 37
+
+    fun hasNetworkPermission(ctx: Context): Boolean =
+        !needsNetworkPermission() || ctx.checkSelfPermission(LOCAL_NETWORK_PERMISSION) == PackageManager.PERMISSION_GRANTED
+}

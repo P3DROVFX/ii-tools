@@ -1,54 +1,66 @@
 package dev.ii.tools
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import dev.ii.tools.link.LinkHub
+import dev.ii.tools.link.PairingUri
 import dev.ii.tools.live.LiveListener
 import dev.ii.tools.ui.HomeScreen
+import dev.ii.tools.ui.LinkScreen
 import dev.ii.tools.ui.LiveScreen
 import dev.ii.tools.ui.theme.IiToolsTheme
 
-/** Every shell integration the app offers; the home screen lists them. */
-enum class Destination { HOME, LIVE }
-
-class MainActivity : ComponentActivity() {
+/** Every screen is its own activity, as on the rest of Android. */
+abstract class ScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        LiveListener.ensureChannel(this)
-        setContent {
-            IiToolsTheme { App() }
-        }
+        setContent { IiToolsTheme { Screen() } }
     }
+
+    @Composable
+    abstract fun Screen()
 }
 
-@Composable
-private fun App() {
-    var destination by rememberSaveable { mutableStateOf(Destination.HOME) }
-    BackHandler(enabled = destination != Destination.HOME) { destination = Destination.HOME }
-    AnimatedContent(
-        targetState = destination,
-        transitionSpec = {
-            val forward = targetState != Destination.HOME
-            slideInHorizontally { w -> if (forward) w else -w / 3 } togetherWith
-                slideOutHorizontally { w -> if (forward) -w / 3 else w }
-        },
-        label = "destination",
-    ) { current ->
-        when (current) {
-            Destination.HOME -> HomeScreen(onOpen = { destination = it })
-            Destination.LIVE -> LiveScreen(onBack = { destination = Destination.HOME })
-        }
+/** The hub: the PC, then each integration. */
+class MainActivity : ScreenActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        LiveListener.ensureChannel(this)
+        super.onCreate(savedInstanceState)
     }
+
+    @Composable
+    override fun Screen() = HomeScreen(
+        onOpenLink = { startActivity(Intent(this, LinkActivity::class.java)) },
+        onOpenLive = { startActivity(Intent(this, LiveActivity::class.java)) },
+    )
+}
+
+/** Connect to PC: pairing, the link, the remote. Also where `iilink://pair` links land. */
+class LinkActivity : ScreenActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) handlePairingLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handlePairingLink(intent)
+    }
+
+    private fun handlePairingLink(intent: Intent?) {
+        PairingUri.parse(intent?.data)?.let(LinkHub::pair)
+    }
+
+    @Composable
+    override fun Screen() = LinkScreen(onBack = ::finish)
+}
+
+class LiveActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = LiveScreen(onBack = ::finish)
 }
