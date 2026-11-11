@@ -323,7 +323,8 @@ de bloqueio do celular, com botões (parar a gravação, pausar o timer).
 > cheia) vai para a galeria do celular (Imagens/ii tools) com notificação, na hora ou na
 > próxima conexão (fila de 5). Print do celular vai para `~/Pictures/Screenshots/Phone`, para
 > o clipboard e abre o preview de print do shell. O link ganhou envio de arquivos do PC
-> para o celular (`sendFile`).
+> para o celular (`sendFile`). Envio automático opcional; desligado, o preview de print
+> oferece "Salvar no celular".
 
 Print tirado no PC aparece como notificação no celular, com a imagem. Print tirado no celular
 aparece no popup de preview do shell (`ScreenshotOverlay`).
