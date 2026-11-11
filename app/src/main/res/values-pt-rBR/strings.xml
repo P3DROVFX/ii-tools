@@ -119,4 +119,13 @@
     <string name="notifs_hint">Suas notificações no PC, com imagens, ações e respostas. Dispensar de um lado dispensa nos dois.</string>
     <string name="notifs_mirror">Mostrar notificações no PC</string>
     <string name="perm_listener_notifs">Para ler suas notificações e agir nelas pelo PC.</string>
+    <string name="tile_lock">Bloquear PC</string>
+    <string name="tile_aod">PC bloqueio + AOD</string>
+    <string name="tile_media">Modo mídia</string>
+    <string name="tile_preset">Preset do PC</string>
+    <string name="tile_offline">PC offline</string>
+    <string name="preset_favorite">Usar no tile de preset do PC</string>
+    <string name="widget_empty">Adicione teclas no Deck do app</string>
+    <string name="widget_description">As oito primeiras teclas do seu deck</string>
+    <string name="widget_label">Deck do ii tools</string>
 </resources>

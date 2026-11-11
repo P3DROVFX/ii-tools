@@ -23,6 +23,9 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.runtime.Composable
+import dev.ii.tools.tiles.FavoritePreset
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -255,6 +258,9 @@ private fun ModeGroup(modes: Modes) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PresetGroup(presets: Presets) {
+    val ctx = LocalContext.current
+    val favorite by FavoritePreset.name.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { FavoritePreset.load(ctx) }
     var applying by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(presets.active) { applying = null }
     LaunchedEffect(applying) {
@@ -280,6 +286,15 @@ private fun PresetGroup(presets: Presets) {
                     when {
                         applying == name -> LoadingIndicator(Modifier.size(32.dp))
                         on -> Icon(painterResource(R.drawable.rounded_check), null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    // The star picks the preset the Quick Settings tile applies.
+                    val starred = favorite == name
+                    IconButton(onClick = { FavoritePreset.set(ctx, if (starred) null else name) }) {
+                        Icon(
+                            painterResource(if (starred) R.drawable.rounded_star_fill1 else R.drawable.rounded_star),
+                            stringResource(R.string.preset_favorite),
+                            tint = if (starred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 },
             )

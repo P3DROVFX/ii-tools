@@ -90,6 +90,68 @@
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="barcode_ui" />
 
+        <!-- The deck widget (Fase 2.1): taps come back here as broadcasts. -->
+        <receiver
+            android:name=".deck.DeckWidget"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/deck_widget_info" />
+        </receiver>
+
+        <!-- Quick Settings tiles (Fase 2.1): the shell's toggles from the panel. -->
+        <service
+            android:name=".tiles.LockTile"
+            android:exported="true"
+            android:icon="@drawable/rounded_lock"
+            android:label="@string/tile_lock"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+
+        <service
+            android:name=".tiles.LockAodTile"
+            android:exported="true"
+            android:icon="@drawable/rounded_screen_lock_portrait"
+            android:label="@string/tile_aod"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+
+        <service
+            android:name=".tiles.MediaModeTile"
+            android:exported="true"
+            android:icon="@drawable/rounded_music_note"
+            android:label="@string/tile_media"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+
+        <service
+            android:name=".tiles.PresetTile"
+            android:exported="true"
+            android:icon="@drawable/rounded_palette"
+            android:label="@string/tile_preset"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+
         <service
             android:name=".live.LiveListener"
             android:label="@string/live_title"

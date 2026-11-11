@@ -264,6 +264,13 @@ O app já tem o `NotificationListenerService`; este é o primeiro pedaço do KDE
 
 ### 2.1 Quick Settings tiles e widget · **XS**
 
+> **Status (2026-11-11): implementado.** Tiles Bloquear PC, Bloqueio + AOD, Modo mídia e
+> Preset do PC (o preset é escolhido com a estrela no Controle remoto). Com o painel aberto
+> o link fica de pé e o tile mostra o estado real; um toque conecta, executa e solta.
+> Widget com as 8 primeiras teclas do deck, em RemoteViews (sem Glance, que traria
+> WorkManager e Room), cores Material You do sistema; sem estado ligado/desligado, porque
+> isso exigiria o link aberto.
+
 Tiles do Android para bloquear o PC, AOD, media mode e um preset favorito. Widget com uma mini
 grade do deck.
 

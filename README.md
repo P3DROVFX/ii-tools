@@ -52,6 +52,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   dismissing on either side dismisses on both. The link opens for a burst and closes 2
   min after the last one. Live updates ride the link too while it is up. KDE Connect's
   copies are left out on the PC.
+- **Quick Settings and widget:** tiles for Lock PC, Lock + AOD, Media mode and a
+  favourite preset (the star in Remote control). With the panel open the tiles show the
+  PC's real state; a tap connects, runs and lets the link go. A home screen widget holds
+  the first eight deck keys.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

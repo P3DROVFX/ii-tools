@@ -32,12 +32,24 @@ object Symbols {
     private var flushQueued = false
 
     fun init(ctx: Context) {
+        if (::file.isInitialized) return
         file = File(ctx.filesDir, "symbols.json")
         scope.launch {
             val saved = runCatching { JSONObject(file.readText()) }.getOrNull() ?: return@launch
             val map = buildMap { saved.keys().forEach { put(it, saved.optString(it)) } }
             _paths.value = map + _paths.value
         }
+    }
+
+    /**
+     * [name]'s outline now, reading the cache file if the async load has not finished:
+     * for a widget, drawn by a process that may have just started.
+     */
+    fun pathNow(name: String): String? {
+        _paths.value[name]?.let { return it }
+        if (!::file.isInitialized) return null
+        val saved = runCatching { JSONObject(file.readText()) }.getOrNull() ?: return null
+        return saved.optString(name).ifEmpty { null }
     }
 
     /** Asks for [name] once; its outline lands in [paths] when the PC answers. */

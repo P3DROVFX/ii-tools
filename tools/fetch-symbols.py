@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Adds Material Symbols Rounded (weight 400, unfilled) as vector drawables.
 
-    tools/fetch-symbols.py lock music_note …
+    tools/fetch-symbols.py lock music_note star_fill1 …
 
 Downloads the official SVGs from google/material-design-icons and writes
 app/src/main/res/drawable/rounded_<name>.xml, the way Android Studio's importer (and
@@ -14,14 +14,16 @@ import sys
 import urllib.request
 
 RES = os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "res", "drawable")
-URL = "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/{0}/materialsymbolsrounded/{0}_24px.svg"
+URL = "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/{0}/materialsymbolsrounded/{1}_24px.svg"
 
 
 def main(names):
     failed = False
     for name in names:
         try:
-            svg = urllib.request.urlopen(URL.format(name), timeout=20).read().decode()
+            # "<name>_fill1" is the filled variant of <name>.
+            base = name[: -len("_fill1")] if name.endswith("_fill1") else name
+            svg = urllib.request.urlopen(URL.format(base, name), timeout=20).read().decode()
         except Exception as e:  # noqa: BLE001 — report and carry on with the rest
             print(f"{name}: {e}", file=sys.stderr)
             failed = True

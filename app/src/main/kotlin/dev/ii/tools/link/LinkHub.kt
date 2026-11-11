@@ -173,14 +173,14 @@ object LinkHub {
      */
     private val holds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
-    private fun hold(reason: String) {
+    fun hold(reason: String) {
         if (holds.add(reason)) {
             stopJob?.cancel()
             ensureSession()
         }
     }
 
-    private fun release(reason: String) {
+    fun release(reason: String) {
         if (holds.remove(reason) && !foreground) scheduleStop(HOLD_GRACE_MS)
     }
 
@@ -501,6 +501,24 @@ object LinkHub {
     }
 
     private class Reply(val code: String?)
+
+    /**
+     * Runs [actionId] from outside the app (a Quick Settings tile, a widget): brings the
+     * link up if needed, waits for the shell's hello, runs it, and lets the link go.
+     */
+    suspend fun runWhenReady(actionId: String, arg: Any? = null): String? {
+        if (_pc.value == null) return "unpaired"
+        hold("remote")
+        try {
+            val ready = withTimeoutOrNull(8_000) {
+                status.first { it is LinkStatus.Online }
+                shell.first { it != null }
+            }
+            return if (ready == null) "offline" else run(actionId, arg)
+        } finally {
+            release("remote")
+        }
+    }
 
     /**
      * Fire and forget, for what is sent many times a second (a volume being dragged):

@@ -52,6 +52,7 @@ object DeckStore {
             JSONObject().put("kind", it.kind).put("ref", it.ref).put("label", it.label).put("icon", it.icon)
         })
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEYS, json.toString()).apply()
+        DeckWidget.refresh(app)
     }
 
     fun add(key: DeckKey) {
