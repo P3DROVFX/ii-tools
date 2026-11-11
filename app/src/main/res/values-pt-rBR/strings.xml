@@ -60,4 +60,21 @@
     <string name="action_locked">Desbloqueie no PC</string>
     <string name="kdeconnect">KDE Connect</string>
     <string name="kdeconnect_missing_short">Não instalado: as live notifications precisam dele</string>
+    <string name="audio_title">Áudio do PC</string>
+    <string name="audio_off">O áudio do PC está desligado no PC (Configurações → ii tools).</string>
+    <string name="audio_volume">Volume</string>
+    <string name="audio_mic">Microfone</string>
+    <string name="audio_output">Saída</string>
+    <string name="audio_input">Entrada</string>
+    <string name="audio_apps">Apps</string>
+    <string name="audio_no_apps">Nenhum app tocando.</string>
+    <string name="audio_effects">Efeitos</string>
+    <string name="audio_mute">Silenciar</string>
+    <string name="easyeffects">EasyEffects</string>
+    <string name="remote_actions">Ações rápidas</string>
+    <string name="remote_workspaces">Áreas de trabalho</string>
+    <string name="remote_modes">Modos</string>
+    <string name="remote_presets">Presets</string>
+    <string name="remote_modes_off">Os modos estão desligados no PC.</string>
+    <string name="link_needed">Conecte ao PC primeiro.</string>
 </resources>

@@ -150,6 +150,12 @@ funcionam dentro dos orçamentos.
 
 ### 1.1 Controle remoto · **S**
 
+> **Status (2026-11-11): implementado.** Tela própria no app (`RemoteScreen`): tiles de
+> toggle (agora com scratchpad), grade de workspaces, modes com switch e presets. No
+> protocolo: tópicos `workspaces`, `modes`, `presets` empurrados inteiros a cada mudança e
+> comandos com argumento (`workspace`, `mode`, `preset`). A lista de presets vem de
+> `presets.sh list`, lida só na conexão e quando a pasta muda.
+
 Uma tela "Controle" no app com as ações do dia a dia. Todas já existem no shell.
 
 | Ação | Gancho no shell |
@@ -162,6 +168,12 @@ Uma tela "Controle" no app com as ações do dia a dia. Todas já existem no she
 | Modes | `modes.list/activate/deactivate` |
 
 ### 1.2 Áudio do PC · **S**
+
+> **Status (2026-11-11): implementado.** Tela `AudioScreen`: volume e mudo da saída e do
+> microfone, dispositivo padrão de saída e entrada, volume e mudo por app, EasyEffects
+> (ligar/bypass e preset de saída). Tópico `audio` agrupado em no máximo 1 envio a cada
+> 60 ms; os nós só são rastreados pelo PipeWire enquanto um celular está conectado.
+> Toggle próprio na página `ii tools` (`iiTools.audio.enable`).
 
 Saída e entrada padrão, volume e mute por dispositivo, **volume por app**, mute do microfone,
 presets do EasyEffects (`EasyEffects.qml`). Estado vindo do `Audio` do shell (PipeWire), sem

@@ -23,11 +23,17 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Lifetime:** the socket is open only while the app is in front, plus 30 s. No
   service, wakelock or socket otherwise. If the PC's address changed, the app finds it
   again with a UDP broadcast on the link's port.
-- **Remote control:** lock, lock + always-on display, always-on display, media mode.
-  Each is a toggle that shows the shell's real state (`state`), whatever changed it: a
-  lock from a keybind lights the tile up too. Unlocking is refused on purpose; it stays
-  with the PC's own authentication. The shell announces which actions exist (`hello`),
-  so switching an integration off on the PC hides it here.
+- **Remote control:** lock, lock + always-on display, always-on display, media mode,
+  scratchpad. Each is a toggle that shows the shell's real state (`state`), whatever
+  changed it: a lock from a keybind lights the tile up too. Unlocking is refused on
+  purpose; it stays with the PC's own authentication. Below the tiles: the workspaces
+  (1–10 and any higher one in use, tonal when they hold windows), the shell's modes and
+  its presets. The shell announces which actions exist (`hello`), so switching an
+  integration off on the PC hides it here.
+- **PC audio:** the default output's volume and the mic, which device plays and records,
+  volume and mute per app, and EasyEffects (on/bypass and output preset). Live from the
+  shell's PipeWire state; a slider follows the finger while held and sends at most ~20
+  values a second.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach
   the LAN.
 

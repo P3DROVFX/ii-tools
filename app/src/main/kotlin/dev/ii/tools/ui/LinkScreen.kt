@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -65,14 +66,12 @@ import dev.ii.tools.link.ShellAction
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Connect to PC: pairing, the link's state and the remote control. */
+/** Connect to PC: pairing and the link's state. The remote and the audio have their own screens. */
 @Composable
 fun LinkScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
-    val shell by LinkHub.shell.collectAsStateWithLifecycle()
-    val active by LinkHub.active.collectAsStateWithLifecycle()
 
     var permitted by remember { mutableStateOf(LinkHub.hasNetworkPermission(ctx)) }
     LifecycleResumeEffect(Unit) {
@@ -127,17 +126,6 @@ fun LinkScreen(onBack: () -> Unit) {
         }
 
         item { CardGroup { StatusRow(current, status) } }
-
-        item { GroupHeader(stringResource(R.string.remote_title)) }
-        item {
-            val actions = shell?.actions.orEmpty()
-            when {
-                status !is LinkStatus.Online -> Hint(stringResource(R.string.remote_waiting))
-                shell == null -> Hint(stringResource(R.string.status_connecting))
-                actions.isEmpty() -> Hint(stringResource(R.string.remote_off))
-                else -> ActionGrid(actions, active)
-            }
-        }
 
         item { GroupHeader(stringResource(R.string.section_this_pc)) }
         item {
@@ -219,7 +207,7 @@ private fun PairGroup(status: LinkStatus, invalidCode: Boolean, onScan: () -> Un
 /** The link in one row: its state, where it goes, and a retry when it is down. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun StatusRow(pc: PairedPc, status: LinkStatus) {
+internal fun StatusRow(pc: PairedPc, status: LinkStatus) {
     ToolRow(
         title = statusLabel(status),
         summary = when (status) {
@@ -246,97 +234,6 @@ private fun StatusRow(pc: PairedPc, status: LinkStatus) {
     )
 }
 
-/**
- * Two columns of toggle tiles. A tile shows the shell's real state, not the last tap:
- * locking from a keybind lights it up here too, and a tap that the shell refuses (unlocking
- * stays with the PC) says why for a moment instead of flipping.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ActionGrid(actions: List<ShellAction>, active: Set<String>) {
-    val scope = rememberCoroutineScope()
-    val haptics = LocalHapticFeedback.current
-    val notes = remember { mutableStateMapOf<String, String>() }
-    val busy = remember { mutableStateMapOf<String, Boolean>() }
-    val lockedNote = stringResource(R.string.action_locked)
-    val failedNote = stringResource(R.string.action_failed)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        actions.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { action ->
-                    ActionTile(
-                        action = action,
-                        on = action.id in active,
-                        note = notes[action.id],
-                        modifier = Modifier.weight(1f),
-                        onTap = {
-                            if (busy[action.id] == true) return@ActionTile
-                            busy[action.id] = true
-                            haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                            scope.launch {
-                                val why = LinkHub.run(action.id)
-                                busy.remove(action.id)
-                                if (why != null) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.Reject)
-                                    notes[action.id] = if (why == "locked") lockedNote else failedNote
-                                    delay(1_800)
-                                    notes.remove(action.id)
-                                }
-                            }
-                        },
-                    )
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ActionTile(action: ShellAction, on: Boolean, note: String?, modifier: Modifier, onTap: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    ToggleButton(
-        checked = on,
-        onCheckedChange = { onTap() },
-        // Off: a rounded square. Pressed: squeezes. On: morphs to a pill.
-        shapes = ToggleButtonShapes(
-            shape = RoundedCornerShape(24.dp),
-            pressedShape = RoundedCornerShape(12.dp),
-            checkedShape = RoundedCornerShape(48.dp),
-        ),
-        colors = ToggleButtonDefaults.colors(
-            containerColor = if (note != null) cs.errorContainer else cs.surfaceBright,
-            contentColor = if (note != null) cs.onErrorContainer else cs.onSurface,
-            checkedContainerColor = cs.primary,
-            checkedContentColor = cs.onPrimary,
-        ),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-        modifier = modifier.height(96.dp),
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(painterResource(actionIcon(action.icon)), contentDescription = null, modifier = Modifier.size(28.dp))
-            Text(
-                note ?: action.name,
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-/** The shell names Material Symbols; the app carries only the few it draws. */
-@DrawableRes
-private fun actionIcon(symbol: String): Int = when (symbol) {
-    "lock" -> R.drawable.rounded_lock
-    "screen_lock_portrait" -> R.drawable.rounded_screen_lock_portrait
-    "brightness_empty" -> R.drawable.rounded_brightness_empty
-    "music_note" -> R.drawable.rounded_music_note
-    else -> R.drawable.rounded_bolt
-}
-
 @Composable
 fun statusLabel(status: LinkStatus): String = stringResource(
     when (status) {
@@ -350,7 +247,7 @@ fun statusLabel(status: LinkStatus): String = stringResource(
 )
 
 @Composable
-private fun problemText(problem: LinkProblem): String = stringResource(
+internal fun problemText(problem: LinkProblem): String = stringResource(
     when (problem) {
         LinkProblem.UNREACHABLE -> R.string.problem_unreachable
         LinkProblem.REJECTED -> R.string.problem_rejected
@@ -358,3 +255,17 @@ private fun problemText(problem: LinkProblem): String = stringResource(
         LinkProblem.NO_PERMISSION -> R.string.problem_permission
     },
 )
+
+/**
+ * The top of every screen that needs the PC: nothing while connected, else the link's
+ * state with its retry. Returns whether the shell is there to talk to.
+ */
+internal fun LazyListScope.linkGate(pc: PairedPc?, status: LinkStatus, shellReady: Boolean): Boolean {
+    if (pc == null) {
+        item { Hint(stringResource(R.string.link_needed)) }
+        return false
+    }
+    if (status is LinkStatus.Online && shellReady) return true
+    item { CardGroup { StatusRow(pc, status) } }
+    return false
+}

@@ -45,6 +45,14 @@
             android:name=".LiveActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".RemoteActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".AudioActivity"
+            android:exported="false" />
+
         <!-- Fetch the scanner module with the app rather than at first scan. -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"

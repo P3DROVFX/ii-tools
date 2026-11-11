@@ -92,6 +92,15 @@ object LinkHub {
     private val _active = MutableStateFlow<Set<String>>(emptySet())
     val active: StateFlow<Set<String>> = _active.asStateFlow()
 
+    private val _workspaces = MutableStateFlow<Workspaces?>(null)
+    val workspaces: StateFlow<Workspaces?> = _workspaces.asStateFlow()
+    private val _modes = MutableStateFlow<Modes?>(null)
+    val modes: StateFlow<Modes?> = _modes.asStateFlow()
+    private val _presets = MutableStateFlow<Presets?>(null)
+    val presets: StateFlow<Presets?> = _presets.asStateFlow()
+    private val _audio = MutableStateFlow<PcAudio?>(null)
+    val audio: StateFlow<PcAudio?> = _audio.asStateFlow()
+
     private lateinit var app: Context
     private var session: Job? = null
     private var stopJob: Job? = null
@@ -153,8 +162,7 @@ object LinkHub {
         session = null
         socket?.close(1000, null)
         socket = null
-        _shell.value = null
-        _active.value = emptySet()
+        clearShell()
         if (_pc.value != null && _status.value !is LinkStatus.Offline) _status.value = LinkStatus.Idle
     }
 
@@ -182,7 +190,7 @@ object LinkHub {
         socket = null
         LinkPrefs.clear(app)
         _pc.value = null
-        _shell.value = null
+        clearShell()
         _status.value = LinkStatus.Unpaired
     }
 
@@ -294,8 +302,7 @@ object LinkHub {
                     } finally {
                         if (socket === s.ws) socket = null
                         s.ws.close(1000, null)
-                        _shell.value = null
-                        _active.value = emptySet()
+                        clearShell()
                         pending.values.forEach { it.complete("offline") }
                         pending.clear()
                     }
@@ -309,6 +316,16 @@ object LinkHub {
             }
         }
         return Outcome.UNREACHABLE
+    }
+
+    /** What the shell told us lasts only as long as the socket it came over. */
+    private fun clearShell() {
+        _shell.value = null
+        _active.value = emptySet()
+        _workspaces.value = null
+        _modes.value = null
+        _presets.value = null
+        _audio.value = null
     }
 
     private fun remember(pc: PairedPc, host: String) {
@@ -338,6 +355,10 @@ object LinkHub {
                 val on = m.optJSONArray("on")
                 _active.value = buildSet { if (on != null) for (i in 0 until on.length()) add(on.optString(i)) }
             }
+            "workspaces" -> _workspaces.value = Topics.workspaces(m)
+            "modes" -> _modes.value = Topics.modes(m)
+            "presets" -> _presets.value = Topics.presets(m)
+            "audio" -> _audio.value = Topics.audio(m)
             "ok" -> pending.remove(m.optInt("id"))?.complete(null)
             "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
             "unpaired" -> unpairedByPc = true
@@ -347,12 +368,12 @@ object LinkHub {
     // ── Commands ──────────────────────────────────────────────────────────
 
     /** Asks the shell to run [actionId]: null once it confirms, else why not ("locked"…). */
-    suspend fun run(actionId: String): String? {
+    suspend fun run(actionId: String, arg: Any? = null): String? {
         val ws = socket ?: return "offline"
         val id = nextId.getAndIncrement()
         val reply = CompletableDeferred<String?>()
         pending[id] = reply
-        ws.send(JSONObject().put("t", "cmd").put("id", id).put("a", actionId).toString())
+        ws.send(command(id, actionId, arg))
         // Wrapped: a null reply means "done", which a bare withTimeoutOrNull would confuse with a timeout.
         val outcome = withTimeoutOrNull(REPLY_TIMEOUT_MS) { Reply(reply.await()) }
         pending.remove(id)
@@ -360,6 +381,20 @@ object LinkHub {
     }
 
     private class Reply(val code: String?)
+
+    /**
+     * Fire and forget, for what is sent many times a second (a volume being dragged):
+     * the pushed topic is the answer.
+     */
+    fun send(actionId: String, arg: Any? = null) {
+        socket?.send(command(nextId.getAndIncrement(), actionId, arg))
+    }
+
+    private fun command(id: Int, actionId: String, arg: Any?): String {
+        val m = JSONObject().put("t", "cmd").put("id", id).put("a", actionId)
+        if (arg != null) m.put("arg", arg)
+        return m.toString()
+    }
 
     // ── Transport ─────────────────────────────────────────────────────────
 

@@ -61,4 +61,21 @@
     <string name="action_locked">Unlock on the PC</string>
     <string name="kdeconnect">KDE Connect</string>
     <string name="kdeconnect_missing_short">Not installed: live notifications need it</string>
+    <string name="audio_title">PC audio</string>
+    <string name="audio_off">PC audio is switched off on the PC (Settings → ii tools).</string>
+    <string name="audio_volume">Volume</string>
+    <string name="audio_mic">Microphone</string>
+    <string name="audio_output">Output</string>
+    <string name="audio_input">Input</string>
+    <string name="audio_apps">Apps</string>
+    <string name="audio_no_apps">No app is playing.</string>
+    <string name="audio_effects">Effects</string>
+    <string name="audio_mute">Mute</string>
+    <string name="easyeffects">EasyEffects</string>
+    <string name="remote_actions">Quick actions</string>
+    <string name="remote_workspaces">Workspaces</string>
+    <string name="remote_modes">Modes</string>
+    <string name="remote_presets">Presets</string>
+    <string name="remote_modes_off">Modes are switched off on the PC.</string>
+    <string name="link_needed">Connect to the PC first.</string>
 </resources>
