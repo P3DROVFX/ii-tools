@@ -24,6 +24,7 @@ import dev.ii.tools.ui.DeckScreen
 import dev.ii.tools.ui.HomeScreen
 import dev.ii.tools.ui.LinkScreen
 import dev.ii.tools.ui.LiveScreen
+import dev.ii.tools.ui.NotifsScreen
 import dev.ii.tools.ui.RemoteScreen
 import dev.ii.tools.ui.WallpaperScreen
 import dev.ii.tools.ui.theme.IiToolsTheme
@@ -55,6 +56,7 @@ class MainActivity : ScreenActivity() {
         onOpenDeck = { open(DeckActivity::class.java) },
         onOpenWallpaper = { open(WallpaperActivity::class.java) },
         onOpenCalls = { open(CallsActivity::class.java) },
+        onOpenNotifs = { open(NotifsActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -157,4 +159,9 @@ class WallpaperActivity : ScreenActivity() {
 class CallsActivity : ScreenActivity() {
     @Composable
     override fun Screen() = CallsScreen(onBack = ::finish)
+}
+
+class NotifsActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = NotifsScreen(onBack = ::finish)
 }

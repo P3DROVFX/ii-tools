@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
+import dev.ii.tools.live.LiveHub
+import dev.ii.tools.notify.NotifMirror
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -79,6 +81,8 @@ object LinkHub {
     private const val BACKGROUND_GRACE_MS = 30_000L
     /** After a call: long enough for the PC to see the end and a call back. */
     private const val HOLD_GRACE_MS = 10_000L
+    private const val BURST_MS = 120_000L
+    private const val QUIET_MS = 300_000L
     private const val REPLY_TIMEOUT_MS = 5_000L
     private const val FILE_CHUNK = 256 * 1024
     /** OkHttp closes a socket whose queue passes 16 MiB; stay well under it. */
@@ -189,10 +193,45 @@ object LinkHub {
         if (state == "idle") release("call") else hold("call")
     }
 
+    // ── Notifications ─────────────────────────────────────────────────────
+
+    /** The PC takes notifications right now. */
+    fun isOnline(): Boolean = socket != null && _shell.value?.caps?.contains("notifs") == true
+
+    fun sendJson(m: JSONObject) {
+        socket?.send(m.toString())
+    }
+
+    private var burstJob: Job? = null
+    /** After the PC could not be reached for a burst: no new attempt before this. */
+    @Volatile private var quietUntil = 0L
+
+    /**
+     * A notification (or a live update) wants the PC: bring the link up, or keep it,
+     * until [BURST_MS] after the last one. A PC away from the phone is not retried for
+     * every notification: one failed attempt quiets bursts for [QUIET_MS].
+     */
+    fun notifBurst() {
+        if (_pc.value == null || (!foreground && System.currentTimeMillis() < quietUntil)) return
+        hold("notifs")
+        burstJob?.cancel()
+        burstJob = scope.launch {
+            delay(BURST_MS)
+            release("notifs")
+        }
+    }
+
+    private val readyCallbacks = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    /** Runs [block] now if the PC takes notifications, else on the next link that does. */
+    fun onLinkReady(block: () -> Unit) {
+        if (isOnline()) block() else readyCallbacks += block
+    }
+
     /** What this phone can do for the PC, sent on connect and when it changes. */
     fun announceCaps() {
         val caps = org.json.JSONArray()
         if (CallWatcher.running.value) caps.put("calls")
+        if (NotifMirror.running.value) caps.put("notifs")
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -329,6 +368,14 @@ object LinkHub {
                     }
                     failures++
                     _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE)
+                    // Only notifications wanted it, from the background: the PC is not
+                    // around, so stop here instead of retrying for every notification.
+                    if (!foreground && holds.all { it == "notifs" }) {
+                        quietUntil = System.currentTimeMillis() + QUIET_MS
+                        holds.remove("notifs")
+                        session = null
+                        return
+                    }
                 }
             }
             delay(if (failures == 0) 1_000L else minOf(30_000L, 2_000L shl minOf(failures - 1, 4)))
@@ -359,6 +406,8 @@ object LinkHub {
                         if (socket === s.ws) socket = null
                         s.ws.close(1000, null)
                         clearShell()
+                        // Live updates go back to the relay copy while the link is down.
+                        LiveHub.listener?.onLinkChanged()
                         pending.values.forEach { it.complete("offline") }
                         pending.clear()
                     }
@@ -408,6 +457,14 @@ object LinkHub {
                     caps = buildSet { if (caps != null) for (i in 0 until caps.length()) add(caps.optString(i)) },
                     actions = list,
                 )
+                // The PC takes notifications: give it the whole list, and the live
+                // updates their link path.
+                if (isOnline()) {
+                    NotifMirror.sendAll()
+                    LiveHub.listener?.onLinkChanged()
+                    readyCallbacks.forEach { it() }
+                    readyCallbacks.clear()
+                }
             }
             "state" -> {
                 val on = m.optJSONArray("on")
@@ -424,6 +481,7 @@ object LinkHub {
             "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
             "unpaired" -> unpairedByPc = true
             "phone" -> CallWatcher.command(m.optString("a"), m.optString("arg").ifEmpty { null })
+            "notifAct" -> NotifMirror.command(m)
         }
     }
 
@@ -464,8 +522,10 @@ object LinkHub {
         open: () -> java.io.InputStream?,
         purpose: String,
         target: String,
+        waitForLink: Boolean = true,
         onProgress: (Float) -> Unit,
     ): String? = withContext(Dispatchers.IO) {
+        if (!waitForLink && socket == null) return@withContext "offline"
         if (withTimeoutOrNull(15_000) { status.first { it is LinkStatus.Online } } == null) return@withContext "offline"
         val ws = socket ?: return@withContext "offline"
         val id = nextId.getAndIncrement()

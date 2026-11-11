@@ -115,4 +115,8 @@
     <string name="perm_phone">Telefone</string>
     <string name="perm_phone_body">Para ver o estado da ligação e atender, encerrar ou fazer ligações.</string>
     <string name="perm_listener_calls">Mantém o app ouvindo as ligações sem um serviço em segundo plano.</string>
+    <string name="notifs_title">Notificações</string>
+    <string name="notifs_hint">Suas notificações no PC, com imagens, ações e respostas. Dispensar de um lado dispensa nos dois.</string>
+    <string name="notifs_mirror">Mostrar notificações no PC</string>
+    <string name="perm_listener_notifs">Para ler suas notificações e agir nelas pelo PC.</string>
 </resources>

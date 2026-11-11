@@ -148,6 +148,11 @@ funcionam dentro dos orçamentos.
 
 ## Fase 1 — Essenciais
 
+> **Status (2026-11-11): implementada** (1.1 a 1.6). Pendências registradas em cada item:
+> pastas e ícones de apps no deck, navegar pelos wallpapers do PC, mutar o microfone da
+> chamada, discar com o app fechado e filtro por app nas notificações. As duas últimas
+> esbarram no mesmo limite: o PC não consegue acordar o celular, o que a Fase 3.5 resolve.
+
 ### 1.1 Controle remoto · **S**
 
 > **Status (2026-11-11): implementado.** Tela própria no app (`RemoteScreen`): tiles de
@@ -236,6 +241,13 @@ Substitui o ADB do `PhoneCallService`.
   demanda).
 
 ### 1.6 Notificações pelo link · **M**
+
+> **Status (2026-11-11): implementado.** Espelho no listener, link aberto por rajada (2 min
+> após a última notificação, 5 min de pausa se o PC não responde), lista inteira a cada
+> conexão, ícone por app enviado uma vez e guardado no PC, imagem reduzida, ações e
+> resposta rápida, dispensar nos dois sentidos. Live updates pelo link com `iilive1:` de
+> reserva. No shell, a aba Phone e os popups usam o link e deixam de lado as cópias do KDE
+> Connect. Pendência: filtro por app.
 
 O app já tem o `NotificationListenerService`; este é o primeiro pedaço do KDE Connect a substituir.
 

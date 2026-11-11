@@ -1,6 +1,9 @@
 package dev.ii.tools.live
 
 import dev.ii.tools.calls.CallWatcher
+import dev.ii.tools.link.LinkHub
+import dev.ii.tools.notify.NotifMirror
+import org.json.JSONObject
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -26,6 +29,8 @@ import dev.ii.tools.R
  */
 class LiveListener : NotificationListenerService() {
     companion object {
+        private const val VIA_LINK = "L"
+        private const val VIA_RELAY = "R"
         const val TAG = "IiTools"
         const val CHANNEL = "live_relay"
         const val MIRROR_TAG = "live"
@@ -65,19 +70,23 @@ class LiveListener : NotificationListenerService() {
         LiveHub.listener = this
         LiveHub.setConnected(true)
         rescan()
-        // The one always-bound part of the app: calls are watched from here.
+        // The one always-bound part of the app: calls and the notification mirror
+        // live here.
         CallWatcher.start(this)
+        NotifMirror.start(this)
     }
 
     override fun onListenerDisconnected() {
         if (LiveHub.listener === this) LiveHub.listener = null
         LiveHub.setConnected(false)
         CallWatcher.onListenerGone(this)
+        NotifMirror.onListenerGone(this)
     }
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         CallWatcher.onListenerGone(this)
+        NotifMirror.onListenerGone(this)
         if (LiveHub.listener === this) {
             LiveHub.listener = null
             LiveHub.setConnected(false)
@@ -109,6 +118,7 @@ class LiveListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         CallWatcher.onNotification(sbn)
+        NotifMirror.onPosted(sbn)
         if (sbn.packageName == packageName) return
         if (shouldRelay(sbn)) schedule(sbn, DEBOUNCE_MS)
         else if (sbn.key in lastSent) retire(sbn.key) // stopped being live
@@ -116,6 +126,7 @@ class LiveListener : NotificationListenerService() {
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        NotifMirror.onRemoved(sbn)
         if (sbn.packageName == packageName) return
         retire(sbn.key)
         scheduleOngoingRefresh()
@@ -143,9 +154,21 @@ class LiveListener : NotificationListenerService() {
         handler.postDelayed(r, delay)
     }
 
+    /** The link came up or went down: send each live update again, by whichever path now works. */
+    fun onLinkChanged() {
+        handler.post {
+            lastSent.clear()
+            rescan()
+        }
+    }
+
+    private fun liveOverLink() = LinkHub.isOnline() && NotifMirror.running.value
+
     private fun retire(key: String) {
         pending.remove(key)?.let(handler::removeCallbacks)
-        lastSent.remove(key)
+        if (lastSent.remove(key)?.startsWith(VIA_LINK) == true && LinkHub.isOnline()) {
+            LinkHub.sendJson(JSONObject().put("t", "liveGone").put("id", Integer.toHexString(key.hashCode())))
+        }
         LiveHub.removeRelayed(key)
         nm.cancel(MIRROR_TAG, mirrorId(key))
     }
@@ -153,10 +176,19 @@ class LiveListener : NotificationListenerService() {
     private fun relay(sbn: StatusBarNotification) {
         try {
             val payload = LiveExtractor.build(this, sbn)
-            val sig = payload.toJson(withPosted = false)
+            val viaLink = liveOverLink()
+            val sig = (if (viaLink) VIA_LINK else VIA_RELAY) + payload.toJson(withPosted = false)
             if (sig == lastSent[sbn.key]) return
             lastSent[sbn.key] = sig
             LiveHub.putRelayed(sbn.key, payload)
+            // A live update in progress keeps the link (or brings it up for the next one).
+            if (NotifMirror.running.value) LinkHub.notifBurst()
+            if (viaLink) {
+                // Over the link the relay copy is not needed, and would be a stale double.
+                LinkHub.sendJson(JSONObject().put("t", "live").put("p", JSONObject(payload.toJson())))
+                nm.cancel(MIRROR_TAG, mirrorId(sbn.key))
+                return
+            }
 
             val headline = payload.title.ifEmpty { payload.text }
             val encoded = Base64.encodeToString(

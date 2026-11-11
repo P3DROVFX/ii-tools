@@ -47,6 +47,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   when a call rings. The shell's call card then follows the phone, and its Answer,
   Decline and Silence buttons work without ADB; a contact's call button on the PC places
   the call from the phone while the link is up.
+- **Notifications:** the phone's notifications reach the PC's Phone tab and desktop
+  popups over the link, with the app's icon, a picture, actions and quick reply;
+  dismissing on either side dismisses on both. The link opens for a burst and closes 2
+  min after the last one. Live updates ride the link too while it is up. KDE Connect's
+  copies are left out on the PC.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

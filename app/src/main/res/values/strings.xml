@@ -116,4 +116,8 @@
     <string name="perm_phone">Phone</string>
     <string name="perm_phone_body">To see the call state and answer, end or place calls.</string>
     <string name="perm_listener_calls">Keeps the app listening for calls without a background service.</string>
+    <string name="notifs_title">Notifications</string>
+    <string name="notifs_hint">Your notifications on the PC, with images, actions and replies. Dismissing on either side dismisses on both.</string>
+    <string name="notifs_mirror">Show notifications on the PC</string>
+    <string name="perm_listener_notifs">To read your notifications and act on them for the PC.</string>
 </resources>
