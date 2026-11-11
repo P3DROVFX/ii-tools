@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <!-- Screenshots (Fase 2.7): seeing new ones in the gallery, to send them to the PC. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <!-- App labels/icons for the apps that post live notifications, and the
          KDE Connect install check. -->
@@ -80,6 +82,10 @@
             android:name=".ClipboardActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ShotsActivity"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"
@@ -138,6 +144,20 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/deck_widget_info" />
         </receiver>
+
+        <!-- Copied text to the PC with no app open (optional, enabled by the user). -->
+        <service
+            android:name=".clip.ClipWatchService"
+            android:exported="false"
+            android:label="@string/clip_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/clip_watch_service" />
+        </service>
 
         <!-- Quick Settings tiles (Fase 2.1): the shell's toggles from the panel. -->
         <service

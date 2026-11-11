@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.shots.ShotSync
 import dev.ii.tools.live.LiveHub
 import dev.ii.tools.notify.NotifMirror
 import okhttp3.OkHttpClient
@@ -234,6 +235,7 @@ object LinkHub {
         if (CallWatcher.running.value) caps.put("calls")
         if (NotifMirror.running.value) caps.put("notifs")
         if (ClipSync.receives(app)) caps.put("clip")
+        if (ShotSync.receives(app)) caps.put("shots")
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -408,6 +410,8 @@ object LinkHub {
                         if (socket === s.ws) socket = null
                         s.ws.close(1000, null)
                         clearShell()
+                        incoming?.discard()
+                        incoming = null
                         // Live updates go back to the relay copy while the link is down.
                         LiveHub.listener?.onLinkChanged()
                         pending.values.forEach { it.complete("offline") }
@@ -443,8 +447,43 @@ object LinkHub {
         _pc.value = updated
     }
 
+    // ── Files from the PC ─────────────────────────────────────────────────
+
+    @Volatile private var incoming: Incoming? = null
+
+    private fun startFile(header: JSONObject) {
+        incoming?.discard()
+        val inc = Incoming(java.io.File(app.cacheDir, "incoming"), header)
+        if (!inc.valid) {
+            inc.discard()
+            socket?.send(JSONObject().put("t", "err").put("id", inc.id).put("code", "too_large").toString())
+            return
+        }
+        incoming = inc
+    }
+
+    private fun receiveChunk(bytes: ByteArray) {
+        val inc = incoming ?: return
+        val whole = runCatching { inc.write(bytes) }.getOrElse {
+            inc.discard()
+            incoming = null
+            return
+        }
+        if (!whole) return
+        incoming = null
+        scope.launch {
+            val ok = when (inc.purpose) {
+                "screenshot" -> ShotSync.savePcShot(app, inc.file, inc.name)
+                else -> false
+            }
+            inc.file.delete()
+            socket?.send(JSONObject().put("t", if (ok) "ok" else "err").put("id", inc.id).apply { if (!ok) put("code", "write") }.toString())
+        }
+    }
+
     private fun handle(m: JSONObject) {
         when (m.optString("t")) {
+            "file" -> startFile(m)
             "hello" -> {
                 val actions = m.optJSONArray("actions")
                 val list = buildList {
@@ -609,6 +648,10 @@ object LinkHub {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val m = runCatching { JSONObject(text) }.getOrNull() ?: return
                 if (!first.isCompleted) first.complete(m) else handle(m)
+            }
+
+            override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
+                receiveChunk(bytes.toByteArray())
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {

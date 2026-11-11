@@ -64,6 +64,12 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   while the link is up, and the latest copy when it connects. The phone's clipboard goes
   to the PC on request (Android only lets a focused app read it): the *Clipboard to PC*
   tile, *Copy on the PC* in the share sheet, or the Clipboard screen.
+- **Screenshots:** a screenshot taken on the PC lands in the phone's gallery (Pictures/ii
+  tools) with a notification, now or when the link next comes up; one taken on the phone
+  opens in the shell's screenshot preview and lands in `~/Pictures/Screenshots/Phone`.
+- **Copied text, automatically (optional):** an accessibility service notices a copy and
+  reads the clipboard for an instant, the only way Android 10+ allows it without the app
+  open. It reads event text only, never the screen.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

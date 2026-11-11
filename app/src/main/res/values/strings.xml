@@ -152,4 +152,21 @@
     <string name="clip_off">The clipboard is switched off on the PC (Settings → ii tools).</string>
     <string name="tile_clip">Clipboard to PC</string>
     <string name="share_clip">Copy on the PC</string>
+    <string name="shots_title">Screenshots</string>
+    <string name="shots_hint">Screenshots taken on the PC land in this phone\'s gallery (Pictures/ii tools); screenshots taken here go to the PC.</string>
+    <string name="shots_send">Send my screenshots to the PC</string>
+    <string name="shots_receive">Receive the PC\'s screenshots</string>
+    <string name="shots_channel">PC screenshots</string>
+    <string name="shots_received">Screenshot from the PC</string>
+    <string name="shots_received_body">Saved in Pictures/ii tools</string>
+    <string name="perm_photos">Photos</string>
+    <string name="perm_photos_body">To see new screenshots and send them to the PC. Allow all photos.</string>
+    <string name="clip_service_label">ii tools · copied text to PC</string>
+    <string name="clip_service_summary">Sends text you copy to your PC</string>
+    <string name="clip_service_description">When you copy text, ii tools sends it to your paired PC. It only notices copy actions (a tap on Copy, a \"Copied\" message) and reads the clipboard for an instant; it never reads what is on screen.</string>
+    <string name="clip_auto">Send copied text automatically</string>
+    <string name="clip_step_restricted">1. Allow restricted settings</string>
+    <string name="clip_step_restricted_body">Android blocks accessibility for apps installed outside a store. In App info, tap ⋮ (top right) → Allow restricted settings, then come back.</string>
+    <string name="clip_step_service">Turn on the copy service</string>
+    <string name="clip_step_service_body">Opens ii tools in Accessibility: turn on \"ii tools · copied text to PC\".</string>
 </resources>

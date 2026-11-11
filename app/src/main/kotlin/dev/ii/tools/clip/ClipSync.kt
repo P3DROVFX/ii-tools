@@ -34,6 +34,7 @@ import java.io.File
 object ClipSync {
     private const val PREFS = "clip"
     private const val RECEIVE = "receive"
+    private const val AUTO_SEND = "autoSend"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun receives(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(RECEIVE, true)
@@ -43,6 +44,18 @@ object ClipSync {
         LinkHub.announceCaps()
     }
 
+    /** Send every copied text automatically (needs [ClipWatchService] enabled). */
+    fun autoSend(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(AUTO_SEND, true)
+
+    fun setAutoSend(ctx: Context, on: Boolean) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(AUTO_SEND, on).apply()
+    }
+
+    /** The last text that crossed, either way: never sent back, never sent twice. */
+    @Volatile private var lastText: String? = null
+
+    fun isNew(text: String): Boolean = text != lastText
+
     // ── PC → phone ────────────────────────────────────────────────────────
 
     fun receive(ctx: Context, m: JSONObject) {
@@ -51,6 +64,7 @@ object ClipSync {
             val clip = runCatching {
                 val data = m.optString("data")
                 if (data.isEmpty()) {
+                    lastText = m.optString("text")
                     ClipData.newPlainText(ctx.getString(R.string.clip_title), m.optString("text"))
                 } else {
                     val dir = File(ctx.cacheDir, "clip").apply { mkdirs() }
@@ -83,7 +97,10 @@ object ClipSync {
         return sendText(text)
     }
 
-    suspend fun sendText(text: String): String? = LinkHub.runWhenReady("clip", JSONObject().put("text", text))
+    suspend fun sendText(text: String): String? {
+        lastText = text
+        return LinkHub.runWhenReady("clip", JSONObject().put("text", text))
+    }
 
     suspend fun sendImage(ctx: Context, uri: Uri, mime: String): String? {
         val size = withContext(Dispatchers.IO) {

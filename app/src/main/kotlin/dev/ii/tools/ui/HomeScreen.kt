@@ -4,9 +4,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.platform.LocalContext
 import dev.ii.tools.R
+import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.clip.ClipWatchService
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.live.LiveHub
@@ -16,11 +23,17 @@ import dev.ii.tools.live.LiveHub
  * descriptions. What a row needs to say beyond its name is one word of status.
  */
 @Composable
-fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: () -> Unit, onOpenDeck: () -> Unit, onOpenWallpaper: () -> Unit, onOpenCalls: () -> Unit, onOpenNotifs: () -> Unit, onOpenClipboard: () -> Unit, onOpenLive: () -> Unit) {
+fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: () -> Unit, onOpenDeck: () -> Unit, onOpenWallpaper: () -> Unit, onOpenCalls: () -> Unit, onOpenNotifs: () -> Unit, onOpenClipboard: () -> Unit, onOpenShots: () -> Unit, onOpenLive: () -> Unit) {
     val status = rememberDeviceStatus()
     val relayed by LiveHub.relayed.collectAsStateWithLifecycle()
     val link by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
+    val ctx = LocalContext.current
+    var clipNeedsSetup by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        clipNeedsSetup = ClipSync.autoSend(ctx) && !ClipWatchService.isEnabled(ctx)
+        onPauseOrDispose { }
+    }
 
     ToolScaffold(title = stringResource(R.string.app_name)) {
         item {
@@ -55,6 +68,15 @@ fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: ()
                     icon = R.drawable.rounded_content_paste,
                     tint = Tint.SECONDARY,
                     onClick = onOpenClipboard,
+                    trailing = if (clipNeedsSetup) {
+                        { Status(stringResource(R.string.status_needs_setup)) }
+                    } else null,
+                )
+                ToolRow(
+                    title = stringResource(R.string.shots_title),
+                    icon = R.drawable.rounded_screenshot,
+                    tint = Tint.TERTIARY,
+                    onClick = onOpenShots,
                 )
                 ToolRow(
                     title = stringResource(R.string.wallpaper_title),

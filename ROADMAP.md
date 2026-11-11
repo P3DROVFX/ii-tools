@@ -292,7 +292,9 @@ anexo da IA; arquivo vai para o `FileShelf`.
 > (e a última cópia ao conectar), texto e imagem (até 5 MiB), direto no clipboard do Android.
 > Celular → PC por ação explícita (o Android só deixa ler o clipboard com o app em foco):
 > tile "Copiar para o PC" (abre uma tela invisível por um instante), "Copiar no PC" no
-> compartilhar e a tela Área de transferência. Sem eco nos dois sentidos.
+> compartilhar e a tela Área de transferência. Sem eco nos dois sentidos. Opcional: envio
+> automático de todo texto copiado, por um serviço de acessibilidade que percebe a cópia e
+> lê o clipboard por um instante (o único jeito no Android 10+).
 
 Texto e imagem nos dois sentidos, integrado ao `Cliphist`. Só sincroniza o que o usuário copia
 com o app em primeiro plano ou por ação explícita (o Android restringe ler o clipboard em
@@ -316,6 +318,12 @@ O caminho inverso do relay: gravação em andamento, timers (`TimerService`), al
 de bloqueio do celular, com botões (parar a gravação, pausar o timer).
 
 ### 2.7 Screenshot entregue · **XS**
+
+> **Status (2026-11-11): implementado** (adiantado a pedido). Print do PC (região ou tela
+> cheia) vai para a galeria do celular (Imagens/ii tools) com notificação, na hora ou na
+> próxima conexão (fila de 5). Print do celular vai para `~/Pictures/Screenshots/Phone`, para
+> o clipboard e abre o preview de print do shell. O link ganhou envio de arquivos do PC
+> para o celular (`sendFile`).
 
 Print tirado no PC aparece como notificação no celular, com a imagem. Print tirado no celular
 aparece no popup de preview do shell (`ScreenshotOverlay`).

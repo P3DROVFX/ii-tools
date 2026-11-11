@@ -18,9 +18,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.clip.ClipWatchService
 import dev.ii.tools.link.LinkHub
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -35,6 +37,15 @@ fun ClipboardScreen(onBack: () -> Unit) {
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     val shell by LinkHub.shell.collectAsStateWithLifecycle()
     var receives by remember { mutableStateOf(ClipSync.receives(ctx)) }
+    var autoSend by remember { mutableStateOf(ClipSync.autoSend(ctx)) }
+    // Re-read on every return from Settings, where both are changed.
+    var watching by remember { mutableStateOf(ClipWatchService.isEnabled(ctx)) }
+    var restricted by remember { mutableStateOf(ClipWatchService.restricted(ctx)) }
+    LifecycleResumeEffect(Unit) {
+        watching = ClipWatchService.isEnabled(ctx)
+        restricted = ClipWatchService.restricted(ctx)
+        onPauseOrDispose { }
+    }
     var sending by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(result) {
@@ -46,6 +57,30 @@ fun ClipboardScreen(onBack: () -> Unit) {
 
     ToolScaffold(title = stringResource(R.string.clip_title), onBack = onBack) {
         item { Hint(stringResource(R.string.clip_hint)) }
+        // Automatic sending is on but its service is not: the steps, each with its button.
+        if (autoSend && !watching) {
+            item { GroupHeader(stringResource(R.string.setup_title)) }
+            item {
+                CardGroup {
+                    if (restricted) {
+                        PermissionRow(
+                            title = stringResource(R.string.clip_step_restricted),
+                            body = stringResource(R.string.clip_step_restricted_body),
+                            icon = R.drawable.rounded_lock,
+                            granted = false,
+                            onGrant = { ctx.startActivity(ClipWatchService.appInfoIntent(ctx)) },
+                        )
+                    }
+                    PermissionRow(
+                        title = stringResource(R.string.clip_step_service),
+                        body = stringResource(R.string.clip_step_service_body),
+                        icon = R.drawable.rounded_content_paste,
+                        granted = false,
+                        onGrant = { ClipWatchService.openSettings(ctx) },
+                    )
+                }
+            }
+        }
         val ready = linkGate(pc, status, shell != null)
         if (ready && shell?.caps?.contains("clip") != true) {
             item { Hint(stringResource(R.string.clip_off)) }
@@ -80,6 +115,20 @@ fun ClipboardScreen(onBack: () -> Unit) {
                         }
                         else -> null
                     },
+                )
+                // On needs the accessibility service: off in Settings, the switch takes you there.
+                // Switching on only shows the setup steps above; nothing opens by surprise.
+                val toggleAuto = { on: Boolean ->
+                    autoSend = on
+                    ClipSync.setAutoSend(ctx, on)
+                }
+                ToolRow(
+                    title = stringResource(R.string.clip_auto),
+                    summary = if (autoSend && !watching) stringResource(R.string.status_needs_setup) else null,
+                    icon = R.drawable.rounded_bolt,
+                    tint = if (autoSend && watching) Tint.PRIMARY else Tint.SECONDARY,
+                    onClick = { toggleAuto(!autoSend) },
+                    trailing = { Switch(checked = autoSend, onCheckedChange = toggleAuto) },
                 )
                 val toggle = { on: Boolean ->
                     receives = on

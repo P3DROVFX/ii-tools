@@ -28,6 +28,7 @@ import dev.ii.tools.ui.LiveScreen
 import dev.ii.tools.ui.NotifsScreen
 import dev.ii.tools.ui.RemoteScreen
 import dev.ii.tools.ui.ShareScreen
+import dev.ii.tools.ui.ShotsScreen
 import dev.ii.tools.ui.Shared
 import dev.ii.tools.ui.WallpaperScreen
 import dev.ii.tools.ui.theme.IiToolsTheme
@@ -61,6 +62,7 @@ class MainActivity : ScreenActivity() {
         onOpenCalls = { open(CallsActivity::class.java) },
         onOpenNotifs = { open(NotifsActivity::class.java) },
         onOpenClipboard = { open(ClipboardActivity::class.java) },
+        onOpenShots = { open(ShotsActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -179,4 +181,9 @@ class ShareActivity : ScreenActivity() {
 class ClipboardActivity : ScreenActivity() {
     @Composable
     override fun Screen() = ClipboardScreen(onBack = ::finish)
+}
+
+class ShotsActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = ShotsScreen(onBack = ::finish)
 }

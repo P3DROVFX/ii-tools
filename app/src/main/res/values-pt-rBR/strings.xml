@@ -151,4 +151,21 @@
     <string name="clip_off">A área de transferência está desligada no PC (Configurações → ii tools).</string>
     <string name="tile_clip">Copiar para o PC</string>
     <string name="share_clip">Copiar no PC</string>
+    <string name="shots_title">Capturas de tela</string>
+    <string name="shots_hint">Capturas tiradas no PC chegam à galeria deste celular (Imagens/ii tools); as tiradas aqui vão para o PC.</string>
+    <string name="shots_send">Enviar minhas capturas ao PC</string>
+    <string name="shots_receive">Receber as capturas do PC</string>
+    <string name="shots_channel">Capturas do PC</string>
+    <string name="shots_received">Captura de tela do PC</string>
+    <string name="shots_received_body">Salva em Imagens/ii tools</string>
+    <string name="perm_photos">Fotos</string>
+    <string name="perm_photos_body">Para ver capturas novas e enviá-las ao PC. Permita todas as fotos.</string>
+    <string name="clip_service_label">ii tools · texto copiado para o PC</string>
+    <string name="clip_service_summary">Envia ao PC o texto que você copia</string>
+    <string name="clip_service_description">Quando você copia um texto, o ii tools o envia ao PC pareado. Ele só percebe ações de copiar (um toque em Copiar, um aviso \"Copiado\") e lê a área de transferência por um instante; nunca lê o que está na tela.</string>
+    <string name="clip_auto">Enviar texto copiado automaticamente</string>
+    <string name="clip_step_restricted">1. Permitir configurações restritas</string>
+    <string name="clip_step_restricted_body">O Android bloqueia a acessibilidade para apps instalados fora de uma loja. Nas informações do app, toque em ⋮ (canto superior) → Permitir configurações restritas, e volte.</string>
+    <string name="clip_step_service">Ativar o serviço de cópia</string>
+    <string name="clip_step_service_body">Abre o ii tools em Acessibilidade: ative \"ii tools · texto copiado para o PC\".</string>
 </resources>
