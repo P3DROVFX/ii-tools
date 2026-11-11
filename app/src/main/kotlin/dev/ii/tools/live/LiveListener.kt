@@ -3,6 +3,7 @@ package dev.ii.tools.live
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.notify.NotifMirror
+import dev.ii.tools.phonedata.PhoneData
 import dev.ii.tools.shots.ShotSync
 import org.json.JSONObject
 
@@ -76,6 +77,8 @@ class LiveListener : NotificationListenerService() {
         CallWatcher.start(this)
         NotifMirror.start(this)
         ShotSync.start(this)
+        PhoneData.start(this)
+        LinkHub.announceCaps()
     }
 
     override fun onListenerDisconnected() {
@@ -84,6 +87,7 @@ class LiveListener : NotificationListenerService() {
         CallWatcher.onListenerGone(this)
         NotifMirror.onListenerGone(this)
         ShotSync.stop()
+        PhoneData.stop()
     }
 
     override fun onDestroy() {

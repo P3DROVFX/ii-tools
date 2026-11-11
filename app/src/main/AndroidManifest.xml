@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <!-- Screenshots (Fase 2.7): seeing new ones in the gallery, to send them to the PC. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Phone data (Fase 2.4): contacts with photos for the PC. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <!-- App labels/icons for the apps that post live notifications, and the
          KDE Connect install check. -->
@@ -84,6 +86,10 @@
 
         <activity
             android:name=".ShotsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".PhoneDataActivity"
             android:exported="false" />
 
         <provider

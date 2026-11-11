@@ -302,6 +302,11 @@ segundo plano).
 
 ### 2.4 Dados do celular sem ADB · **S**
 
+> **Status (2026-11-11): implementado.** Próximo alarme (`getNextAlarmClock`, com o app
+> dono) substitui o polling por ADB do `PhoneAlarmService`; contatos com foto (só quando
+> mudam, fotos só as que faltam) substituem os vCards do KDE Connect; bateria (nível,
+> carregando, temperatura, saúde) e rede (tipo, sinal) em `IiLinkService.phoneStatus`.
+
 - Próximo alarme (`AlarmManager.getNextAlarmClock`) para o `PhoneAlarmService`.
 - Contatos com foto (`ContactsContract`) para o `PhoneContactsService`.
 - Bateria detalhada (temperatura, saúde, carregamento rápido), tipo de rede e sinal.

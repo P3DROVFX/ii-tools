@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.phonedata.PhoneData
 import dev.ii.tools.shots.ShotSync
 import dev.ii.tools.live.LiveHub
 import dev.ii.tools.notify.NotifMirror
@@ -197,6 +198,9 @@ object LinkHub {
 
     // ── Notifications ─────────────────────────────────────────────────────
 
+    /** The link is up, whatever the PC takes. */
+    fun isConnected(): Boolean = socket != null
+
     /** The PC takes notifications right now. */
     fun isOnline(): Boolean = socket != null && _shell.value?.caps?.contains("notifs") == true
 
@@ -236,6 +240,7 @@ object LinkHub {
         if (NotifMirror.running.value) caps.put("notifs")
         if (ClipSync.receives(app)) caps.put("clip")
         if (ShotSync.receives(app)) caps.put("shots")
+        PhoneData.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -498,6 +503,7 @@ object LinkHub {
                     caps = buildSet { if (caps != null) for (i in 0 until caps.length()) add(caps.optString(i)) },
                     actions = list,
                 )
+                if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
                 // The PC takes notifications: give it the whole list, and the live
                 // updates their link path.
                 if (isOnline()) {
@@ -522,6 +528,10 @@ object LinkHub {
             "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
             "unpaired" -> unpairedByPc = true
             "phone" -> CallWatcher.command(m.optString("a"), m.optString("arg").ifEmpty { null })
+            "get" -> when (m.optString("what")) {
+                "contacts" -> PhoneData.onContactsAsked(m.optString("have"))
+                "photos" -> m.optJSONArray("keys")?.let { k -> PhoneData.onPhotosAsked(List(k.length()) { k.optString(it) }) }
+            }
             "notifAct" -> NotifMirror.command(m)
             "clip" -> ClipSync.receive(app, m)
         }

@@ -168,4 +168,9 @@
     <string name="clip_step_restricted_body">O Android bloqueia a acessibilidade para apps instalados fora de uma loja. Nas informações do app, toque em ⋮ (canto superior) → Permitir configurações restritas, e volte.</string>
     <string name="clip_step_service">Ativar o serviço de cópia</string>
     <string name="clip_step_service_body">Abre o ii tools em Acessibilidade: ative \"ii tools · texto copiado para o PC\".</string>
+    <string name="data_title">Dados do celular</string>
+    <string name="data_hint">Seu próximo alarme, bateria e rede, e seus contatos com foto, para o relógio, a aba Phone e o card de ligação do PC. Sem ADB nem KDE Connect.</string>
+    <string name="data_share">Compartilhar com o PC</string>
+    <string name="perm_contacts">Contatos</string>
+    <string name="perm_contacts_body">Para mostrar seus contatos e as fotos deles no PC.</string>
 </resources>

@@ -70,6 +70,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Copied text, automatically (optional):** an accessibility service notices a copy and
   reads the clipboard for an instant, the only way Android 10+ allows it without the app
   open. It reads event text only, never the screen.
+- **Phone data:** the next alarm (for the PC's clock app), battery with temperature and
+  health, network, and contacts with photos (for the Phone tab and the call card), from
+  the phone itself instead of ADB and KDE Connect. Contacts go only when they change,
+  photos only those the PC lacks; the PC keeps them for when the phone is away.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach
