@@ -98,4 +98,16 @@
     <string name="deck_group_apps">Apps</string>
     <string name="deck_unavailable">Not available now</string>
     <string name="deck_page">Page %1$d of %2$d</string>
+    <string name="wallpaper_title">Wallpaper</string>
+    <string name="wallpaper_share">Set on PC</string>
+    <string name="wallpaper_pick">Choose an image</string>
+    <string name="wallpaper_other">Choose another</string>
+    <string name="wallpaper_set_as">Set as</string>
+    <string name="wallpaper_desktop">Desktop</string>
+    <string name="wallpaper_lock">Lock screen</string>
+    <string name="wallpaper_both">Desktop and lock screen</string>
+    <string name="wallpaper_done">Set on the PC</string>
+    <string name="wallpaper_off">Wallpapers from the phone are switched off on the PC (Settings → ii tools).</string>
+    <string name="wallpaper_too_large">The image is too large (64 MB at most).</string>
+    <string name="wallpaper_failed">Couldn\'t set it. Try again.</string>
 </resources>

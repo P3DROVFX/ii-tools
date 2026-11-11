@@ -53,6 +53,18 @@
             android:name=".AudioActivity"
             android:exported="false" />
 
+        <!-- In the share sheet as "Set on PC" for images. -->
+        <activity
+            android:name=".WallpaperActivity"
+            android:exported="true"
+            android:label="@string/wallpaper_share">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
+
         <!-- Turning into dock mode rotates the screen: keep the deck, its page and its
              drag, instead of rebuilding the activity. -->
         <activity

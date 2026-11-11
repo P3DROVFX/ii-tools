@@ -215,6 +215,12 @@ Substitui o ADB do `PhoneCallService`.
 
 ### 1.5 Wallpaper do celular · **S**
 
+> **Status (2026-11-11): implementado** (sem o bônus de navegar pela pasta do PC). O link
+> ganhou transferência de arquivos (cabeçalho + frames binários, gravados pelo helper em
+> `incoming/`, limite de 64 MiB). O app é alvo de compartilhamento ("Definir no PC") e tem
+> seletor de fotos; o shell salva na pasta de wallpapers e aplica em área de trabalho,
+> bloqueio ou ambos. Toggle `iiTools.wallpaper.enable`.
+
 - O app aparece como **alvo de compartilhamento** ("Definir no shell") e também tem um seletor.
 - Envia o arquivo original pelo link; o shell salva na pasta de wallpapers e chama
   `wallpapers.apply` ou `wallpapers.applyLockscreen`. As cores se regeneram sozinhas.

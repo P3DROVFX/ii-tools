@@ -16,7 +16,7 @@ import dev.ii.tools.live.LiveHub
  * descriptions. What a row needs to say beyond its name is one word of status.
  */
 @Composable
-fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: () -> Unit, onOpenDeck: () -> Unit, onOpenLive: () -> Unit) {
+fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: () -> Unit, onOpenDeck: () -> Unit, onOpenWallpaper: () -> Unit, onOpenLive: () -> Unit) {
     val status = rememberDeviceStatus()
     val relayed by LiveHub.relayed.collectAsStateWithLifecycle()
     val link by LinkHub.status.collectAsStateWithLifecycle()
@@ -49,6 +49,12 @@ fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: ()
                     icon = R.drawable.rounded_dashboard,
                     tint = Tint.SECONDARY,
                     onClick = onOpenDeck,
+                )
+                ToolRow(
+                    title = stringResource(R.string.wallpaper_title),
+                    icon = R.drawable.rounded_wallpaper,
+                    tint = Tint.TERTIARY,
+                    onClick = onOpenWallpaper,
                 )
             }
         }

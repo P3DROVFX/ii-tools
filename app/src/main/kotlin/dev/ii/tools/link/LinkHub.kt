@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -76,6 +77,9 @@ object LinkHub {
     private const val PATH = "/iilink/1"
     private const val BACKGROUND_GRACE_MS = 30_000L
     private const val REPLY_TIMEOUT_MS = 5_000L
+    private const val FILE_CHUNK = 256 * 1024
+    /** OkHttp closes a socket whose queue passes 16 MiB; stay well under it. */
+    private const val FILE_QUEUE = 2L * 1024 * 1024
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -399,6 +403,50 @@ object LinkHub {
      */
     fun send(actionId: String, arg: Any? = null) {
         socket?.send(command(nextId.getAndIncrement(), actionId, arg))
+    }
+
+    /**
+     * Sends a file for [purpose] (PROTOCOL.md, "Files"): a header, then binary frames,
+     * paced by OkHttp's send queue so a large photo never sits whole in memory. Waits a
+     * moment for the link when the app was just opened by a share. Null once the shell
+     * has done what the file was for, else why not.
+     */
+    suspend fun upload(
+        name: String,
+        size: Long,
+        open: () -> java.io.InputStream?,
+        purpose: String,
+        target: String,
+        onProgress: (Float) -> Unit,
+    ): String? = withContext(Dispatchers.IO) {
+        if (withTimeoutOrNull(15_000) { status.first { it is LinkStatus.Online } } == null) return@withContext "offline"
+        val ws = socket ?: return@withContext "offline"
+        val id = nextId.getAndIncrement()
+        val reply = CompletableDeferred<String?>()
+        pending[id] = reply
+        try {
+            val header = JSONObject().put("t", "file").put("id", id).put("name", name).put("size", size)
+                .put("purpose", purpose).put("target", target)
+            if (!ws.send(header.toString())) return@withContext "offline"
+            val input = open() ?: return@withContext "read"
+            var sent = 0L
+            input.use { stream ->
+                val buf = ByteArray(FILE_CHUNK)
+                while (sent < size) {
+                    val n = stream.read(buf, 0, minOf(buf.size.toLong(), size - sent).toInt())
+                    if (n <= 0) break
+                    while (ws.queueSize() > FILE_QUEUE) delay(15)
+                    if (!ws.send(okio.ByteString.of(*buf.copyOf(n)))) return@withContext "offline"
+                    sent += n
+                    onProgress(sent.toFloat() / size)
+                }
+            }
+            if (sent != size) return@withContext "read"
+            val outcome = withTimeoutOrNull(60_000) { Reply(reply.await()) }
+            if (outcome == null) "timeout" else outcome.code
+        } finally {
+            pending.remove(id)
+        }
     }
 
     /** The PC's installed apps; they arrive in [apps]. */

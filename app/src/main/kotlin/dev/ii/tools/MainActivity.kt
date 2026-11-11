@@ -24,6 +24,7 @@ import dev.ii.tools.ui.HomeScreen
 import dev.ii.tools.ui.LinkScreen
 import dev.ii.tools.ui.LiveScreen
 import dev.ii.tools.ui.RemoteScreen
+import dev.ii.tools.ui.WallpaperScreen
 import dev.ii.tools.ui.theme.IiToolsTheme
 
 /** Every screen is its own activity, as on the rest of Android. */
@@ -51,6 +52,7 @@ class MainActivity : ScreenActivity() {
         onOpenRemote = { open(RemoteActivity::class.java) },
         onOpenAudio = { open(AudioActivity::class.java) },
         onOpenDeck = { open(DeckActivity::class.java) },
+        onOpenWallpaper = { open(WallpaperActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -137,4 +139,15 @@ class DeckActivity : ScreenActivity() {
         /** Low enough to sit on a desk all day, still readable at a glance. */
         const val DOCK_BRIGHTNESS = 0.08f
     }
+}
+
+/** Wallpaper: from the home, or from the share sheet as "Set on PC". */
+class WallpaperActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = WallpaperScreen(
+        shared = intent?.takeIf { it.action == Intent.ACTION_SEND }
+            ?.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java),
+        onBack = ::finish,
+        onDone = ::finish,
+    )
 }
