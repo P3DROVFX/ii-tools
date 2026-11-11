@@ -129,4 +129,17 @@
     <string name="widget_empty">Add keys in the app\'s Deck</string>
     <string name="widget_description">The first eight keys of your deck</string>
     <string name="widget_label">ii tools deck</string>
+    <string name="share_label">Send to PC</string>
+    <string name="share_title">Send to PC</string>
+    <string name="share_send_as">Send to</string>
+    <string name="share_browser">Open in the browser</string>
+    <string name="share_ai">Ask the AI</string>
+    <string name="share_note">New note</string>
+    <string name="share_reminder">New reminder</string>
+    <string name="share_task">New task</string>
+    <string name="share_shelf">File shelf</string>
+    <string name="share_done">Sent</string>
+    <string name="share_off">Sending to the PC is switched off on the PC (Settings → ii tools).</string>
+    <string name="share_nothing">Nothing to send.</string>
+    <string name="share_downloads">Downloads</string>
 </resources>

@@ -128,4 +128,17 @@
     <string name="widget_empty">Adicione teclas no Deck do app</string>
     <string name="widget_description">As oito primeiras teclas do seu deck</string>
     <string name="widget_label">Deck do ii tools</string>
+    <string name="share_label">Enviar ao PC</string>
+    <string name="share_title">Enviar ao PC</string>
+    <string name="share_send_as">Enviar para</string>
+    <string name="share_browser">Abrir no navegador</string>
+    <string name="share_ai">Perguntar à IA</string>
+    <string name="share_note">Nova nota</string>
+    <string name="share_reminder">Novo lembrete</string>
+    <string name="share_task">Nova tarefa</string>
+    <string name="share_shelf">Prateleira de arquivos</string>
+    <string name="share_done">Enviado</string>
+    <string name="share_off">O envio ao PC está desligado no PC (Configurações → ii tools).</string>
+    <string name="share_nothing">Nada para enviar.</string>
+    <string name="share_downloads">Downloads</string>
 </resources>

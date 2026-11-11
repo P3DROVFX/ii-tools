@@ -276,6 +276,12 @@ grade do deck.
 
 ### 2.2 Compartilhar para o shell · **S**
 
+> **Status (2026-11-11): implementado.** "Enviar ao PC" no menu de compartilhar: link →
+> navegador ou IA ou nota; texto → nota, lembrete, tarefa ou IA; foto ou arquivo → Downloads
+> (como o KDE Connect, sem sobrescrever), prateleira ou (imagem) IA. Popup no canto com o
+> progresso da transferência e Abrir / Pasta ao concluir. Toggle
+> `iiTools.share.enable`.
+
 Pelo menu de compartilhamento do Android: link abre no navegador do PC ou vai para o chat de IA;
 texto vira nota (`NotesService`), lembrete (`RemindersService`) ou tarefa (`Todo`); foto vai como
 anexo da IA; arquivo vai para o `FileShelf`.

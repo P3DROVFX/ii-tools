@@ -26,6 +26,8 @@ import dev.ii.tools.ui.LinkScreen
 import dev.ii.tools.ui.LiveScreen
 import dev.ii.tools.ui.NotifsScreen
 import dev.ii.tools.ui.RemoteScreen
+import dev.ii.tools.ui.ShareScreen
+import dev.ii.tools.ui.Shared
 import dev.ii.tools.ui.WallpaperScreen
 import dev.ii.tools.ui.theme.IiToolsTheme
 
@@ -164,4 +166,10 @@ class CallsActivity : ScreenActivity() {
 class NotifsActivity : ScreenActivity() {
     @Composable
     override fun Screen() = NotifsScreen(onBack = ::finish)
+}
+
+/** "Send to PC" in the share sheet. */
+class ShareActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = ShareScreen(shared = Shared.from(intent), onBack = ::finish, onDone = ::finish)
 }

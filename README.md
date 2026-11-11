@@ -56,6 +56,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   favourite preset (the star in Remote control). With the panel open the tiles show the
   PC's real state; a tap connects, runs and lets the link go. A home screen widget holds
   the first eight deck keys.
+- **Send to PC:** in Android's share sheet. A link opens in the PC's browser or goes to
+  its AI chat; text becomes a note, a reminder or a task; a photo or any file goes
+  to `~/Downloads` as KDE Connect does (never overwriting), to the shell's file shelf, or
+  (images) to the AI chat.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

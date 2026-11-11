@@ -66,6 +66,18 @@
             android:name=".NotifsActivity"
             android:exported="false" />
 
+        <!-- In the share sheet as "Send to PC": text, links, images and files. -->
+        <activity
+            android:name=".ShareActivity"
+            android:exported="true"
+            android:label="@string/share_label">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+
         <!-- In the share sheet as "Set on PC" for images. -->
         <activity
             android:name=".WallpaperActivity"
