@@ -173,4 +173,15 @@
     <string name="data_share">Compartilhar com o PC</string>
     <string name="perm_contacts">Contatos</string>
     <string name="perm_contacts_body">Para mostrar seus contatos e as fotos deles no PC.</string>
+    <string name="pclive_channel">Atividade do PC</string>
+    <string name="pclive_paused">Pausado · %1$s</string>
+    <string name="pclink_title">Atividade do PC</string>
+    <string name="pclink_hint">Timers, gravação de tela, alarme tocando e progresso do PC como live updates aqui, e o Não Perturbe sincronizado nos dois sentidos. O que segue o quê é escolhido no PC (Configurações → ii tools).</string>
+    <string name="pclink_live">Mostrar a atividade do PC</string>
+    <string name="pclink_dnd">Sincronizar o Não Perturbe</string>
+    <string name="pclive_ends">Termina às %1$s</string>
+    <string name="pclive_started">Começou às %1$s</string>
+    <string name="link_stay">Manter conectado</string>
+    <string name="link_battery">Permitir uso em segundo plano</string>
+    <string name="link_battery_body">Para a economia de bateria do Android não cortar a conexão enquanto o celular dorme. Toque em Permitir e confirme.</string>
 </resources>

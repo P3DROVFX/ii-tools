@@ -20,9 +20,13 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   scans it with Google's code scanner (no camera permission), or opens the same
   `iilink://pair?…` link sent from the PC over KDE Connect. The PC's self-signed
   certificate is pinned by its SHA-256; the PC keeps only a hash of this phone's token.
-- **Lifetime:** the socket is open only while the app is in front, plus 30 s. No
-  service, wakelock or socket otherwise. If the PC's address changed, the app finds it
-  again with a UDP broadcast on the link's port.
+- **Lifetime:** the link stays open in the background (*Stay connected*, on by default),
+  so the PC can reach the phone at any time; it needs the app let off battery
+  optimisation (a guided step), or Doze cuts it. No foreground service: the process lives
+  through the notification listener. A ping a minute; away from the PC it retries every
+  few minutes, and at once when the network changes. Turned off, the link is open only
+  while the app is in front (plus 30 s) or for a burst of notifications. If the PC's
+  address changed, the app finds it again with a UDP broadcast on the link's port.
 - **Remote control:** lock, lock + always-on display, always-on display, media mode,
   scratchpad. Each is a toggle that shows the shell's real state (`state`), whatever
   changed it: a lock from a keybind lights the tile up too. Unlocking is refused on
@@ -74,6 +78,12 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   health, network, and contacts with photos (for the Phone tab and the call card), from
   the phone itself instead of ADB and KDE Connect. Contacts go only when they change,
   photos only those the PC lacks; the PC keeps them for when the phone is away.
+- **Do Not Disturb:** the shell's own (and modes chosen on the PC) silence the phone; the
+  phone's turns on the shell's, or a mode. Only changes are sent, so turning it off by
+  hand on either side sticks.
+- **PC activity:** the screen recording, the pomodoro, the stopwatch, countdowns, a
+  ringing alarm and progress as Android 16 Live Updates, with their buttons (stop, pause,
+  snooze). Timers count down on the phone by themselves.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

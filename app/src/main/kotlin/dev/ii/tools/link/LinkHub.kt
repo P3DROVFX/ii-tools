@@ -21,6 +21,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.pclive.DndSync
+import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.phonedata.PhoneData
 import dev.ii.tools.shots.ShotSync
 import dev.ii.tools.live.LiveHub
@@ -85,6 +87,9 @@ object LinkHub {
     /** After a call: long enough for the PC to see the end and a call back. */
     private const val HOLD_GRACE_MS = 10_000L
     private const val BURST_MS = 120_000L
+    private const val STAY_PREFS = "link"
+    private const val STAY = "stayConnected"
+    private const val ALWAYS = "always"
     private const val QUIET_MS = 300_000L
     private const val REPLY_TIMEOUT_MS = 5_000L
     private const val FILE_CHUNK = 256 * 1024
@@ -134,7 +139,9 @@ object LinkHub {
         OkHttpClient.Builder()
             .connectTimeout(4, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.SECONDS)
-            .pingInterval(30, TimeUnit.SECONDS)
+            // Kept open in the background now: a ping a minute is enough for the PC to
+            // notice a phone gone (it drops a socket silent for 200 s) and cheap on battery.
+            .pingInterval(60, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false)
             .build()
     }
@@ -145,6 +152,10 @@ object LinkHub {
         Symbols.init(app)
         _pc.value = LinkPrefs.load(app)
         _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Idle
+        watchNetwork()
+        // Any start of the process (the notification listener binding at boot included)
+        // brings the link up when the user wants it kept.
+        if (_pc.value != null && staysConnected()) hold(ALWAYS)
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -241,6 +252,8 @@ object LinkHub {
         if (ClipSync.receives(app)) caps.put("clip")
         if (ShotSync.receives(app)) caps.put("shots")
         PhoneData.caps(app).forEach { caps.put(it) }
+        DndSync.caps(app).forEach { caps.put(it) }
+        PcLive.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -288,6 +301,7 @@ object LinkHub {
         socket?.close(1000, null)
         socket = null
         LinkPrefs.clear(app)
+        holds.clear()
         _pc.value = null
         clearShell()
         _status.value = LinkStatus.Unpaired
@@ -333,6 +347,7 @@ object LinkHub {
                     )
                     LinkPrefs.save(app, pc)
                     _pc.value = pc
+                    if (staysConnected()) holds.add(ALWAYS)
                     runSession()
                     return
                 }
@@ -379,7 +394,7 @@ object LinkHub {
                     _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE)
                     // Only notifications wanted it, from the background: the PC is not
                     // around, so stop here instead of retrying for every notification.
-                    if (!foreground && holds.all { it == "notifs" }) {
+                    if (!foreground && holds.isNotEmpty() && holds.all { it == "notifs" }) {
                         quietUntil = System.currentTimeMillis() + QUIET_MS
                         holds.remove("notifs")
                         session = null
@@ -387,8 +402,42 @@ object LinkHub {
                     }
                 }
             }
-            delay(if (failures == 0) 1_000L else minOf(30_000L, 2_000L shl minOf(failures - 1, 4)))
+            // Away from the PC, in the background: slow down to every few minutes, but try
+            // again at once when the network changes (home Wi-Fi coming back).
+            val cap = if (foreground) 30_000L else 300_000L
+            val wait = if (failures == 0) 1_000L else minOf(cap, 2_000L shl minOf(failures - 1, 7))
+            val epoch = networkEpoch.value
+            withTimeoutOrNull(wait) { networkEpoch.first { it != epoch } }
         }
+    }
+
+    // ── Staying connected ─────────────────────────────────────────────────
+
+    /** Bumped when the default network changes, to cut a reconnect wait short. */
+    private val networkEpoch = MutableStateFlow(0)
+
+    /**
+     * Keep the link open in the background, so the PC can reach the phone at any time
+     * (its live updates, Do Not Disturb, screenshots, the clipboard). On by default.
+     */
+    fun staysConnected(): Boolean = app.getSharedPreferences(STAY_PREFS, Context.MODE_PRIVATE).getBoolean(STAY, true)
+
+    fun setStaysConnected(on: Boolean) {
+        app.getSharedPreferences(STAY_PREFS, Context.MODE_PRIVATE).edit().putBoolean(STAY, on).apply()
+        if (on && _pc.value != null) hold(ALWAYS) else release(ALWAYS)
+    }
+
+    /** Doze cuts a background app's sockets unless it is let off battery optimisation. */
+    fun batteryUnrestricted(): Boolean =
+        app.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(app.packageName)
+
+    private fun watchNetwork() {
+        val cm = app.getSystemService(android.net.ConnectivityManager::class.java) ?: return
+        cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                networkEpoch.value++
+            }
+        })
     }
 
     private suspend fun connectOnce(pc: PairedPc): Outcome {
@@ -415,6 +464,7 @@ object LinkHub {
                         if (socket === s.ws) socket = null
                         s.ws.close(1000, null)
                         clearShell()
+                        PcLive.linkLost(app)
                         incoming?.discard()
                         incoming = null
                         // Live updates go back to the relay copy while the link is down.
@@ -504,6 +554,7 @@ object LinkHub {
                     actions = list,
                 )
                 if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
+                if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
                 // The PC takes notifications: give it the whole list, and the live
                 // updates their link path.
                 if (isOnline()) {
@@ -534,6 +585,8 @@ object LinkHub {
             }
             "notifAct" -> NotifMirror.command(m)
             "clip" -> ClipSync.receive(app, m)
+            "dnd" -> DndSync.apply(m.optBoolean("on"))
+            "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
         }
     }
 

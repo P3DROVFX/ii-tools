@@ -174,4 +174,15 @@
     <string name="data_share">Share with the PC</string>
     <string name="perm_contacts">Contacts</string>
     <string name="perm_contacts_body">To show your contacts and their photos on the PC.</string>
+    <string name="pclive_channel">PC live updates</string>
+    <string name="pclive_paused">Paused · %1$s</string>
+    <string name="pclink_title">PC activity</string>
+    <string name="pclink_hint">Your PC\'s timers, screen recording, a ringing alarm and progress as live updates here, and Do Not Disturb kept in step both ways. What follows what is chosen on the PC (Settings → ii tools).</string>
+    <string name="pclink_live">Show the PC\'s live updates</string>
+    <string name="pclink_dnd">Sync Do Not Disturb</string>
+    <string name="pclive_ends">Ends at %1$s</string>
+    <string name="pclive_started">Started at %1$s</string>
+    <string name="link_stay">Stay connected</string>
+    <string name="link_battery">Allow background use</string>
+    <string name="link_battery_body">So Android\'s battery saving does not cut the connection while the phone sleeps. Tap Allow, then confirm.</string>
 </resources>

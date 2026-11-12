@@ -26,6 +26,7 @@ import dev.ii.tools.ui.HomeScreen
 import dev.ii.tools.ui.LinkScreen
 import dev.ii.tools.ui.LiveScreen
 import dev.ii.tools.ui.NotifsScreen
+import dev.ii.tools.ui.PcLinkScreen
 import dev.ii.tools.ui.PhoneDataScreen
 import dev.ii.tools.ui.RemoteScreen
 import dev.ii.tools.ui.ShareScreen
@@ -65,6 +66,7 @@ class MainActivity : ScreenActivity() {
         onOpenClipboard = { open(ClipboardActivity::class.java) },
         onOpenShots = { open(ShotsActivity::class.java) },
         onOpenPhoneData = { open(PhoneDataActivity::class.java) },
+        onOpenPcLink = { open(PcLinkActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -193,4 +195,9 @@ class ShotsActivity : ScreenActivity() {
 class PhoneDataActivity : ScreenActivity() {
     @Composable
     override fun Screen() = PhoneDataScreen(onBack = ::finish)
+}
+
+class PcLinkActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = PcLinkScreen(onBack = ::finish)
 }

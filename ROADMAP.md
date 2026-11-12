@@ -262,6 +262,10 @@ O app já tem o `NotificationListenerService`; este é o primeiro pedaço do KDE
 
 ## Fase 2 — Baratas
 
+> **Mudança de base (2026-11-11):** o link passou a ficar aberto em segundo plano
+> ("Manter conectado", padrão), com ping a cada 60 s e saída da otimização de bateria;
+> sem isso o PC não alcançava o celular parado e as funções PC → celular falhavam.
+
 ### 2.1 Quick Settings tiles e widget · **XS**
 
 > **Status (2026-11-11): implementado.** Tiles Bloquear PC, Bloqueio + AOD, Modo mídia e
@@ -313,10 +317,27 @@ segundo plano).
 
 ### 2.5 Não Perturbe nos dois sentidos · **S**
 
+> **Status (2026-11-11): implementado.** O DND do shell e os modes escolhidos silenciam o
+> celular (pelo listener, sem acesso ao Não Perturbe); o DND do celular liga o DND do shell
+> ou um mode. Só transições são enviadas, então desligar à mão não é desfeito. Com o
+> celular longe, a mudança vai na próxima conexão.
+
 Modes do shell (game mode, foco, bedtime) ligam o Não Perturbe do celular, e o Não Perturbe do
 celular pode ativar um mode no shell. Mapeamento configurável na página `ii tools`.
 
+### 2.5b Alarmes do celular no clock app do shell · *pulado*
+
+> **2026-11-11: pulado a pedido.** O Relógio do Google não deixa outro app listar nem
+> alterar alarmes ("No external queries"); o Sleep as Android só deixa ler (permissão
+> `com.urbandroid.sleep.READ`); sem ADB o Android informa só o próximo alarme do aparelho.
+> O caminho viável seria o próprio ii tools tocar os alarmes marcados como "Celular" no
+> clock app do shell.
+
 ### 2.6 Live Updates do PC no celular · **S**
+
+> **Status (2026-11-11): implementado.** Gravação, pomodoro, cronômetro, contagens, alarme
+> tocando e progresso viram Live Updates (Android 16, `ProgressStyle`) com botões. Horários
+> absolutos: o celular conta sozinho, e os timers continuam se o link cair.
 
 O caminho inverso do relay: gravação em andamento, timers (`TimerService`), alarmes
 (`AlarmService`) e progressos (`ProgressService`) viram Live Updates (`ProgressStyle`) na tela

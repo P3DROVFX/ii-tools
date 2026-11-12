@@ -23,14 +23,16 @@ import dev.ii.tools.live.LiveHub
  * descriptions. What a row needs to say beyond its name is one word of status.
  */
 @Composable
-fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: () -> Unit, onOpenDeck: () -> Unit, onOpenWallpaper: () -> Unit, onOpenCalls: () -> Unit, onOpenNotifs: () -> Unit, onOpenClipboard: () -> Unit, onOpenShots: () -> Unit, onOpenPhoneData: () -> Unit, onOpenLive: () -> Unit) {
+fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: () -> Unit, onOpenDeck: () -> Unit, onOpenWallpaper: () -> Unit, onOpenCalls: () -> Unit, onOpenNotifs: () -> Unit, onOpenClipboard: () -> Unit, onOpenShots: () -> Unit, onOpenPhoneData: () -> Unit, onOpenPcLink: () -> Unit, onOpenLive: () -> Unit) {
     val status = rememberDeviceStatus()
     val relayed by LiveHub.relayed.collectAsStateWithLifecycle()
     val link by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     var clipNeedsSetup by remember { mutableStateOf(false) }
+    var linkNeedsSetup by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
+        linkNeedsSetup = LinkHub.staysConnected() && !LinkHub.batteryUnrestricted()
         clipNeedsSetup = ClipSync.autoSend(ctx) && !ClipWatchService.isEnabled(ctx)
         onPauseOrDispose { }
     }
@@ -44,6 +46,9 @@ fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: ()
                     icon = R.drawable.rounded_desktop_windows,
                     tint = if (link is LinkStatus.Online) Tint.PRIMARY else Tint.SECONDARY,
                     onClick = onOpenLink,
+                    trailing = if (pc != null && linkNeedsSetup) {
+                        { Status(stringResource(R.string.status_needs_setup)) }
+                    } else null,
                 )
                 ToolRow(
                     title = stringResource(R.string.remote_title),
@@ -83,6 +88,12 @@ fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: ()
                     icon = R.drawable.rounded_wallpaper,
                     tint = Tint.TERTIARY,
                     onClick = onOpenWallpaper,
+                )
+                ToolRow(
+                    title = stringResource(R.string.pclink_title),
+                    icon = R.drawable.rounded_timer,
+                    tint = Tint.TERTIARY,
+                    onClick = onOpenPcLink,
                 )
                 ToolRow(
                     title = stringResource(R.string.data_title),

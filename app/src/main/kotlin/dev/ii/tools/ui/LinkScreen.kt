@@ -95,6 +95,12 @@ fun LinkScreen(onBack: () -> Unit) {
         Unit
     }
     var confirmForget by remember { mutableStateOf(false) }
+    var stays by remember { mutableStateOf(LinkHub.staysConnected()) }
+    var unrestricted by remember { mutableStateOf(LinkHub.batteryUnrestricted()) }
+    LifecycleResumeEffect(Unit) {
+        unrestricted = LinkHub.batteryUnrestricted()
+        onPauseOrDispose { }
+    }
 
     val current = pc
     ToolScaffold(
@@ -127,9 +133,43 @@ fun LinkScreen(onBack: () -> Unit) {
 
         item { CardGroup { StatusRow(current, status) } }
 
+        // Kept open in the background; Doze needs letting off for that.
+        if (stays && !unrestricted) {
+            item { GroupHeader(stringResource(R.string.setup_title)) }
+            item {
+                CardGroup {
+                    PermissionRow(
+                        title = stringResource(R.string.link_battery),
+                        body = stringResource(R.string.link_battery_body),
+                        icon = R.drawable.rounded_battery_full,
+                        granted = false,
+                        onGrant = {
+                            ctx.startActivity(
+                                android.content.Intent(
+                                    android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                    android.net.Uri.fromParts("package", ctx.packageName, null),
+                                ),
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
         item { GroupHeader(stringResource(R.string.section_this_pc)) }
         item {
             CardGroup {
+                val toggleStay = { on: Boolean ->
+                    stays = on
+                    LinkHub.setStaysConnected(on)
+                }
+                ToolRow(
+                    title = stringResource(R.string.link_stay),
+                    icon = R.drawable.rounded_sync,
+                    tint = if (stays) Tint.PRIMARY else Tint.SECONDARY,
+                    onClick = { toggleStay(!stays) },
+                    trailing = { androidx.compose.material3.Switch(checked = stays, onCheckedChange = toggleStay) },
+                )
                 ToolRow(
                     title = stringResource(R.string.link_address),
                     summary = "${current.hosts.firstOrNull().orEmpty()}:${current.port}",

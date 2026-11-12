@@ -6,6 +6,8 @@
          behind ACCESS_LOCAL_NETWORK, a runtime permission). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <!-- Staying connected in the background: Doze would cut the link otherwise. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Calls (Fase 1.4): the call state, answer / end, and placing a call from the PC. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
@@ -14,6 +16,8 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Phone data (Fase 2.4): contacts with photos for the PC. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- PC live updates (Fase 2.6): Android 16 Live Updates on the lock screen. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <!-- App labels/icons for the apps that post live notifications, and the
          KDE Connect install check. -->
@@ -164,6 +168,15 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/clip_watch_service" />
         </service>
+
+        <!-- Buttons on the PC's live updates. -->
+        <receiver
+            android:name=".pclive.PcLiveAction"
+            android:exported="false" />
+
+        <activity
+            android:name=".PcLinkActivity"
+            android:exported="false" />
 
         <!-- Quick Settings tiles (Fase 2.1): the shell's toggles from the panel. -->
         <service
