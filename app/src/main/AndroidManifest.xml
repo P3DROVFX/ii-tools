@@ -17,6 +17,8 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Phone data (Fase 2.4): contacts with photos for the PC. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- The PC browses the phone's storage (SFTP), as with KDE Connect. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <!-- PC live updates (Fase 2.6): Android 16 Live Updates on the lock screen. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />

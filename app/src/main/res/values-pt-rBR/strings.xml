@@ -208,6 +208,12 @@
     <string name="act_found">Achei</string>
     <string name="pclink_media">Mostrar a mídia do celular no PC</string>
     <string name="pclink_pc_media">Mostrar a mídia do PC aqui</string>
+    <string name="pclink_files">Deixar o PC navegar nos arquivos</string>
+    <string name="perm_files">Acesso a todos os arquivos</string>
+    <string name="perm_files_body">Para o gerenciador de arquivos do PC abrir o armazenamento do celular</string>
+    <string name="files_channel">Arquivos</string>
+    <string name="files_permission_title">O PC quer abrir seus arquivos</string>
+    <string name="files_permission_text">Toque para permitir que o ii tools acesse todos os arquivos</string>
     <string name="pcmedia_channel">Mídia do PC</string>
     <string name="pcmedia_play">Tocar</string>
     <string name="pcmedia_pause">Pausar</string>

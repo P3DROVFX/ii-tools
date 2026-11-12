@@ -93,6 +93,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Phone media on the PC:** each app playing on the phone appears on the PC as an MPRIS
   player (title, artist, cover, position), so the shell's media widgets, island, lock
   screen and media keys control it, as with KDE Connect.
+- **Phone files on the PC:** the PC's file manager opens the phone's storage (an SFTP
+  server that runs only while the PC uses it, mounted with sshfs), as with KDE Connect.
+  Needs *All files access*.
 - **PC media on the phone:** what plays on the PC shows as a media player on the phone's
   lock screen and Quick Settings (title, artist, cover, position), with play, skip and
   seek. The phone's own players are never echoed back.
@@ -166,4 +169,6 @@ notice, with a line saying what changed. Reused so far:
 
 - `media/PhoneMedia.kt`: from Sefirah's `PlaybackFeature` and `MediaSession`.
 - `media/PcMedia.kt`: after Sefirah's `RemotePlaybackFeature`.
+- `files/FileServer.kt`: from KDE Connect's `SimpleSftpServer` and `SftpPlugin`.
+- `files/NativeStorageFileSystemFactory.kt`: KDE Connect's, unchanged.
 

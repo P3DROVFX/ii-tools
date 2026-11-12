@@ -19,7 +19,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Until a release key exists, release builds are signed like debug ones.
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -32,6 +32,11 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    packaging {
+        // Apache SSHD's jars each carry the same license metadata.
+        resources.excludes += setOf("META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*")
     }
 }
 
@@ -47,5 +52,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.okhttp)
     implementation(libs.play.services.code.scanner)
+    implementation(libs.apache.sshd.core)
+    implementation(libs.apache.sshd.sftp)
     debugImplementation(libs.compose.ui.tooling)
 }

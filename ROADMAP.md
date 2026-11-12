@@ -420,8 +420,9 @@ no PipeWire / oFono da distro. Se funcionar, o shell roteia microfone e alto-fal
 > ou com o backend certo; "Pair with ii tools" na aba Phone; KDE Connect deixou de ser
 > obrigatório. Passo 3a feito: a mídia do celular vira players MPRIS no PC (helper com zbus,
 > lado do app a partir do Sefirah). Passo 3b feito: o player ativo do PC vira uma sessão de
-> mídia no celular (tela de bloqueio e Quick Settings) com play, pular e seek. Próximos:
-> teclado e mouse remotos, navegar arquivos, comandos.
+> mídia no celular (tela de bloqueio e Quick Settings) com play, pular e seek. Passo 4 feito:
+> os arquivos do celular no gerenciador de arquivos do PC (SFTP + sshfs, a partir do
+> KDE Connect). Próximos: teclado e mouse remotos, comandos.
 
 Uma feature por vez, com o KDE Connect como fallback enquanto o app não estiver pareado:
 SMS (ler e responder), controle de mídia do PC no celular (`MediaSession`), achar o celular,

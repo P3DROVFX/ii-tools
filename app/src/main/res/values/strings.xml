@@ -209,6 +209,12 @@
     <string name="act_found">Found it</string>
     <string name="pclink_media">Show the phone\'s media on the PC</string>
     <string name="pclink_pc_media">Show the PC\'s media here</string>
+    <string name="pclink_files">Let the PC browse files</string>
+    <string name="perm_files">All files access</string>
+    <string name="perm_files_body">So the PC\'s file manager can open the phone\'s storage</string>
+    <string name="files_channel">Files</string>
+    <string name="files_permission_title">The PC wants to open your files</string>
+    <string name="files_permission_text">Tap to allow ii tools to access all files</string>
     <string name="pcmedia_channel">PC media</string>
     <string name="pcmedia_play">Play</string>
     <string name="pcmedia_pause">Pause</string>

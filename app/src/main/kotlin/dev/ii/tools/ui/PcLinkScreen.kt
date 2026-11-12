@@ -8,7 +8,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.ii.tools.R
+import dev.ii.tools.files.FileServer
 import dev.ii.tools.pclive.DndSync
 import dev.ii.tools.pclive.PcLive
 
@@ -21,6 +23,12 @@ fun PcLinkScreen(onBack: () -> Unit) {
     var dnd by remember { mutableStateOf(DndSync.isEnabled(ctx)) }
     var media by remember { mutableStateOf(dev.ii.tools.media.PhoneMedia.isEnabled(ctx)) }
     var pcMedia by remember { mutableStateOf(dev.ii.tools.media.PcMedia.isEnabled(ctx)) }
+    var files by remember { mutableStateOf(FileServer.isEnabled(ctx)) }
+    var filesGranted by remember { mutableStateOf(FileServer.hasPermission()) }
+    LifecycleResumeEffect(Unit) {
+        filesGranted = FileServer.hasPermission()
+        onPauseOrDispose { }
+    }
 
     ToolScaffold(title = stringResource(R.string.pclink_title), onBack = onBack) {
         item { Hint(stringResource(R.string.pclink_hint)) }
@@ -34,6 +42,19 @@ fun PcLinkScreen(onBack: () -> Unit) {
                         icon = R.drawable.rounded_notifications,
                         granted = false,
                         onGrant = { ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
+                    )
+                }
+            }
+        }
+        if (files && !filesGranted) {
+            item {
+                CardGroup {
+                    PermissionRow(
+                        title = stringResource(R.string.perm_files),
+                        body = stringResource(R.string.perm_files_body),
+                        icon = R.drawable.rounded_folder_open,
+                        granted = false,
+                        onGrant = { ctx.startActivity(FileServer.permissionIntent(ctx)) },
                     )
                 }
             }
@@ -72,6 +93,17 @@ fun PcLinkScreen(onBack: () -> Unit) {
                     tint = if (pcMedia) Tint.PRIMARY else Tint.SECONDARY,
                     onClick = { togglePcMedia(!pcMedia) },
                     trailing = { Switch(checked = pcMedia, onCheckedChange = togglePcMedia) },
+                )
+                val toggleFiles = { on: Boolean ->
+                    files = on
+                    FileServer.setEnabled(ctx, on)
+                }
+                ToolRow(
+                    title = stringResource(R.string.pclink_files),
+                    icon = R.drawable.rounded_folder_open,
+                    tint = if (files) Tint.PRIMARY else Tint.SECONDARY,
+                    onClick = { toggleFiles(!files) },
+                    trailing = { Switch(checked = files, onCheckedChange = toggleFiles) },
                 )
                 val toggleDnd = { on: Boolean ->
                     dnd = on

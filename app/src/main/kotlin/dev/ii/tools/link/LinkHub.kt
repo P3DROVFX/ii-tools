@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.files.FileServer
 import dev.ii.tools.media.PcMedia
 import dev.ii.tools.media.PhoneMedia
 import dev.ii.tools.pcactions.PcActions
@@ -271,6 +272,7 @@ object LinkHub {
         PhoneMedia.caps(app).forEach { caps.put(it) }
         PcMedia.caps(app).forEach { caps.put(it) }
         caps.put("launcherIcons")
+        FileServer.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -522,6 +524,7 @@ object LinkHub {
         _deck.value = null
         _apps.value = null
         PcMedia.clear()
+        FileServer.stop()
     }
 
     private fun remember(pc: PairedPc, host: String) {
@@ -625,6 +628,7 @@ object LinkHub {
             "act" -> PcActions.handle(app, m)
             "mediaCmd" -> PhoneMedia.command(m)
             "pcMedia" -> PcMedia.update(app, m)
+            "files" -> FileServer.command(app, m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
         }
