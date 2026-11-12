@@ -146,3 +146,15 @@ and wakelocks).
 Sideloaded apps on Android 13+ need *Allow restricted settings* (App info → ⋮) before
 notification access can be switched on from the phone; the `allow_listener` line does
 it over adb.
+
+## License
+
+ii tools is free software under the **GNU General Public License v3.0 or later**
+(`GPL-3.0-or-later`); see [LICENSE](LICENSE).
+
+It reuses code from [KDE Connect Android](https://invent.kde.org/network/kdeconnect-android)
+(GPL-2.0-only OR GPL-3.0-only, taken under GPL-3.0) and
+[Sefirah](https://github.com/shrimqy/Sefirah-Android) (GPL-3.0) where they already solve a
+problem well. Files that come from them keep their original copyright and license
+notice, with a line saying what changed.
+
