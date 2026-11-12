@@ -96,6 +96,11 @@
             android:name=".PhoneDataActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".PerfActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"

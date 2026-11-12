@@ -123,6 +123,16 @@ object LinkHub {
     val deck: StateFlow<List<DeckAction>?> = _deck.asStateFlow()
     private val _apps = MutableStateFlow<List<PcApp>?>(null)
     val apps: StateFlow<List<PcApp>?> = _apps.asStateFlow()
+    private val _perf = MutableStateFlow<PcPerf?>(null)
+    val perf: StateFlow<PcPerf?> = _perf.asStateFlow()
+    @Volatile private var perfWanted = false
+
+    /** The performance panel is on screen: the PC samples only while it is. */
+    fun subscribePerf(on: Boolean) {
+        perfWanted = on
+        if (!on) _perf.value = null
+        socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", on).toString())
+    }
 
     private lateinit var app: Context
     private var session: Job? = null
@@ -566,6 +576,8 @@ object LinkHub {
                 )
                 if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
                 if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
+                // A panel open across a reconnect asks again.
+                if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
                 // The PC takes notifications: give it the whole list, and the live
                 // updates their link path.
                 if (isOnline()) {
@@ -585,6 +597,7 @@ object LinkHub {
             "audio" -> _audio.value = Topics.audio(m)
             "deck" -> _deck.value = DeckTopics.deck(m)
             "apps" -> _apps.value = DeckTopics.apps(m)
+            "perf" -> if (perfWanted) _perf.value = PcPerf.from(m)
             "icons" -> Symbols.put(DeckTopics.paths(m))
             "ok" -> pending.remove(m.optInt("id"))?.complete(null)
             "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })

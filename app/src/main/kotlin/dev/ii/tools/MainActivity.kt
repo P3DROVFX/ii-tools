@@ -27,6 +27,7 @@ import dev.ii.tools.ui.LinkScreen
 import dev.ii.tools.ui.LiveScreen
 import dev.ii.tools.ui.NotifsScreen
 import dev.ii.tools.ui.PcLinkScreen
+import dev.ii.tools.ui.PerfScreen
 import dev.ii.tools.ui.PhoneDataScreen
 import dev.ii.tools.ui.RemoteScreen
 import dev.ii.tools.ui.ShareScreen
@@ -67,6 +68,7 @@ class MainActivity : ScreenActivity() {
         onOpenShots = { open(ShotsActivity::class.java) },
         onOpenPhoneData = { open(PhoneDataActivity::class.java) },
         onOpenPcLink = { open(PcLinkActivity::class.java) },
+        onOpenPerf = { open(PerfActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -200,4 +202,10 @@ class PhoneDataActivity : ScreenActivity() {
 class PcLinkActivity : ScreenActivity() {
     @Composable
     override fun Screen() = PcLinkScreen(onBack = ::finish)
+}
+
+/** The performance panel; turning sideways keeps it, instead of rebuilding it. */
+class PerfActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = PerfScreen(onBack = ::finish)
 }

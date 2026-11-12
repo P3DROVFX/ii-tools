@@ -188,4 +188,13 @@
     <string name="wake_sent">Pacote enviado; conecta quando ele ligar</string>
     <string name="wake_failed">Não deu para enviar nesta rede</string>
     <string name="tile_wake">Acordar PC</string>
+    <string name="perf_title">Desempenho</string>
+    <string name="perf_off">O painel de desempenho está desligado no PC (Configurações → ii tools).</string>
+    <string name="perf_waiting">Aguardando a primeira amostra…</string>
+    <string name="perf_cpu">CPU</string>
+    <string name="perf_gpu">GPU</string>
+    <string name="perf_ram">Memória</string>
+    <string name="perf_fps">Quadros por segundo</string>
+    <string name="perf_no_fps">Nenhum jogo com MangoHud</string>
+    <string name="perf_gpu_asleep">Em repouso</string>
 </resources>

@@ -87,6 +87,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Wake the PC:** the shell gives the phone its adapters' MAC addresses; *Wake the PC*
   (in Connect to PC, or the Quick Settings tile) sends the Wake-on-LAN magic packet. The
   PC needs Wake-on-LAN on in its firmware and adapter.
+- **Performance:** the PC's CPU, GPU, memory and frame rate (MangoHud), a sample a
+  second, only while the screen is open; the PC samples only then. The screen stays on,
+  four cards side by side with the phone lying down.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

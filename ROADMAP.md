@@ -262,6 +262,9 @@ O app já tem o `NotificationListenerService`; este é o primeiro pedaço do KDE
 
 ## Fase 2 — Baratas
 
+> **Status (2026-11-11): concluída**, menos o alarme do celular no clock app (pulado) e o
+> hotspot do celular (impossível para app comum).
+
 > **Mudança de base (2026-11-11):** o link passou a ficar aberto em segundo plano
 > ("Manter conectado", padrão), com ping a cada 60 s e saída da otimização de bateria;
 > sem isso o PC não alcançava o celular parado e as funções PC → celular falhavam.
@@ -366,6 +369,10 @@ aparece no popup de preview do shell (`ScreenshotOverlay`).
 Ligar o hotspot do celular pelo shell (`Hotspot.qml`); acordar o PC pelo app (magic packet).
 
 ### 2.9 Painel de desempenho · **S**
+
+> **Status (2026-11-11): implementado.** Tela Desempenho: CPU, GPU (com VRAM e potência),
+> RAM e FPS (MangoHud), uma amostra por segundo, só com a tela aberta (o PC liga o sampler
+> do HUD só durante a assinatura), tela sempre ligada, quatro cartões lado a lado deitado.
 
 Com o game mode ativo, o celular deitado mostra CPU, GPU, temperaturas, RAM e FPS (dados do
 `ResourceUsage`, tópico assinado só com a tela aberta, no máximo 1 Hz). Pode ser uma página do

@@ -189,4 +189,13 @@
     <string name="wake_sent">Magic packet sent; connecting when it is up</string>
     <string name="wake_failed">Couldn\'t send it on this network</string>
     <string name="tile_wake">Wake PC</string>
+    <string name="perf_title">Performance</string>
+    <string name="perf_off">The performance panel is switched off on the PC (Settings → ii tools).</string>
+    <string name="perf_waiting">Waiting for the first sample…</string>
+    <string name="perf_cpu">CPU</string>
+    <string name="perf_gpu">GPU</string>
+    <string name="perf_ram">Memory</string>
+    <string name="perf_fps">Frame rate</string>
+    <string name="perf_no_fps">No game with MangoHud</string>
+    <string name="perf_gpu_asleep">Asleep</string>
 </resources>
