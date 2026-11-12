@@ -3,6 +3,7 @@ package dev.ii.tools.live
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.notify.NotifMirror
+import dev.ii.tools.media.PhoneMedia
 import dev.ii.tools.pclive.DndSync
 import dev.ii.tools.phonedata.PhoneData
 import dev.ii.tools.shots.ShotSync
@@ -80,6 +81,7 @@ class LiveListener : NotificationListenerService() {
         ShotSync.start(this)
         PhoneData.start(this)
         DndSync.start(this)
+        PhoneMedia.start(this)
         LinkHub.announceCaps()
     }
 
@@ -95,6 +97,7 @@ class LiveListener : NotificationListenerService() {
         ShotSync.stop()
         PhoneData.stop()
         DndSync.stop(this)
+        PhoneMedia.stop()
     }
 
     override fun onDestroy() {

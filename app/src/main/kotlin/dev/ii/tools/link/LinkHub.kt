@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.media.PhoneMedia
 import dev.ii.tools.pcactions.PcActions
 import dev.ii.tools.pclive.DndSync
 import dev.ii.tools.pclive.PcLive
@@ -265,6 +266,7 @@ object LinkHub {
         PhoneData.caps(app).forEach { caps.put(it) }
         DndSync.caps(app).forEach { caps.put(it) }
         PcLive.caps(app).forEach { caps.put(it) }
+        PhoneMedia.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -578,6 +580,7 @@ object LinkHub {
                 )
                 if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
                 if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
+                if (_shell.value?.caps?.contains("media") == true) PhoneMedia.sendAll()
                 // A panel open across a reconnect asks again.
                 if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
                 // The PC takes notifications: give it the whole list, and the live
@@ -612,6 +615,7 @@ object LinkHub {
             "notifAct" -> NotifMirror.command(m)
             "clip" -> ClipSync.receive(app, m)
             "act" -> PcActions.handle(app, m)
+            "mediaCmd" -> PhoneMedia.command(m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
         }

@@ -19,6 +19,7 @@ fun PcLinkScreen(onBack: () -> Unit) {
     val status = rememberDeviceStatus()
     var live by remember { mutableStateOf(PcLive.isEnabled(ctx)) }
     var dnd by remember { mutableStateOf(DndSync.isEnabled(ctx)) }
+    var media by remember { mutableStateOf(dev.ii.tools.media.PhoneMedia.isEnabled(ctx)) }
 
     ToolScaffold(title = stringResource(R.string.pclink_title), onBack = onBack) {
         item { Hint(stringResource(R.string.pclink_hint)) }
@@ -48,6 +49,17 @@ fun PcLinkScreen(onBack: () -> Unit) {
                     tint = if (live) Tint.PRIMARY else Tint.SECONDARY,
                     onClick = { toggleLive(!live) },
                     trailing = { Switch(checked = live, onCheckedChange = toggleLive) },
+                )
+                val toggleMedia = { on: Boolean ->
+                    media = on
+                    dev.ii.tools.media.PhoneMedia.setEnabled(ctx, on)
+                }
+                ToolRow(
+                    title = stringResource(R.string.pclink_media),
+                    icon = R.drawable.rounded_music_note,
+                    tint = if (media) Tint.PRIMARY else Tint.SECONDARY,
+                    onClick = { toggleMedia(!media) },
+                    trailing = { Switch(checked = media, onCheckedChange = toggleMedia) },
                 )
                 val toggleDnd = { on: Boolean ->
                     dnd = on

@@ -418,8 +418,9 @@ no PipeWire / oFono da distro. Se funcionar, o shell roteia microfone e alto-fal
 > Phone, o dock, widgets e toggles funcionam sem KDE Connect; tocar para achar, ping, link,
 > texto e arquivo para Downloads vão pelo link. Passo 2 feito: textos e telas vazias neutros
 > ou com o backend certo; "Pair with ii tools" na aba Phone; KDE Connect deixou de ser
-> obrigatório. Próximos: as funções ainda só do KDE Connect (controle de mídia com o Sefirah
-> de referência, teclado e mouse remotos, navegar arquivos, comandos).
+> obrigatório. Passo 3a feito: a mídia do celular vira players MPRIS no PC (helper com zbus,
+> lado do app a partir do Sefirah). Próximos: a mídia do PC no celular (MediaSession), teclado
+> e mouse remotos, navegar arquivos, comandos.
 
 Uma feature por vez, com o KDE Connect como fallback enquanto o app não estiver pareado:
 SMS (ler e responder), controle de mídia do PC no celular (`MediaSession`), achar o celular,

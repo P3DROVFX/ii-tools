@@ -90,6 +90,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Performance:** the PC's CPU, GPU, memory and frame rate (MangoHud), a sample a
   second, only while the screen is open; the PC samples only then. The screen stays on,
   four cards side by side with the phone lying down.
+- **Phone media on the PC:** each app playing on the phone appears on the PC as an MPRIS
+  player (title, artist, cover, position), so the shell's media widgets, island, lock
+  screen and media keys control it, as with KDE Connect.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach
@@ -156,5 +159,7 @@ It reuses code from [KDE Connect Android](https://invent.kde.org/network/kdeconn
 (GPL-2.0-only OR GPL-3.0-only, taken under GPL-3.0) and
 [Sefirah](https://github.com/shrimqy/Sefirah-Android) (GPL-3.0) where they already solve a
 problem well. Files that come from them keep their original copyright and license
-notice, with a line saying what changed.
+notice, with a line saying what changed. Reused so far:
+
+- `media/PhoneMedia.kt`: from Sefirah's `PlaybackFeature` and `MediaSession`.
 
