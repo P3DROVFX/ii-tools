@@ -185,4 +185,8 @@
     <string name="link_stay">Stay connected</string>
     <string name="link_battery">Allow background use</string>
     <string name="link_battery_body">So Android\'s battery saving does not cut the connection while the phone sleeps. Tap Allow, then confirm.</string>
+    <string name="wake_pc">Wake the PC</string>
+    <string name="wake_sent">Magic packet sent; connecting when it is up</string>
+    <string name="wake_failed">Couldn\'t send it on this network</string>
+    <string name="tile_wake">Wake PC</string>
 </resources>

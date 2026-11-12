@@ -151,3 +151,31 @@ class ClipTile : TileService() {
         startActivityAndCollapse(PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE))
     }
 }
+
+/** Wake-on-LAN for the paired PC, from the panel. */
+class WakeTile : TileService() {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    override fun onStartListening() {
+        qsTile?.apply {
+            state = if (dev.ii.tools.link.Wake.available(this@WakeTile)) Tile.STATE_INACTIVE else Tile.STATE_UNAVAILABLE
+            subtitle = null
+            updateTile()
+        }
+    }
+
+    override fun onClick() {
+        scope.launch {
+            val sent = LinkHub.wake()
+            qsTile?.apply {
+                subtitle = getString(if (sent) R.string.wake_sent else R.string.wake_failed)
+                updateTile()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        scope.coroutineContext[Job]?.cancel()
+        super.onDestroy()
+    }
+}

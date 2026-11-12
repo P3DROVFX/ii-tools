@@ -84,6 +84,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **PC activity:** the screen recording, the pomodoro, the stopwatch, countdowns, a
   ringing alarm and progress as Android 16 Live Updates, with their buttons (stop, pause,
   snooze). Timers count down on the phone by themselves.
+- **Wake the PC:** the shell gives the phone its adapters' MAC addresses; *Wake the PC*
+  (in Connect to PC, or the Quick Settings tile) sends the Wake-on-LAN magic packet. The
+  PC needs Wake-on-LAN on in its firmware and adapter.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach

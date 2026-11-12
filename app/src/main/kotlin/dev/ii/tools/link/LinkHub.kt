@@ -257,6 +257,16 @@ object LinkHub {
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
+    /** Wakes the PC (Wake-on-LAN), then keeps trying to reach it while it boots. */
+    suspend fun wake(): Boolean {
+        val sent = Wake.send(app)
+        if (sent) {
+            networkEpoch.value++
+            if (session?.isActive != true) retry()
+        }
+        return sent
+    }
+
     /** Try again now, skipping whatever backoff is running. */
     fun retry() {
         endSession()
@@ -547,6 +557,7 @@ object LinkHub {
                         add(ShellAction(a.optString("id"), a.optString("name"), a.optString("icon"), a.optBoolean("toggle")))
                     }
                 }
+                Wake.remember(app, m.optJSONArray("wake"))
                 val caps = m.optJSONArray("caps")
                 _shell.value = ShellInfo(
                     name = m.optString("name"),

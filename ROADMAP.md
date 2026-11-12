@@ -357,6 +357,12 @@ aparece no popup de preview do shell (`ScreenshotOverlay`).
 
 ### 2.8 Hotspot e Wake-on-LAN · **XS**
 
+> **Status (2026-11-11): Wake-on-LAN implementado; hotspot não.** O shell manda no `hello`
+> os MACs e broadcasts dos adaptadores; o app guarda e envia o pacote mágico (linha em
+> Conectar ao PC e tile). Depende de WoL ligado no firmware/adaptador. Ligar o hotspot do
+> celular não é possível para app comum (API de sistema `TETHER_PRIVILEGED`); só com ADB,
+> root ou Shizuku.
+
 Ligar o hotspot do celular pelo shell (`Hotspot.qml`); acordar o PC pelo app (magic packet).
 
 ### 2.9 Painel de desempenho · **S**

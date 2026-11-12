@@ -184,4 +184,8 @@
     <string name="link_stay">Manter conectado</string>
     <string name="link_battery">Permitir uso em segundo plano</string>
     <string name="link_battery_body">Para a economia de bateria do Android não cortar a conexão enquanto o celular dorme. Toque em Permitir e confirme.</string>
+    <string name="wake_pc">Acordar o PC</string>
+    <string name="wake_sent">Pacote enviado; conecta quando ele ligar</string>
+    <string name="wake_failed">Não deu para enviar nesta rede</string>
+    <string name="tile_wake">Acordar PC</string>
 </resources>

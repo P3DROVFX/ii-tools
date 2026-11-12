@@ -96,6 +96,8 @@ fun LinkScreen(onBack: () -> Unit) {
     }
     var confirmForget by remember { mutableStateOf(false) }
     var stays by remember { mutableStateOf(LinkHub.staysConnected()) }
+    val wakeScope = rememberCoroutineScope()
+    var woke by remember { mutableStateOf<Boolean?>(null) }
     var unrestricted by remember { mutableStateOf(LinkHub.batteryUnrestricted()) }
     LifecycleResumeEffect(Unit) {
         unrestricted = LinkHub.batteryUnrestricted()
@@ -170,6 +172,16 @@ fun LinkScreen(onBack: () -> Unit) {
                     onClick = { toggleStay(!stays) },
                     trailing = { androidx.compose.material3.Switch(checked = stays, onCheckedChange = toggleStay) },
                 )
+                // Wake-on-LAN, once the PC has said its adapters (any hello).
+                if (dev.ii.tools.link.Wake.available(ctx) && status !is LinkStatus.Online) {
+                    ToolRow(
+                        title = stringResource(R.string.wake_pc),
+                        summary = woke?.let { stringResource(if (it) R.string.wake_sent else R.string.wake_failed) },
+                        icon = R.drawable.rounded_power_settings_new,
+                        tint = Tint.TERTIARY,
+                        onClick = { wakeScope.launch { woke = LinkHub.wake() } },
+                    )
+                }
                 ToolRow(
                     title = stringResource(R.string.link_address),
                     summary = "${current.hosts.firstOrNull().orEmpty()}:${current.port}",
