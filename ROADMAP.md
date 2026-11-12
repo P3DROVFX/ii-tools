@@ -430,6 +430,11 @@ envio de arquivos, ping, compartilhamento de URL. Cada uma vira um toggle na pá
 
 ### 3.6 Touchpad e teclado · **M**
 
+> **Em andamento (2026-11-12).** Celular → PC feito: touchpad uinput multitouch (os gestos e
+> configurações do touchpad do usuário valem) e teclado virtual do Wayland (qualquer
+> caractere). Falta o PC → celular (o remotekeyboard do KDE Connect, na página de teclado
+> da aba Phone).
+
 Celular como touchpad (gestos de vários dedos mapeados para o Hyprland) e teclado, via uinput.
 Substitui o mousepad e o remotekeyboard do KDE Connect.
 

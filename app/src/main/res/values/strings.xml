@@ -210,6 +210,14 @@
     <string name="pclink_media">Show the phone\'s media on the PC</string>
     <string name="pclink_pc_media">Show the PC\'s media here</string>
     <string name="pclink_files">Let the PC browse files</string>
+    <string name="touchpad_title">Touchpad</string>
+    <string name="touchpad_left">Left</string>
+    <string name="touchpad_right">Right</string>
+    <string name="touchpad_keyboard">Keyboard</string>
+    <string name="touchpad_hint">One finger moves, a tap clicks, two fingers scroll, three or four swipe like your touchpad</string>
+    <string name="touchpad_offline">Waiting for the PC…</string>
+    <string name="touchpad_off">Touchpad and keyboard are off in the PC\'s ii tools settings</string>
+    <string name="touchpad_err_uinput">The PC cannot create a touchpad: its user needs write access to /dev/uinput (the input group). The keyboard still works.</string>
     <string name="perm_files">All files access</string>
     <string name="perm_files_body">So the PC\'s file manager can open the phone\'s storage</string>
     <string name="files_channel">Files</string>

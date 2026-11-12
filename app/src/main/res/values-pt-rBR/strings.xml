@@ -209,6 +209,14 @@
     <string name="pclink_media">Mostrar a mídia do celular no PC</string>
     <string name="pclink_pc_media">Mostrar a mídia do PC aqui</string>
     <string name="pclink_files">Deixar o PC navegar nos arquivos</string>
+    <string name="touchpad_title">Touchpad</string>
+    <string name="touchpad_left">Esquerdo</string>
+    <string name="touchpad_right">Direito</string>
+    <string name="touchpad_keyboard">Teclado</string>
+    <string name="touchpad_hint">Um dedo move, um toque clica, dois dedos rolam, três ou quatro fazem os gestos do seu touchpad</string>
+    <string name="touchpad_offline">Esperando o PC…</string>
+    <string name="touchpad_off">Touchpad e teclado estão desligados nas configurações do ii tools no PC</string>
+    <string name="touchpad_err_uinput">O PC não consegue criar um touchpad: o usuário precisa de acesso a /dev/uinput (grupo input). O teclado continua funcionando.</string>
     <string name="perm_files">Acesso a todos os arquivos</string>
     <string name="perm_files_body">Para o gerenciador de arquivos do PC abrir o armazenamento do celular</string>
     <string name="files_channel">Arquivos</string>

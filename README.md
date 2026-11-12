@@ -93,6 +93,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Phone media on the PC:** each app playing on the phone appears on the PC as an MPRIS
   player (title, artist, cover, position), so the shell's media widgets, island, lock
   screen and media keys control it, as with KDE Connect.
+- **Touchpad and keyboard:** the phone as the PC's touchpad (a real multitouch touchpad
+  for libinput: tap to click, two-finger scroll, three and four-finger gestures, your
+  touchpad settings) and keyboard (any character, whatever the PC's layout).
 - **Phone files on the PC:** the PC's file manager opens the phone's storage (an SFTP
   server that runs only while the PC uses it, mounted with sshfs), as with KDE Connect.
   Needs *All files access*.
