@@ -5,6 +5,7 @@
     <!-- ii link: the socket to the paired PC on the LAN (Android 17 gates the LAN
          behind ACCESS_LOCAL_NETWORK, a runtime permission). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- Staying connected in the background: Doze would cut the link otherwise. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -173,6 +174,11 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/clip_watch_service" />
         </service>
+
+        <!-- "Found it" on the find-my-phone ring. -->
+        <receiver
+            android:name=".pcactions.FoundReceiver"
+            android:exported="false" />
 
         <!-- Buttons on the PC's live updates. -->
         <receiver

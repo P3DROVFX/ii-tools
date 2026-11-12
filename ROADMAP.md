@@ -413,6 +413,13 @@ no PipeWire / oFono da distro. Se funcionar, o shell roteia microfone e alto-fal
 
 ### 3.5 Substituir o resto do KDE Connect · **L**
 
+> **Em andamento (2026-11-11).** Passo 1 feito: o shell lista o celular do ii tools como um
+> dispositivo do `KdeConnectService` e o prefere ao KDE Connect para o mesmo celular; a aba
+> Phone, o dock, widgets e toggles funcionam sem KDE Connect; tocar para achar, ping, link,
+> texto e arquivo para Downloads vão pelo link. Próximos: textos e placeholders que falam de
+> KDE Connect, depois as funções ainda só do KDE Connect (controle de mídia com o Sefirah de
+> referência, teclado e mouse remotos, navegar arquivos, comandos).
+
 Uma feature por vez, com o KDE Connect como fallback enquanto o app não estiver pareado:
 SMS (ler e responder), controle de mídia do PC no celular (`MediaSession`), achar o celular,
 envio de arquivos, ping, compartilhamento de URL. Cada uma vira um toggle na página `ii tools`.

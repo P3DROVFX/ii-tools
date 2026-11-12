@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.pcactions.PcActions
 import dev.ii.tools.pclive.DndSync
 import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.phonedata.PhoneData
@@ -549,6 +550,7 @@ object LinkHub {
         scope.launch {
             val ok = when (inc.purpose) {
                 "screenshot" -> ShotSync.savePcShot(app, inc.file, inc.name)
+                "share" -> PcActions.saveDownload(app, inc.file, inc.name)
                 else -> false
             }
             inc.file.delete()
@@ -609,6 +611,7 @@ object LinkHub {
             }
             "notifAct" -> NotifMirror.command(m)
             "clip" -> ClipSync.receive(app, m)
+            "act" -> PcActions.handle(app, m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
         }

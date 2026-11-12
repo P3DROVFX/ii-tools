@@ -198,4 +198,13 @@
     <string name="perf_fps">Frame rate</string>
     <string name="perf_no_fps">No game with MangoHud</string>
     <string name="perf_gpu_asleep">Asleep</string>
+    <string name="act_channel">From the PC</string>
+    <string name="act_find_channel">Find my phone</string>
+    <string name="act_ping">Ping from %1$s</string>
+    <string name="act_link">Link from the PC</string>
+    <string name="act_text">Text from the PC</string>
+    <string name="act_file">File from %1$s</string>
+    <string name="act_find_title">Looking for this phone</string>
+    <string name="act_find_body">%1$s is ringing it. Tap to stop.</string>
+    <string name="act_found">Found it</string>
 </resources>

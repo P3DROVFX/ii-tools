@@ -197,4 +197,13 @@
     <string name="perf_fps">Quadros por segundo</string>
     <string name="perf_no_fps">Nenhum jogo com MangoHud</string>
     <string name="perf_gpu_asleep">Em repouso</string>
+    <string name="act_channel">Do PC</string>
+    <string name="act_find_channel">Encontrar o celular</string>
+    <string name="act_ping">Ping de %1$s</string>
+    <string name="act_link">Link do PC</string>
+    <string name="act_text">Texto do PC</string>
+    <string name="act_file">Arquivo de %1$s</string>
+    <string name="act_find_title">Procurando este celular</string>
+    <string name="act_find_body">%1$s está fazendo ele tocar. Toque para parar.</string>
+    <string name="act_found">Achei</string>
 </resources>
