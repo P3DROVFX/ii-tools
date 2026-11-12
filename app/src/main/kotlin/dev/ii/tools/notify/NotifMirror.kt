@@ -42,6 +42,7 @@ object NotifMirror {
     private const val ENABLED = "enabled"
     private const val ICONS_SENT = "iconsSent"
     private const val IMAGE_MAX = 480
+    private const val AVATAR_MAX = 128
     private const val ICON_SIZE = 96
     /** The system's own placeholders ("2 more notifications", media holders), never news. */
     private val SYSTEM = setOf("android", "com.android.systemui")
@@ -75,6 +76,9 @@ object NotifMirror {
         listener = service
         _running.value = isEnabled(service)
         LinkHub.announceCaps()
+        // The link may have come up first (the app just updated): its hello found no
+        // listener, so the list goes now.
+        if (LinkHub.isOnline()) sendAll()
     }
 
     fun onListenerGone(service: NotificationListenerService) {
@@ -143,7 +147,10 @@ object NotifMirror {
             .put("title", title)
             .put("text", text)
             .put("time", sbn.postTime)
-        image(ctx, n)?.let { o.put("image", it) }
+        images(ctx, n).let { (image, avatar) ->
+            image?.let { o.put("image", it) }
+            avatar?.let { o.put("avatar", it) }
+        }
         val actions = JSONArray()
         n.actions?.forEachIndexed { i, a ->
             val input = a.remoteInputs?.firstOrNull { it.allowFreeFormInput }
@@ -156,14 +163,33 @@ object NotifMirror {
         return o
     }
 
-    /** A big picture, or the large icon (a sender's photo): small JPEG, base64. */
-    private fun image(ctx: Context, n: Notification): String? = runCatching {
+    /**
+     * The content picture and the sender's photo, apart (small JPEGs, base64): a big
+     * picture is content; the large icon is a person (a chat's sender, a mail's
+     * contact) when square, and content (a video thumbnail, a product) when not.
+     */
+    private fun images(ctx: Context, n: Notification): Pair<String?, String?> {
         val e = n.extras
-        val bmp: Bitmap = e.getParcelable(Notification.EXTRA_PICTURE, Bitmap::class.java)
-            ?: e.getParcelable(Notification.EXTRA_PICTURE_ICON, Icon::class.java)?.loadDrawable(ctx)?.toBitmap()
-            ?: n.getLargeIcon()?.loadDrawable(ctx)?.toBitmap()
-            ?: return null
-        val scale = minOf(1f, IMAGE_MAX.toFloat() / maxOf(bmp.width, bmp.height))
+        val picture = runCatching {
+            e.getParcelable(Notification.EXTRA_PICTURE, Bitmap::class.java)
+                ?: e.getParcelable(Notification.EXTRA_PICTURE_ICON, Icon::class.java)?.loadDrawable(ctx)?.toBitmap()
+        }.getOrNull()
+        val large = runCatching { n.getLargeIcon()?.loadDrawable(ctx)?.toBitmap() }.getOrNull()
+        val largeIsContent = large != null && kotlin.math.abs(large.width.toFloat() / large.height.coerceAtLeast(1) - 1f) > 0.08f
+        val content = picture ?: large?.takeIf { largeIsContent }
+        // Chat apps (Telegram) may leave the large icon out and put the photo on the
+        // last message's sender.
+        val person = large?.takeIf { !largeIsContent } ?: runCatching {
+            Notification.MessagingStyle.Message
+                .getMessagesFromBundleArray(e.getParcelableArray(Notification.EXTRA_MESSAGES, android.os.Parcelable::class.java))
+                .lastOrNull()?.senderPerson?.icon?.loadDrawable(ctx)?.toBitmap()
+        }.getOrNull()
+        return encode(content, IMAGE_MAX) to encode(person, AVATAR_MAX)
+    }
+
+    private fun encode(bmp: Bitmap?, max: Int): String? = runCatching {
+        if (bmp == null) return null
+        val scale = minOf(1f, max.toFloat() / maxOf(bmp.width, bmp.height))
         val small = if (scale < 1f) bmp.scale((bmp.width * scale).toInt().coerceAtLeast(1), (bmp.height * scale).toInt().coerceAtLeast(1)) else bmp
         val out = ByteArrayOutputStream()
         small.compress(Bitmap.CompressFormat.JPEG, 78, out)

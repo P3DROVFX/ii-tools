@@ -207,4 +207,10 @@
     <string name="act_find_body">%1$s está fazendo ele tocar. Toque para parar.</string>
     <string name="act_found">Achei</string>
     <string name="pclink_media">Mostrar a mídia do celular no PC</string>
+    <string name="pclink_pc_media">Mostrar a mídia do PC aqui</string>
+    <string name="pcmedia_channel">Mídia do PC</string>
+    <string name="pcmedia_play">Tocar</string>
+    <string name="pcmedia_pause">Pausar</string>
+    <string name="pcmedia_previous">Anterior</string>
+    <string name="pcmedia_next">Próxima</string>
 </resources>

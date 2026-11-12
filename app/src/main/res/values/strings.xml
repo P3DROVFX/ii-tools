@@ -208,4 +208,10 @@
     <string name="act_find_body">%1$s is ringing it. Tap to stop.</string>
     <string name="act_found">Found it</string>
     <string name="pclink_media">Show the phone\'s media on the PC</string>
+    <string name="pclink_pc_media">Show the PC\'s media here</string>
+    <string name="pcmedia_channel">PC media</string>
+    <string name="pcmedia_play">Play</string>
+    <string name="pcmedia_pause">Pause</string>
+    <string name="pcmedia_previous">Previous</string>
+    <string name="pcmedia_next">Next</string>
 </resources>

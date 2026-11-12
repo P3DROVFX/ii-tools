@@ -93,6 +93,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Phone media on the PC:** each app playing on the phone appears on the PC as an MPRIS
   player (title, artist, cover, position), so the shell's media widgets, island, lock
   screen and media keys control it, as with KDE Connect.
+- **PC media on the phone:** what plays on the PC shows as a media player on the phone's
+  lock screen and Quick Settings (title, artist, cover, position), with play, skip and
+  seek. The phone's own players are never echoed back.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; the app bundles only what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach
@@ -162,4 +165,5 @@ problem well. Files that come from them keep their original copyright and licens
 notice, with a line saying what changed. Reused so far:
 
 - `media/PhoneMedia.kt`: from Sefirah's `PlaybackFeature` and `MediaSession`.
+- `media/PcMedia.kt`: after Sefirah's `RemotePlaybackFeature`.
 

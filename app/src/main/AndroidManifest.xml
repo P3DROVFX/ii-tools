@@ -185,6 +185,11 @@
             android:name=".pclive.PcLiveAction"
             android:exported="false" />
 
+        <!-- Buttons on the PC's media notification. -->
+        <receiver
+            android:name=".media.PcMediaAction"
+            android:exported="false" />
+
         <activity
             android:name=".PcLinkActivity"
             android:exported="false" />

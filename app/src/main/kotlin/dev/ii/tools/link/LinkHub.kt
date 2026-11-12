@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.media.PcMedia
 import dev.ii.tools.media.PhoneMedia
 import dev.ii.tools.pcactions.PcActions
 import dev.ii.tools.pclive.DndSync
@@ -29,6 +30,7 @@ import dev.ii.tools.phonedata.PhoneData
 import dev.ii.tools.shots.ShotSync
 import dev.ii.tools.live.LiveHub
 import dev.ii.tools.notify.NotifMirror
+import dev.ii.tools.phonedata.LauncherIcons
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -267,6 +269,8 @@ object LinkHub {
         DndSync.caps(app).forEach { caps.put(it) }
         PcLive.caps(app).forEach { caps.put(it) }
         PhoneMedia.caps(app).forEach { caps.put(it) }
+        PcMedia.caps(app).forEach { caps.put(it) }
+        caps.put("launcherIcons")
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -517,6 +521,7 @@ object LinkHub {
         _audio.value = null
         _deck.value = null
         _apps.value = null
+        PcMedia.clear()
     }
 
     private fun remember(pc: PairedPc, host: String) {
@@ -553,6 +558,7 @@ object LinkHub {
             val ok = when (inc.purpose) {
                 "screenshot" -> ShotSync.savePcShot(app, inc.file, inc.name)
                 "share" -> PcActions.saveDownload(app, inc.file, inc.name)
+                "pcMediaArt" -> PcMedia.artReceived(app, inc.file, inc.name)
                 else -> false
             }
             inc.file.delete()
@@ -610,12 +616,15 @@ object LinkHub {
             "phone" -> CallWatcher.command(m.optString("a"), m.optString("arg").ifEmpty { null })
             "get" -> when (m.optString("what")) {
                 "contacts" -> PhoneData.onContactsAsked(m.optString("have"))
+                "notifs" -> NotifMirror.sendAll()
+                "launcherIcons" -> m.optJSONArray("pkgs")?.let { k -> LauncherIcons.want(app, List(k.length()) { k.optString(it) }) }
                 "photos" -> m.optJSONArray("keys")?.let { k -> PhoneData.onPhotosAsked(List(k.length()) { k.optString(it) }) }
             }
             "notifAct" -> NotifMirror.command(m)
             "clip" -> ClipSync.receive(app, m)
             "act" -> PcActions.handle(app, m)
             "mediaCmd" -> PhoneMedia.command(m)
+            "pcMedia" -> PcMedia.update(app, m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
         }
