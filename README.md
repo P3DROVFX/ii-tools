@@ -96,6 +96,8 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Call audio on the PC:** answer a call on the PC and talk through its speakers and
   microphone: the PC becomes the phone's Bluetooth headset (HFP) for that call only.
   Needs the phone paired with the PC over Bluetooth.
+- **Drawing pad:** draw on the phone, held sideways, and the ink appears in the shell's
+  live draw on the focused screen, with its tools, colours and undo.
 - **Touchpad and keyboard:** the phone as the PC's touchpad (a real multitouch touchpad
   for libinput: tap to click, two-finger scroll, three and four-finger gestures, your
   touchpad settings) and keyboard (any character, whatever the PC's layout).

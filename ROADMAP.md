@@ -394,12 +394,16 @@ deck.
 
 ### 3.2 Celular como autenticador · **L**
 
+> **Pulado (2026-11-13):** pouca utilidade para o custo e o cuidado de segurança.
+
 Aprovar pedidos do polkit (`PolkitService`), `sudo` (`AskpassService`) e desbloquear o lockscreen
 com a biometria do celular (`BiometricPrompt` + chave no Android Keystore assinando um desafio
 do shell). Precisa de desenho de segurança cuidadoso: desafio de uso único, expiração curta,
 sempre opcional, nunca substitui a senha como fallback.
 
 ### 3.3 Presença · **M**
+
+> **Pulado (2026-11-13):** não vale o custo e o esforço (depende da 3.2 para o desbloqueio).
 
 Celular se afasta (link cai ou BLE fraco) → o shell bloqueia. Celular volta → o shell oferece
 desbloqueio rápido (com a 3.2). Usa o advertising BLE só quando a feature está ligada.
@@ -452,6 +456,9 @@ Substitui o mousepad e o remotekeyboard do KDE Connect.
 ### 4.1 Mesa de desenho para o LiveDraw · **M**
 
 Desenhar no celular (com pressão, se houver caneta) e o traço aparecer no `liveDraw` do PC.
+
+> **Feito (2026-11-13).** A mesa é a tela em foco (mesmo formato); os pontos passam pelo
+> motor do live draw (suavização, ferramentas, borracha, desfazer do PC).
 
 ### 4.2 Apresentação e teleprompter · **S**
 

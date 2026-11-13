@@ -630,6 +630,7 @@ object LinkHub {
             "pcMedia" -> PcMedia.update(app, m)
             "files" -> FileServer.command(app, m)
             "pad" -> dev.ii.tools.touchpad.Touchpad.onReply(m)
+            "draw" -> dev.ii.tools.draw.DrawPad.onMessage(m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
         }

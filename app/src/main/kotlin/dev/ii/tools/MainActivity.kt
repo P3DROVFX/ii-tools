@@ -70,6 +70,7 @@ class MainActivity : ScreenActivity() {
         onOpenPcLink = { open(PcLinkActivity::class.java) },
         onOpenPerf = { open(PerfActivity::class.java) },
         onOpenTouchpad = { open(TouchpadActivity::class.java) },
+        onOpenDraw = { open(DrawActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -203,6 +204,12 @@ class PhoneDataActivity : ScreenActivity() {
 class PcLinkActivity : ScreenActivity() {
     @Composable
     override fun Screen() = PcLinkScreen(onBack = ::finish)
+}
+
+/** The drawing pad: held sideways, like the screen it stands for. */
+class DrawActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = dev.ii.tools.ui.DrawScreen(onBack = ::finish)
 }
 
 /** The touchpad; turning sideways resizes the PC's touchpad instead of rebuilding. */

@@ -210,6 +210,12 @@
     <string name="pclink_pc_media">Mostrar a mídia do PC aqui</string>
     <string name="pclink_files">Deixar o PC navegar nos arquivos</string>
     <string name="touchpad_title">Touchpad</string>
+    <string name="draw_title">Mesa de desenho</string>
+    <string name="draw_hint">Desenhe aqui: o traço aparece no live draw da tela em foco do PC</string>
+    <string name="draw_off">A mesa de desenho está desligada nas configurações do ii tools no PC, ou o live draw está desligado</string>
+    <string name="draw_undo">Desfazer</string>
+    <string name="draw_redo">Refazer</string>
+    <string name="draw_clear">Limpar</string>
     <string name="touchpad_left">Esquerdo</string>
     <string name="touchpad_right">Direito</string>
     <string name="touchpad_keyboard">Teclado</string>

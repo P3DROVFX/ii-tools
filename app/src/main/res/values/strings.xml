@@ -211,6 +211,12 @@
     <string name="pclink_pc_media">Show the PC\'s media here</string>
     <string name="pclink_files">Let the PC browse files</string>
     <string name="touchpad_title">Touchpad</string>
+    <string name="draw_title">Drawing pad</string>
+    <string name="draw_hint">Draw here: the ink appears in live draw on the PC\'s focused screen</string>
+    <string name="draw_off">The drawing pad is off in the PC\'s ii tools settings, or live draw is off</string>
+    <string name="draw_undo">Undo</string>
+    <string name="draw_redo">Redo</string>
+    <string name="draw_clear">Clear</string>
     <string name="touchpad_left">Left</string>
     <string name="touchpad_right">Right</string>
     <string name="touchpad_keyboard">Keyboard</string>
