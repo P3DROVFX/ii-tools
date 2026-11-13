@@ -6,8 +6,14 @@ with the ii shell. It talks to the shell over its own encrypted link (**ii link*
 the live notification relay still rides on the KDE Connect pairing. The plan is in
 [ROADMAP.md](ROADMAP.md).
 
-Kotlin + Jetpack Compose, Material 3 Expressive with Material You dynamic colour.
-Each integration is a destination on the home hub (`Destination` in `MainActivity`).
+Kotlin + Jetpack Compose, Material 3 Expressive with Material You dynamic colour, in
+Google Sans Flex (the ii shell's face). The home is a dashboard of the PC: its card (the
+lock, its state), what plays on it, its volume with output and input as split buttons
+(the device list opens in a bottom sheet), what it is doing live, the tools used most,
+its quick toggles and its load. Every tool is in *Tools*, every permission and switch in
+*Settings* (where pairing lives too); each screen is its own activity (`Dest` →
+`MainActivity`). The webcam and the second screen already have their screens, as
+placeholders until those features exist.
 
 ## Integrations
 
@@ -182,4 +188,9 @@ notice, with a line saying what changed. Reused so far:
 - `media/PcMedia.kt`: after Sefirah's `RemotePlaybackFeature`.
 - `files/FileServer.kt`: from KDE Connect's `SimpleSftpServer` and `SftpPlugin`.
 - `files/NativeStorageFileSystemFactory.kt`: KDE Connect's, unchanged.
+
+The app bundles [Google Sans Flex](https://fonts.google.com/specimen/Google+Sans+Flex)
+(`res/font/google_sans_flex.ttf`), © Google LLC, under the SIL Open Font License 1.1. The
+bundled file keeps its weight, width, roundness and slant axes; grade and optical size
+are pinned (fontTools `instancer`) to save 3 MB.
 

@@ -33,11 +33,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +57,8 @@ import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.present.Presenter
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * The phone as a slide clicker: next and previous (the volume keys too), start, black
@@ -117,7 +117,7 @@ fun PresenterScreen(onBack: () -> Unit) {
     // Held sideways, like a clicker: the laser pad (the screen) on the left, the slide
     // keys under the right thumb.
     Row(
-        Modifier.fillMaxSize().background(cs.surfaceContainer).padding(12.dp),
+        Modifier.fillMaxSize().background(cs.surface).padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // ── Back and the talk's clock ──────────────────────────────────────
@@ -131,7 +131,7 @@ fun PresenterScreen(onBack: () -> Unit) {
                     haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
                     onBack()
                 },
-                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceBright),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceContainer),
             ) { Icon(painterResource(R.drawable.rounded_arrow_back), stringResource(R.string.back)) }
             val secs = ((now - since) / 1000).coerceAtLeast(0)
             TextButton(onClick = {
@@ -156,7 +156,7 @@ fun PresenterScreen(onBack: () -> Unit) {
                 Modifier
                     .aspectRatio(aspect ?: (16f / 9f), matchHeightConstraintsFirst = true)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(if (spot != null) cs.primaryContainer else cs.surfaceBright)
+                    .background(if (spot != null) cs.primaryContainer else cs.surfaceContainer)
                     .pointerInput(ready) {
                         if (!ready) return@pointerInput
                         awaitEachGesture {
@@ -249,7 +249,7 @@ private fun RowScope.SmallKey(@DrawableRes icon: Int, label: String, enabled: Bo
         onClick = onClick,
         enabled = enabled,
         shapes = ButtonDefaults.shapes(),
-        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
+        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.weight(1f).height(64.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

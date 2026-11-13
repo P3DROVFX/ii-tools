@@ -165,6 +165,7 @@ object LinkHub {
         if (::app.isInitialized) return
         app = ctx.applicationContext
         Symbols.init(app)
+        scope.launch { Look.load(app) }
         _pc.value = LinkPrefs.load(app)
         _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Idle
         watchNetwork()
@@ -272,6 +273,7 @@ object LinkHub {
         PhoneMedia.caps(app).forEach { caps.put(it) }
         PcMedia.caps(app).forEach { caps.put(it) }
         caps.put("launcherIcons")
+        Look.caps().forEach { caps.put(it) }
         FileServer.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
@@ -562,6 +564,7 @@ object LinkHub {
                 "screenshot" -> ShotSync.savePcShot(app, inc.file, inc.name)
                 "share" -> PcActions.saveDownload(app, inc.file, inc.name)
                 "pcMediaArt" -> PcMedia.artReceived(app, inc.file, inc.name)
+                "look" -> Look.received(app, inc.file, inc.name)
                 else -> false
             }
             inc.file.delete()
@@ -634,6 +637,7 @@ object LinkHub {
             "present" -> dev.ii.tools.present.Presenter.onMessage(m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
+            "look" -> Look.update(app, m.optString("wall"))
         }
     }
 

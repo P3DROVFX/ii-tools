@@ -25,8 +25,34 @@ import android.os.SystemClock
 import dev.ii.tools.MainActivity
 import dev.ii.tools.R
 import dev.ii.tools.link.LinkHub
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import java.io.File
+
+/** The PC's player as the app's own screens show it; [position] was read at [at] (elapsed realtime). */
+data class PcPlayer(
+    val title: String,
+    val artist: String,
+    val app: String,
+    val playing: Boolean,
+    val position: Long,
+    val length: Long,
+    val rate: Float,
+    val at: Long,
+    val art: Bitmap?,
+    val canNext: Boolean,
+    val canPrevious: Boolean,
+    val canSeek: Boolean,
+) {
+    /** Where the track is at [now] (elapsed realtime). */
+    fun positionAt(now: Long): Long {
+        if (!playing) return position
+        val p = position + ((now - at) * rate).toLong()
+        return if (length > 0) p.coerceIn(0, length) else p
+    }
+}
 
 /**
  * What plays on the PC, as a media player on the phone (PROTOCOL.md, "The PC's media"):
@@ -50,6 +76,10 @@ object PcMedia {
     private var shownAt = 0L
     private var art: Bitmap? = null
     private var artName = ""
+
+    private val _player = MutableStateFlow<PcPlayer?>(null)
+    /** The same player for the home's media card; null when nothing plays. */
+    val player: StateFlow<PcPlayer?> = _player.asStateFlow()
 
     fun isEnabled(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ENABLED, true)
 
@@ -102,6 +132,7 @@ object PcMedia {
     fun clear() {
         main.post {
             current = null
+            _player.value = null
             session?.let {
                 it.isActive = false
                 it.release()
@@ -146,6 +177,20 @@ object PcMedia {
     private fun show(ctx: Context) {
         val m = current ?: return
         val playing = m.optBoolean("playing")
+        _player.value = PcPlayer(
+            title = m.optString("title"),
+            artist = m.optString("artist"),
+            app = m.optString("app"),
+            playing = playing,
+            position = m.optLong("position"),
+            length = m.optLong("length"),
+            rate = m.optDouble("rate", 1.0).toFloat(),
+            at = shownAt,
+            art = art,
+            canNext = m.optBoolean("canNext"),
+            canPrevious = m.optBoolean("canPrevious"),
+            canSeek = m.optBoolean("canSeek"),
+        )
         val s = session ?: MediaSession(ctx, "ii tools PC").also {
             it.setCallback(callback, main)
             session = it

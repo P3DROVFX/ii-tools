@@ -30,11 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +60,8 @@ import dev.ii.tools.R
 import dev.ii.tools.draw.DrawPad
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** A stroke as shown on the phone: a quick echo of what the PC draws, not the record. */
 private class LocalStroke(val color: Color, val width: Float, val alpha: Float, val points: MutableList<Offset>)
@@ -111,7 +111,7 @@ fun DrawScreen(onBack: () -> Unit) {
 
     val s = state
 
-    Row(Modifier.fillMaxSize().background(cs.surfaceContainer).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxSize().background(cs.surface).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // ── Tools ──────────────────────────────────────────────────────────
         Column(
             Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
@@ -123,7 +123,7 @@ fun DrawScreen(onBack: () -> Unit) {
                     haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
                     onBack()
                 },
-                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceBright),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceContainer),
             ) { Icon(painterResource(R.drawable.rounded_arrow_back), stringResource(R.string.back)) }
             val tools = listOf(
                 "pen" to R.drawable.rounded_ink_pen,
@@ -165,7 +165,7 @@ fun DrawScreen(onBack: () -> Unit) {
                 Modifier
                     .aspectRatio(s?.aspect ?: (16f / 9f), matchHeightConstraintsFirst = true)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(cs.surfaceBright)
+                    .background(cs.surfaceContainer)
                     .pointerInput(online, supported, s != null) {
                         if (!online || !supported || s == null) return@pointerInput
                         awaitEachGesture {
@@ -254,7 +254,7 @@ fun DrawScreen(onBack: () -> Unit) {
                     strokes.removeLastOrNull()?.let { undone.add(it) }
                 },
                 enabled = s?.canUndo == true || strokes.isNotEmpty(),
-                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceBright),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceContainer),
             ) { Icon(painterResource(R.drawable.rounded_undo), stringResource(R.string.draw_undo)) }
             IconButton(
                 onClick = {
@@ -263,7 +263,7 @@ fun DrawScreen(onBack: () -> Unit) {
                     undone.removeLastOrNull()?.let { strokes.add(it) }
                 },
                 enabled = s?.canRedo == true || undone.isNotEmpty(),
-                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceBright),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceContainer),
             ) { Icon(painterResource(R.drawable.rounded_redo), stringResource(R.string.draw_redo)) }
             IconButton(
                 onClick = {

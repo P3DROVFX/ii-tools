@@ -2,18 +2,17 @@ package dev.ii.tools.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.ii.tools.R
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.phonedata.PhoneData
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Phone data: the switch, and the contacts permission. */
 @Composable
@@ -61,12 +60,11 @@ fun PhoneDataScreen(onBack: () -> Unit) {
                     enabled = on
                     PhoneData.setEnabled(ctx, on)
                 }
-                ToolRow(
+                SwitchRow(
                     title = stringResource(R.string.data_share),
+                    checked = enabled,
+                    onCheckedChange = toggle,
                     icon = R.drawable.rounded_battery_full,
-                    tint = if (enabled) Tint.PRIMARY else Tint.SECONDARY,
-                    onClick = { toggle(!enabled) },
-                    trailing = { Switch(checked = enabled, onCheckedChange = toggle) },
                 )
             }
         }

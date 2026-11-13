@@ -1,257 +1,372 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package dev.ii.tools.ui
 
+import android.Manifest
+import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.ToggleButtonShapes
-import androidx.compose.material3.toShape
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
-import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import dev.ii.tools.R
+import dev.ii.tools.calls.CallWatcher
+import dev.ii.tools.clip.ClipSync
+import dev.ii.tools.clip.ClipWatchService
+import dev.ii.tools.files.FileServer
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkProblem
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.link.PairedPc
-import dev.ii.tools.link.PairingUri
-import dev.ii.tools.link.ShellAction
-import kotlinx.coroutines.delay
+import dev.ii.tools.link.Wake
+import dev.ii.tools.live.LiveHub
+import dev.ii.tools.media.PcMedia
+import dev.ii.tools.media.PhoneMedia
+import dev.ii.tools.notify.NotifMirror
+import dev.ii.tools.pclive.DndSync
+import dev.ii.tools.pclive.PcLive
+import dev.ii.tools.phonedata.PhoneData
+import dev.ii.tools.shots.ShotSync
+import dev.ii.tools.tiles.FavoritePreset
+import dev.ii.tools.ui.theme.Expressive
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
-/** Connect to PC: pairing and the link's state. The remote and the audio have their own screens. */
+/** What the settings show, re-read whenever the app comes back (permissions change in Android's own settings). */
+private data class SettingsState(
+    val listener: Boolean,
+    val post: Boolean,
+    val phone: Boolean,
+    val contacts: Boolean,
+    val photos: Boolean,
+    val files: Boolean,
+    val restricted: Boolean,
+    val copyService: Boolean,
+    val battery: Boolean,
+    val kdeConnect: Boolean,
+)
+
+/**
+ * Settings, and where pairing lives: the PC (wake, retry, forget), the connection, every
+ * permission the app asks for, and every switch of every feature in one place. The
+ * feature screens keep theirs too; both write the same preference.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun LinkScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val ctx = LocalContext.current
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
+    val relayed by LiveHub.relayed.collectAsStateWithLifecycle()
+    val favorite by FavoritePreset.name.collectAsStateWithLifecycle()
+    val scanner = rememberPairScanner()
+    val network = rememberNetworkPermission()
 
-    var permitted by remember { mutableStateOf(LinkHub.hasNetworkPermission(ctx)) }
+    fun read() = readDeviceStatus(ctx).let { d ->
+        SettingsState(
+            listener = d.listenerGranted,
+            post = d.postGranted,
+            phone = CallWatcher.hasPermissions(ctx),
+            contacts = PhoneData.canReadContacts(ctx),
+            photos = ShotSync.canWatch(ctx),
+            files = FileServer.hasPermission(),
+            restricted = ClipWatchService.restricted(ctx),
+            copyService = ClipWatchService.isEnabled(ctx),
+            battery = LinkHub.batteryUnrestricted(),
+            kdeConnect = d.kdeConnectInstalled,
+        )
+    }
+    var s by remember { mutableStateOf(read()) }
     LifecycleResumeEffect(Unit) {
-        permitted = LinkHub.hasNetworkPermission(ctx)
+        s = read()
+        FavoritePreset.load(ctx)
         onPauseOrDispose { }
     }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        permitted = granted
-        if (granted) LinkHub.onPermissionGranted()
-    }
 
-    var invalidCode by remember { mutableStateOf(false) }
-    val scan = {
-        invalidCode = false
-        val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
-        GmsBarcodeScanning.getClient(ctx, options).startScan()
-            .addOnSuccessListener { code ->
-                val uri = PairingUri.parse(code.rawValue)
-                if (uri != null) LinkHub.pair(uri) else invalidCode = true
-            }
-        Unit
-    }
-    var confirmForget by remember { mutableStateOf(false) }
+    // The switches, each over its feature's own preference.
     var stays by remember { mutableStateOf(LinkHub.staysConnected()) }
-    val wakeScope = rememberCoroutineScope()
-    var woke by remember { mutableStateOf<Boolean?>(null) }
-    var unrestricted by remember { mutableStateOf(LinkHub.batteryUnrestricted()) }
-    LifecycleResumeEffect(Unit) {
-        unrestricted = LinkHub.batteryUnrestricted()
-        onPauseOrDispose { }
+    var notifs by remember { mutableStateOf(NotifMirror.isEnabled(ctx)) }
+    var phoneMedia by remember { mutableStateOf(PhoneMedia.isEnabled(ctx)) }
+    var calls by remember { mutableStateOf(CallWatcher.isEnabled(ctx)) }
+    var data by remember { mutableStateOf(PhoneData.isEnabled(ctx)) }
+    var shotsSend by remember { mutableStateOf(ShotSync.sends(ctx)) }
+    var clipAuto by remember { mutableStateOf(ClipSync.autoSend(ctx)) }
+    var browse by remember { mutableStateOf(FileServer.isEnabled(ctx)) }
+    var pcLive by remember { mutableStateOf(PcLive.isEnabled(ctx)) }
+    var pcMedia by remember { mutableStateOf(PcMedia.isEnabled(ctx)) }
+    var shotsRecv by remember { mutableStateOf(ShotSync.receives(ctx)) }
+    var clipRecv by remember { mutableStateOf(ClipSync.receives(ctx)) }
+    var dnd by remember { mutableStateOf(DndSync.isEnabled(ctx)) }
+
+    val askPhone = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        s = read()
+        if (s.phone) CallWatcher.setEnabled(ctx, calls)
     }
+    val askContacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        s = read()
+        LinkHub.announceCaps()
+    }
+    val askPhotos = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        s = read()
+        if (ok) ShotSync.setSends(ctx, shotsSend)
+    }
+    val askPost = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { s = read() }
+    val listenerSettings = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
 
-    val current = pc
+    var confirmForget by remember { mutableStateOf(false) }
+    val missing = listOf(
+        s.listener, s.post, s.phone, s.contacts, s.photos, s.files, !s.restricted, s.copyService, s.battery, network.granted,
+    ).count { !it }
+
     ToolScaffold(
-        title = current?.name?.takeIf { it.isNotEmpty() } ?: stringResource(R.string.link_title),
+        title = stringResource(R.string.settings_title),
         onBack = onBack,
+        subtitle = if (missing == 0) stringResource(R.string.settings_all_allowed) else pluralStringResource(R.plurals.settings_missing, missing, missing),
     ) {
-        if (!permitted) {
-            item {
-                CardGroup {
-                    ToolRow(
-                        title = stringResource(R.string.perm_network),
-                        summary = stringResource(R.string.perm_network_body),
-                        icon = R.drawable.rounded_devices,
-                        tint = Tint.TERTIARY,
-                        trailing = {
-                            Button(
-                                onClick = { permissionLauncher.launch(LinkHub.LOCAL_NETWORK_PERMISSION) },
-                                shapes = ButtonDefaults.shapes(),
-                            ) { Text(stringResource(R.string.grant)) }
-                        },
-                    )
-                }
-            }
-        }
-
+        val current = pc
         if (current == null) {
-            item { PairGroup(status, invalidCode, onScan = scan) }
-            return@ToolScaffold
+            item { PairContent(status, scanner, network) }
+        } else {
+            item { PcCard(current, status, onForget = { confirmForget = true }) }
         }
 
-        item { CardGroup { StatusRow(current, status) } }
-
-        // Kept open in the background; Doze needs letting off for that.
-        if (stays && !unrestricted) {
-            item { GroupHeader(stringResource(R.string.setup_title)) }
-            item {
-                CardGroup {
-                    PermissionRow(
-                        title = stringResource(R.string.link_battery),
-                        body = stringResource(R.string.link_battery_body),
-                        icon = R.drawable.rounded_battery_full,
-                        granted = false,
-                        onGrant = {
-                            ctx.startActivity(
-                                android.content.Intent(
-                                    android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                                    android.net.Uri.fromParts("package", ctx.packageName, null),
-                                ),
-                            )
-                        },
-                    )
-                }
-            }
-        }
-
-        item { GroupHeader(stringResource(R.string.section_this_pc)) }
+        item { GroupHeader(stringResource(R.string.settings_connection)) }
         item {
             CardGroup {
-                val toggleStay = { on: Boolean ->
-                    stays = on
-                    LinkHub.setStaysConnected(on)
+                SwitchRow(stringResource(R.string.link_stay), stays, {
+                    stays = it
+                    LinkHub.setStaysConnected(it)
+                }, R.drawable.rounded_sync, summary = stringResource(R.string.settings_stay_body))
+                PermissionRow(
+                    stringResource(R.string.link_battery), stringResource(R.string.settings_battery_body), R.drawable.rounded_battery_full, s.battery,
+                ) {
+                    ctx.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.fromParts("package", ctx.packageName, null)))
                 }
-                ToolRow(
-                    title = stringResource(R.string.link_stay),
-                    icon = R.drawable.rounded_sync,
-                    tint = if (stays) Tint.PRIMARY else Tint.SECONDARY,
-                    onClick = { toggleStay(!stays) },
-                    trailing = { androidx.compose.material3.Switch(checked = stays, onCheckedChange = toggleStay) },
-                )
-                // Wake-on-LAN, once the PC has said its adapters (any hello).
-                if (dev.ii.tools.link.Wake.available(ctx) && status !is LinkStatus.Online) {
-                    ToolRow(
-                        title = stringResource(R.string.wake_pc),
-                        summary = woke?.let { stringResource(if (it) R.string.wake_sent else R.string.wake_failed) },
-                        icon = R.drawable.rounded_power_settings_new,
-                        tint = Tint.TERTIARY,
-                        onClick = { wakeScope.launch { woke = LinkHub.wake() } },
-                    )
+                PermissionRow(stringResource(R.string.perm_network), stringResource(R.string.perm_network_body), R.drawable.rounded_devices, network.granted, network.request)
+            }
+        }
+
+        item { GroupHeader(stringResource(R.string.settings_permissions)) }
+        item {
+            CardGroup {
+                PermissionRow(stringResource(R.string.perm_listener), stringResource(R.string.settings_listener_body), R.drawable.rounded_notifications, s.listener, listenerSettings)
+                PermissionRow(stringResource(R.string.perm_post), stringResource(R.string.settings_post_body), R.drawable.rounded_notification_add, s.post) {
+                    askPost.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
+                PermissionRow(stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_body), R.drawable.rounded_call, s.phone) { askPhone.launch(CallWatcher.PERMISSIONS) }
+                PermissionRow(stringResource(R.string.perm_contacts), stringResource(R.string.perm_contacts_body), R.drawable.rounded_contacts, s.contacts) { askContacts.launch(PhoneData.CONTACTS) }
+                PermissionRow(stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_body), R.drawable.rounded_photo_library, s.photos) { askPhotos.launch(ShotSync.PERMISSION) }
+                PermissionRow(stringResource(R.string.perm_files), stringResource(R.string.perm_files_body), R.drawable.rounded_folder_open, s.files) {
+                    ctx.startActivity(FileServer.permissionIntent(ctx))
+                }
+                PermissionRow(stringResource(R.string.settings_restricted), stringResource(R.string.clip_step_restricted_body), R.drawable.rounded_shield, !s.restricted) {
+                    ctx.startActivity(ClipWatchService.appInfoIntent(ctx))
+                }
+                PermissionRow(stringResource(R.string.settings_copy_service), stringResource(R.string.clip_step_service_body), R.drawable.rounded_content_paste, s.copyService) {
+                    ClipWatchService.openSettings(ctx)
+                }
+            }
+        }
+
+        item { GroupHeader(stringResource(R.string.settings_to_pc)) }
+        item {
+            CardGroup {
+                SwitchRow(stringResource(R.string.notifs_mirror), notifs, {
+                    notifs = it
+                    NotifMirror.setEnabled(ctx, it)
+                }, R.drawable.rounded_notifications, summary = if (!s.listener) stringResource(R.string.settings_needs_listener) else null)
+                SwitchRow(stringResource(R.string.pclink_media), phoneMedia, {
+                    phoneMedia = it
+                    PhoneMedia.setEnabled(ctx, it)
+                }, R.drawable.rounded_music_note)
+                SwitchRow(stringResource(R.string.calls_report), calls, {
+                    calls = it
+                    CallWatcher.setEnabled(ctx, it)
+                }, R.drawable.rounded_call, enabled = s.phone, summary = if (!s.phone) stringResource(R.string.settings_needs_phone) else null)
+                SwitchRow(stringResource(R.string.data_share), data, {
+                    data = it
+                    PhoneData.setEnabled(ctx, it)
+                }, R.drawable.rounded_battery_full, summary = stringResource(R.string.settings_data_body))
+                SwitchRow(stringResource(R.string.shots_send), shotsSend, {
+                    shotsSend = it
+                    ShotSync.setSends(ctx, it)
+                }, R.drawable.rounded_screenshot, enabled = s.photos, summary = if (!s.photos) stringResource(R.string.settings_needs_photos) else null)
+                SwitchRow(stringResource(R.string.clip_auto), clipAuto, {
+                    clipAuto = it
+                    ClipSync.setAutoSend(ctx, it)
+                }, R.drawable.rounded_content_paste_go, summary = if (clipAuto && !s.copyService) stringResource(R.string.settings_needs_copy) else null)
+                SwitchRow(stringResource(R.string.pclink_files), browse, {
+                    browse = it
+                    FileServer.setEnabled(ctx, it)
+                }, R.drawable.rounded_folder_open, summary = if (browse && !s.files) stringResource(R.string.settings_needs_files) else null)
+            }
+        }
+
+        item { GroupHeader(stringResource(R.string.settings_from_pc)) }
+        item {
+            CardGroup {
+                SwitchRow(stringResource(R.string.pclink_live), pcLive, {
+                    pcLive = it
+                    PcLive.setEnabled(ctx, it)
+                }, R.drawable.rounded_timer)
+                SwitchRow(stringResource(R.string.pclink_pc_media), pcMedia, {
+                    pcMedia = it
+                    PcMedia.setEnabled(ctx, it)
+                }, R.drawable.rounded_queue_music)
+                SwitchRow(stringResource(R.string.shots_receive), shotsRecv, {
+                    shotsRecv = it
+                    ShotSync.setReceives(ctx, it)
+                }, R.drawable.rounded_download)
+                SwitchRow(stringResource(R.string.clip_receive), clipRecv, {
+                    clipRecv = it
+                    ClipSync.setReceives(ctx, it)
+                }, R.drawable.rounded_content_paste)
+                SwitchRow(stringResource(R.string.pclink_dnd), dnd, {
+                    dnd = it
+                    DndSync.setEnabled(ctx, it)
+                }, R.drawable.rounded_do_not_disturb_on, summary = stringResource(R.string.settings_dnd_body))
+            }
+        }
+
+        item { GroupHeader(stringResource(R.string.settings_more)) }
+        item {
+            CardGroup {
                 ToolRow(
-                    title = stringResource(R.string.link_address),
-                    summary = "${current.hosts.firstOrNull().orEmpty()}:${current.port}",
-                    icon = R.drawable.rounded_lan,
-                    tint = Tint.SECONDARY,
+                    title = stringResource(R.string.live_title),
+                    summary = if (relayed.isEmpty()) stringResource(R.string.settings_relay_rules) else pluralStringResource(R.plurals.settings_relaying, relayed.size, relayed.size),
+                    icon = R.drawable.rounded_notifications_active,
+                    tint = if (s.listener && s.post) Tint.PRIMARY else Tint.TERTIARY,
+                    onClick = { onOpen(Dest.LIVE) },
                 )
                 ToolRow(
-                    title = stringResource(R.string.forget_pc),
-                    icon = R.drawable.rounded_delete,
-                    tint = Tint.ERROR,
-                    onClick = { confirmForget = true },
+                    title = stringResource(R.string.tile_preset),
+                    summary = favorite ?: stringResource(R.string.settings_preset_none),
+                    icon = R.drawable.rounded_star,
+                    onClick = { onOpen(Dest.REMOTE) },
+                )
+                ToolRow(
+                    title = stringResource(R.string.kdeconnect),
+                    summary = stringResource(if (s.kdeConnect) R.string.kdeconnect_installed else R.string.kdeconnect_missing_short),
+                    icon = if (s.kdeConnect) R.drawable.rounded_devices else R.drawable.rounded_warning,
+                    tint = if (s.kdeConnect) Tint.SECONDARY else Tint.ERROR,
+                )
+                ToolRow(
+                    title = stringResource(R.string.tools_title),
+                    icon = R.drawable.rounded_apps,
+                    onClick = { onOpen(Dest.TOOLS) },
                 )
             }
         }
+        item { Hint(stringResource(R.string.settings_license), Modifier.fillMaxWidth().padding(top = 8.dp)) }
     }
 
-    if (confirmForget) {
-        AlertDialog(
-            onDismissRequest = { confirmForget = false },
-            title = { Text(stringResource(R.string.forget_pc)) },
-            text = { Text(stringResource(R.string.forget_confirm)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmForget = false
-                    LinkHub.forget()
-                }) { Text(stringResource(R.string.forget_action)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmForget = false }) { Text(stringResource(R.string.cancel)) }
-            },
-        )
+    if (confirmForget) ForgetSheet(onDismiss = { confirmForget = false })
+}
+
+/** The paired PC: its state, its addresses, and the ways to reach it or let it go. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun PcCard(pc: PairedPc, status: LinkStatus, onForget: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var woke by remember { mutableStateOf<Boolean?>(null) }
+    val online = status is LinkStatus.Online
+    val (bg, fg) = if (online) cs.primaryContainer to cs.onPrimaryContainer else Layer.pane to cs.onSurface
+    ExpressiveCard(bg, fg) {
+        Ornament(MaterialShapes.Cookie12Sided, 300.dp, fg, Alignment.TopEnd, x = 120.dp, y = (-110).dp, alpha = 0.1f)
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                StateShape(active = online, size = 60.dp, color = if (online) cs.onPrimaryContainer else Layer.field, on = MaterialShapes.Cookie12Sided) {
+                    if (status is LinkStatus.Connecting) LoadingIndicator(Modifier.size(36.dp))
+                    else Icon(painterResource(R.drawable.rounded_desktop_windows), null, tint = if (online) cs.primaryContainer else cs.onSurfaceVariant, modifier = Modifier.size(28.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(pc.name.ifEmpty { stringResource(R.string.link_title) }, style = Expressive.xwide(28.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        when {
+                            woke == true -> stringResource(R.string.wake_sent)
+                            woke == false -> stringResource(R.string.wake_failed)
+                            status is LinkStatus.Online -> stringResource(R.string.status_online) + " · " + status.host
+                            status is LinkStatus.Offline -> problemText(status.problem)
+                            else -> statusLabel(status)
+                        },
+                        style = Expressive.live(14.sp),
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(painterResource(R.drawable.rounded_lan), stringResource(R.string.link_address), Modifier.size(18.dp))
+                Text(pc.hosts.joinToString(" · ") { "$it:${pc.port}" }, style = Expressive.digitsSoft(16.sp), maxLines = 2)
+            }
+            if (!online) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (Wake.available(ctx)) {
+                        FilledPill(stringResource(R.string.wake_pc), onClick = { scope.launch { woke = LinkHub.wake() } }, icon = R.drawable.rounded_power_settings_new, modifier = Modifier.weight(1.3f))
+                    }
+                    DashedPill(stringResource(R.string.retry), onClick = { LinkHub.retry() }, icon = R.drawable.rounded_refresh, modifier = Modifier.weight(1f))
+                }
+            }
+            FilledPill(
+                stringResource(R.string.forget_pc), onClick = onForget, icon = R.drawable.rounded_link_off,
+                container = cs.errorContainer, content = cs.onErrorContainer, modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
-/** Not paired yet: how, and the one button that does it. */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+/** Forgetting is the one thing that cannot be undone: asked in a sheet first. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PairGroup(status: LinkStatus, invalidCode: Boolean, onScan: () -> Unit) {
+private fun ForgetSheet(onDismiss: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    CardGroup {
-        ToolRow(
-            title = stringResource(R.string.pair_title),
-            icon = R.drawable.rounded_qr_code_scanner,
-            tint = Tint.PRIMARY,
-        )
-        ToolBlock {
-            Text(stringResource(R.string.pair_body), style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
-            Spacer(Modifier.height(16.dp))
-            if (status is LinkStatus.Pairing) {
-                LinearWavyProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 12.dp))
-            } else {
-                Button(onClick = onScan, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                    Icon(painterResource(R.drawable.rounded_qr_code_scanner), null, Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(stringResource(R.string.pair_scan))
-                }
+    val state = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = cs.surfaceContainerHigh) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            ShapeBox(MaterialShapes.Cookie7Sided, 64.dp, cs.errorContainer) {
+                Icon(painterResource(R.drawable.rounded_link_off), null, tint = cs.onErrorContainer, modifier = Modifier.size(30.dp))
             }
-            val problem = when {
-                invalidCode -> stringResource(R.string.pair_invalid)
-                status is LinkStatus.Offline -> problemText(status.problem)
-                else -> null
-            }
-            AnimatedVisibility(problem != null) {
-                Text(
-                    problem.orEmpty(),
-                    color = cs.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-            }
+            Text(stringResource(R.string.forget_title), style = Expressive.wide(26.sp))
+            Text(stringResource(R.string.forget_confirm), style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant)
+            FilledPill(stringResource(R.string.forget_action), onClick = {
+                onDismiss()
+                LinkHub.forget()
+            }, container = cs.errorContainer, content = cs.onErrorContainer, modifier = Modifier.fillMaxWidth())
+            DashedPill(stringResource(R.string.cancel), onClick = onDismiss, modifier = Modifier.fillMaxWidth())
         }
     }
 }

@@ -5,14 +5,11 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -26,6 +23,8 @@ import dev.ii.tools.clip.ClipWatchService
 import dev.ii.tools.link.LinkHub
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Clipboard: receiving the PC's, and sending this phone's (the app is in focus here). */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -122,24 +121,22 @@ fun ClipboardScreen(onBack: () -> Unit) {
                     autoSend = on
                     ClipSync.setAutoSend(ctx, on)
                 }
-                ToolRow(
+                SwitchRow(
                     title = stringResource(R.string.clip_auto),
-                    summary = if (autoSend && !watching) stringResource(R.string.status_needs_setup) else null,
+                    checked = autoSend,
+                    onCheckedChange = toggleAuto,
                     icon = R.drawable.rounded_bolt,
-                    tint = if (autoSend && watching) Tint.PRIMARY else Tint.SECONDARY,
-                    onClick = { toggleAuto(!autoSend) },
-                    trailing = { Switch(checked = autoSend, onCheckedChange = toggleAuto) },
+                    summary = if (autoSend && !watching) stringResource(R.string.status_needs_setup) else null,
                 )
                 val toggle = { on: Boolean ->
                     receives = on
                     ClipSync.setReceives(ctx, on)
                 }
-                ToolRow(
+                SwitchRow(
                     title = stringResource(R.string.clip_receive),
+                    checked = receives,
+                    onCheckedChange = toggle,
                     icon = R.drawable.rounded_download,
-                    tint = if (receives) Tint.PRIMARY else Tint.SECONDARY,
-                    onClick = { toggle(!receives) },
-                    trailing = { Switch(checked = receives, onCheckedChange = toggle) },
                 )
             }
         }

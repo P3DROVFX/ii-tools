@@ -14,9 +14,48 @@ import dev.ii.tools.link.LinkHub
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+
+/** One live activity of the PC (PROTOCOL.md, `pcLive` item); times are epoch ms. */
+data class PcLiveItem(
+    val id: String,
+    val kind: String,
+    val title: String,
+    val text: String,
+    val start: Long,
+    val end: Long,
+    val paused: Boolean,
+    /** Seconds left while paused. */
+    val remaining: Long,
+    /** The whole length in seconds, for a countdown's ring. */
+    val total: Long,
+    val progress: Int,
+    val actions: List<Pair<String, String>>,
+) {
+    companion object {
+        fun from(o: JSONObject) = PcLiveItem(
+            id = o.optString("id"),
+            kind = o.optString("kind"),
+            title = o.optString("title"),
+            text = o.optString("text"),
+            start = o.optLong("start"),
+            end = o.optLong("end"),
+            paused = o.optBoolean("paused"),
+            remaining = o.optLong("remaining"),
+            total = o.optLong("total"),
+            progress = o.optInt("progress", -1),
+            actions = buildList {
+                val a = o.optJSONArray("actions")
+                if (a != null) for (i in 0 until a.length()) a.optJSONObject(i)?.let { add(it.optString("id") to it.optString("label")) }
+            },
+        )
+    }
+}
 
 /**
  * The PC's live activity as Live Updates on the phone (PROTOCOL.md, `pcLive`): the
@@ -33,6 +72,19 @@ object PcLive {
     private const val TAG = "pclive"
 
     private val shown = mutableMapOf<String, JSONObject>()
+
+    private val _items = MutableStateFlow<List<PcLiveItem>>(emptyList())
+    /** The same activity for the home's live card. */
+    val items: StateFlow<List<PcLiveItem>> = _items.asStateFlow()
+
+    private fun publish() {
+        _items.value = shown.values.map(PcLiveItem::from)
+    }
+
+    /** A button on the home's live card, like the notification's. */
+    fun act(id: String, action: String) {
+        LinkHub.send("live", JSONObject().put("id", id).put("action", action))
+    }
 
     fun isEnabled(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ENABLED, true)
 
@@ -63,6 +115,7 @@ object PcLive {
         (shown.keys - now.keys).forEach { nm.cancel(TAG, it.hashCode()) }
         shown.clear()
         shown.putAll(now)
+        publish()
     }
 
     /** The link dropped: keep what counts down by itself. */
@@ -75,6 +128,7 @@ object PcLive {
             nm.cancel(TAG, it.hashCode())
             shown.remove(it)
         }
+        publish()
     }
 
     private fun clock(ctx: Context, ms: Long): String = android.text.format.DateFormat.getTimeFormat(ctx).format(java.util.Date(ms))

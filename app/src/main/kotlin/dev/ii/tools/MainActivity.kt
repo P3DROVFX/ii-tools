@@ -8,9 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -23,7 +21,11 @@ import dev.ii.tools.ui.CallsScreen
 import dev.ii.tools.ui.ClipboardScreen
 import dev.ii.tools.ui.DeckScreen
 import dev.ii.tools.ui.HomeScreen
-import dev.ii.tools.ui.LinkScreen
+import dev.ii.tools.ui.CameraScreen
+import dev.ii.tools.ui.Dest
+import dev.ii.tools.ui.SecondScreenScreen
+import dev.ii.tools.ui.SettingsScreen
+import dev.ii.tools.ui.ToolsScreen
 import dev.ii.tools.ui.LiveScreen
 import dev.ii.tools.ui.NotifsScreen
 import dev.ii.tools.ui.PcLinkScreen
@@ -35,6 +37,8 @@ import dev.ii.tools.ui.ShotsScreen
 import dev.ii.tools.ui.Shared
 import dev.ii.tools.ui.WallpaperScreen
 import dev.ii.tools.ui.theme.IiToolsTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Every screen is its own activity, as on the rest of Android. */
 abstract class ScreenActivity : ComponentActivity() {
@@ -46,9 +50,34 @@ abstract class ScreenActivity : ComponentActivity() {
 
     @Composable
     abstract fun Screen()
+
+    /** Opens [dest] as its own activity, with the system's transition. */
+    fun open(dest: Dest) = startActivity(Intent(this, activityFor(dest)))
 }
 
-/** The hub: the PC, then each integration. */
+private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
+    Dest.SETTINGS -> LinkActivity::class.java
+    Dest.REMOTE -> RemoteActivity::class.java
+    Dest.AUDIO -> AudioActivity::class.java
+    Dest.DECK -> DeckActivity::class.java
+    Dest.WALLPAPER -> WallpaperActivity::class.java
+    Dest.TOOLS -> ToolsActivity::class.java
+    Dest.TOUCHPAD -> TouchpadActivity::class.java
+    Dest.DRAW -> DrawActivity::class.java
+    Dest.PRESENTER -> PresenterActivity::class.java
+    Dest.PERF -> PerfActivity::class.java
+    Dest.CAMERA -> CameraActivity::class.java
+    Dest.SECOND_SCREEN -> SecondScreenActivity::class.java
+    Dest.LIVE -> LiveActivity::class.java
+    Dest.NOTIFS -> NotifsActivity::class.java
+    Dest.CLIPBOARD -> ClipboardActivity::class.java
+    Dest.SHOTS -> ShotsActivity::class.java
+    Dest.PHONE_DATA -> PhoneDataActivity::class.java
+    Dest.PC_LINK -> PcLinkActivity::class.java
+    Dest.CALLS -> CallsActivity::class.java
+}
+
+/** The home: a dashboard of the PC, or pairing when there is none. */
 class MainActivity : ScreenActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         LiveListener.ensureChannel(this)
@@ -56,29 +85,10 @@ class MainActivity : ScreenActivity() {
     }
 
     @Composable
-    override fun Screen() = HomeScreen(
-        onOpenLink = { open(LinkActivity::class.java) },
-        onOpenRemote = { open(RemoteActivity::class.java) },
-        onOpenAudio = { open(AudioActivity::class.java) },
-        onOpenDeck = { open(DeckActivity::class.java) },
-        onOpenWallpaper = { open(WallpaperActivity::class.java) },
-        onOpenCalls = { open(CallsActivity::class.java) },
-        onOpenNotifs = { open(NotifsActivity::class.java) },
-        onOpenClipboard = { open(ClipboardActivity::class.java) },
-        onOpenShots = { open(ShotsActivity::class.java) },
-        onOpenPhoneData = { open(PhoneDataActivity::class.java) },
-        onOpenPcLink = { open(PcLinkActivity::class.java) },
-        onOpenPerf = { open(PerfActivity::class.java) },
-        onOpenTouchpad = { open(TouchpadActivity::class.java) },
-        onOpenDraw = { open(DrawActivity::class.java) },
-        onOpenPresenter = { open(PresenterActivity::class.java) },
-        onOpenLive = { open(LiveActivity::class.java) },
-    )
-
-    private fun open(screen: Class<out ScreenActivity>) = startActivity(Intent(this, screen))
+    override fun Screen() = HomeScreen(onOpen = ::open)
 }
 
-/** Connect to PC: pairing and the link. Also where `iilink://pair` links land. */
+/** Settings: pairing, the link, every permission and switch. Also where `iilink://pair` links land. */
 class LinkActivity : ScreenActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,7 +105,7 @@ class LinkActivity : ScreenActivity() {
     }
 
     @Composable
-    override fun Screen() = LinkScreen(onBack = ::finish)
+    override fun Screen() = SettingsScreen(onBack = ::finish, onOpen = ::open)
 }
 
 class LiveActivity : ScreenActivity() {
@@ -251,4 +261,22 @@ class TouchpadActivity : ScreenActivity() {
 class PerfActivity : ScreenActivity() {
     @Composable
     override fun Screen() = PerfScreen(onBack = ::finish)
+}
+
+/** Every tool, grouped. */
+class ToolsActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = ToolsScreen(onBack = ::finish, onOpen = ::open)
+}
+
+/** The webcam (a placeholder until ROADMAP 4.6), held sideways like the camera it drives. */
+class CameraActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = CameraScreen(onBack = ::finish)
+}
+
+/** The phone as a monitor (a placeholder until ROADMAP 3.1). */
+class SecondScreenActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = SecondScreenScreen(onBack = ::finish)
 }

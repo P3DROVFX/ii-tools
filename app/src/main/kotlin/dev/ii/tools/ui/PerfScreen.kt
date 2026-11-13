@@ -10,29 +10,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.PcPerf
 import kotlin.math.roundToInt
+import androidx.compose.runtime.getValue
 
 /**
  * The PC's performance, live: CPU, GPU, RAM and the frame rate (MangoHud), one sample a
@@ -125,7 +123,7 @@ private fun cards(p: PcPerf): List<Card> {
 @Composable
 private fun PerfCard(card: Card, modifier: Modifier) {
     val cs = MaterialTheme.colorScheme
-    Surface(shape = RoundedCornerShape(24.dp), color = cs.surfaceBright, modifier = modifier) {
+    Surface(shape = RoundedCornerShape(32.dp), color = cs.surfaceContainer, modifier = modifier) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconBadge(card.icon, Tint.PRIMARY)
@@ -133,7 +131,7 @@ private fun PerfCard(card: Card, modifier: Modifier) {
                 Text(card.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.height(12.dp))
-            Text(card.value, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.SemiBold, color = cs.onSurface)
+            Text(card.value, style = dev.ii.tools.ui.theme.Expressive.digits(52.sp), color = cs.onSurface)
             Text(
                 card.detail.ifEmpty { " " },
                 style = MaterialTheme.typography.bodyMedium,

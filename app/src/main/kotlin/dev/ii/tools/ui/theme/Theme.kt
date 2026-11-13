@@ -9,7 +9,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-/** Material You colours from the wallpaper, with Material 3 Expressive motion. */
+/** Material You colours from the wallpaper, Google Sans Flex, Material 3 Expressive motion. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun IiToolsTheme(content: @Composable () -> Unit) {
@@ -17,6 +17,7 @@ fun IiToolsTheme(content: @Composable () -> Unit) {
     val scheme = if (isSystemInDarkTheme()) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
     MaterialExpressiveTheme(
         colorScheme = scheme,
+        typography = IiTypography,
         motionScheme = MotionScheme.expressive(),
         content = content,
     )

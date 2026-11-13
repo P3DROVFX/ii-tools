@@ -34,11 +34,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -67,6 +65,8 @@ import dev.ii.tools.R
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.touchpad.Touchpad
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** What the hidden field holds, so a backspace on "empty" still has something to delete. */
 private const val SENTINEL = " "
@@ -127,7 +127,7 @@ fun TouchpadScreen(onBack: () -> Unit) {
     }
 
     Scaffold(
-        containerColor = cs.surfaceContainer,
+        containerColor = cs.surface,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.touchpad_title)) },
@@ -137,7 +137,7 @@ fun TouchpadScreen(onBack: () -> Unit) {
                             haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
                             onBack()
                         },
-                        colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceBright),
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceContainer),
                     ) { Icon(painterResource(R.drawable.rounded_arrow_back), stringResource(R.string.back)) }
                 },
                 actions = {
@@ -147,7 +147,7 @@ fun TouchpadScreen(onBack: () -> Unit) {
                             typing = !typing
                         },
                         enabled = online && supported,
-                        colors = IconButtonDefaults.iconButtonColors(containerColor = if (typing) cs.primaryContainer else cs.surfaceBright),
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = if (typing) cs.primaryContainer else cs.surfaceContainer),
                     ) {
                         Icon(
                             painterResource(if (typing) R.drawable.rounded_keyboard_hide else R.drawable.rounded_keyboard),
@@ -155,7 +155,7 @@ fun TouchpadScreen(onBack: () -> Unit) {
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.surfaceContainer),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.surface),
             )
         },
     ) { inner ->
@@ -202,7 +202,7 @@ fun TouchpadScreen(onBack: () -> Unit) {
                     .weight(1f)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(28.dp))
-                    .background(cs.surfaceBright)
+                    .background(cs.surfaceContainer)
                     .onSizeChanged { padSize = it }
                     .pointerInput(online, supported) {
                         if (!online || !supported) return@pointerInput
@@ -256,7 +256,7 @@ private fun PadButton(label: String, which: String, enabled: Boolean, modifier: 
         modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (down) cs.primaryContainer else cs.surfaceBright)
+            .background(if (down) cs.primaryContainer else cs.surfaceContainer)
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {

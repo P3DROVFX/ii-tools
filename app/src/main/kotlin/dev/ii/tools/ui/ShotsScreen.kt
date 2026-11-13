@@ -2,17 +2,16 @@ package dev.ii.tools.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.ii.tools.R
 import dev.ii.tools.shots.ShotSync
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Screenshots both ways: the switches, and the photo access sending needs. */
 @Composable
@@ -61,25 +60,22 @@ fun ShotsScreen(onBack: () -> Unit) {
                     sends = on
                     ShotSync.setSends(ctx, on)
                 }
-                ToolRow(
+                SwitchRow(
                     title = stringResource(R.string.shots_send),
+                    checked = sends,
+                    onCheckedChange = toggleSend,
                     icon = R.drawable.rounded_screenshot,
-                    tint = if (sends && permitted) Tint.PRIMARY else Tint.SECONDARY,
-                    onClick = if (permitted) {
-                        { toggleSend(!sends) }
-                    } else null,
-                    trailing = { Switch(checked = sends && permitted, enabled = permitted, onCheckedChange = toggleSend) },
+                    enabled = permitted,
                 )
                 val toggleReceive = { on: Boolean ->
                     receives = on
                     ShotSync.setReceives(ctx, on)
                 }
-                ToolRow(
+                SwitchRow(
                     title = stringResource(R.string.shots_receive),
+                    checked = receives,
+                    onCheckedChange = toggleReceive,
                     icon = R.drawable.rounded_download,
-                    tint = if (receives) Tint.PRIMARY else Tint.SECONDARY,
-                    onClick = { toggleReceive(!receives) },
-                    trailing = { Switch(checked = receives, onCheckedChange = toggleReceive) },
                 )
             }
         }

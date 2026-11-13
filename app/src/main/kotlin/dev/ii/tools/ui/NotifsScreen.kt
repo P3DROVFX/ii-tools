@@ -2,18 +2,17 @@ package dev.ii.tools.ui
 
 import android.content.Intent
 import android.provider.Settings
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.live.LiveHub
 import dev.ii.tools.notify.NotifMirror
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Notifications on the PC: the switch, and the access the mirror needs. */
 @Composable
@@ -45,12 +44,11 @@ fun NotifsScreen(onBack: () -> Unit) {
                     enabled = on
                     NotifMirror.setEnabled(ctx, on)
                 }
-                ToolRow(
+                SwitchRow(
                     title = stringResource(R.string.notifs_mirror),
+                    checked = enabled,
+                    onCheckedChange = toggle,
                     icon = R.drawable.rounded_notifications,
-                    tint = if (enabled && listening) Tint.PRIMARY else Tint.SECONDARY,
-                    onClick = { toggle(!enabled) },
-                    trailing = { Switch(checked = enabled, onCheckedChange = toggle) },
                 )
             }
         }

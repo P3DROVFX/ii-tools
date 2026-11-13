@@ -4,12 +4,9 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -17,6 +14,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.live.LiveHub
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * Calls: what the PC needs to follow and control the phone's calls. Watching happens
@@ -68,14 +67,12 @@ fun CallsScreen(onBack: () -> Unit) {
                     enabled = on
                     CallWatcher.setEnabled(ctx, on)
                 }
-                ToolRow(
+                SwitchRow(
                     title = stringResource(R.string.calls_report),
+                    checked = enabled,
+                    onCheckedChange = toggle,
                     icon = R.drawable.rounded_call,
-                    tint = if (enabled && permitted && listening) Tint.PRIMARY else Tint.SECONDARY,
-                    onClick = if (permitted) {
-                        { toggle(!enabled) }
-                    } else null,
-                    trailing = { Switch(checked = enabled && permitted, enabled = permitted, onCheckedChange = toggle) },
+                    enabled = permitted,
                 )
             }
         }

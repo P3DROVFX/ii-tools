@@ -41,14 +41,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,9 +62,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
+import dev.ii.tools.ui.theme.Expressive
 import dev.ii.tools.deck.DeckKey
 import dev.ii.tools.deck.DeckStore
 import dev.ii.tools.link.DeckAction
@@ -75,6 +75,8 @@ import dev.ii.tools.link.LinkStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 private val Gap = 8.dp
 private val MinKey = 88.dp
@@ -108,28 +110,27 @@ fun DeckScreen(onBack: () -> Unit, dock: Boolean, onDock: (Boolean) -> Unit) {
     val ready = pc != null && status is LinkStatus.Online && shell != null
 
     Scaffold(
-        containerColor = cs.surfaceContainer,
+        containerColor = Layer.page,
         topBar = {
             if (!dock) {
                 TopAppBar(
-                    title = { Text(stringResource(R.string.deck_title)) },
+                    title = { Text(stringResource(R.string.deck_title), style = Expressive.xwide(28.sp)) },
                     navigationIcon = {
                         IconButton(
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
                                 onBack()
                             },
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceBright),
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = Layer.pane),
                         ) { Icon(painterResource(R.drawable.rounded_arrow_back), stringResource(R.string.back)) }
                     },
                     actions = {
                         if (ready) {
-                            IconButton(onClick = { editing = !editing }) {
-                                Icon(
-                                    painterResource(if (editing) R.drawable.rounded_check else R.drawable.rounded_edit),
-                                    stringResource(if (editing) R.string.deck_done else R.string.deck_edit),
-                                )
-                            }
+                            TonalPill(
+                                stringResource(if (editing) R.string.deck_done else R.string.deck_edit),
+                                onClick = { editing = !editing },
+                                icon = if (editing) R.drawable.rounded_check else R.drawable.rounded_edit,
+                            )
                             IconButton(onClick = {
                                 editing = false
                                 onDock(true)
@@ -138,7 +139,7 @@ fun DeckScreen(onBack: () -> Unit, dock: Boolean, onDock: (Boolean) -> Unit) {
                             }
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.surfaceContainer),
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Layer.page),
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
             }
@@ -219,8 +220,8 @@ private fun DeckPages(keys: List<DeckKey>, catalog: Map<String, DeckAction>, edi
                 if (pages.size > 1) repeat(pages.size) { i ->
                     val cs = MaterialTheme.colorScheme
                     Box(
-                        Modifier.size(if (i == pager.currentPage) 8.dp else 6.dp).clip(CircleShape)
-                            .background(if (i == pager.currentPage) cs.primary else cs.outlineVariant),
+                        Modifier.size(width = if (i == pager.currentPage) 28.dp else 8.dp, height = 8.dp).clip(CircleShape)
+                            .background(if (i == pager.currentPage) cs.primary else cs.surfaceContainerHighest),
                     )
                 }
             }
@@ -372,7 +373,7 @@ private fun DeckTile(
     Box(modifier) {
         if (editing) {
             // Still while editing: a plain card, so a long press drags instead of firing.
-            Surface(shape = RoundedCornerShape(24.dp), color = cs.surfaceBright, modifier = Modifier.fillMaxSize()) {
+            Surface(shape = RoundedCornerShape(24.dp), color = Layer.pane, modifier = Modifier.fillMaxSize()) {
                 KeyFace(slot, label, icon, Modifier.padding(8.dp))
             }
             Box(
@@ -387,16 +388,17 @@ private fun DeckTile(
                 checked = on,
                 onCheckedChange = { onTap() },
                 enabled = available,
+                // Idle a soft round key; on, it squares up in the primary container (shape is state).
                 shapes = ToggleButtonShapes(
-                    shape = RoundedCornerShape(24.dp),
-                    pressedShape = RoundedCornerShape(12.dp),
-                    checkedShape = RoundedCornerShape(40.dp),
+                    shape = RoundedCornerShape(40.dp),
+                    pressedShape = RoundedCornerShape(16.dp),
+                    checkedShape = RoundedCornerShape(22.dp),
                 ),
                 colors = ToggleButtonDefaults.colors(
-                    containerColor = if (warning) cs.errorContainer else cs.surfaceBright,
+                    containerColor = if (warning) cs.errorContainer else Layer.pane,
                     contentColor = if (warning) cs.onErrorContainer else cs.onSurface,
-                    checkedContainerColor = cs.primary,
-                    checkedContentColor = cs.onPrimary,
+                    checkedContainerColor = cs.primaryContainer,
+                    checkedContentColor = cs.onPrimaryContainer,
                 ),
                 contentPadding = PaddingValues(8.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -416,13 +418,13 @@ private fun KeyFace(slot: DeckKey, label: String, icon: String, modifier: Modifi
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
     ) {
         when (slot.kind) {
-            "workspace" -> Text(slot.ref, style = MaterialTheme.typography.headlineMedium)
-            "app" -> Text(label.take(1).uppercase(), style = MaterialTheme.typography.headlineMedium)
-            else -> Icon(symbolPainter(icon), contentDescription = null, modifier = Modifier.size(30.dp))
+            "workspace" -> Text(slot.ref, style = Expressive.digits(40.sp))
+            "app" -> Text(label.take(1).uppercase(), style = Expressive.wide(30.sp))
+            else -> Icon(symbolPainter(icon), contentDescription = null, modifier = Modifier.size(34.dp))
         }
         Text(
             label,
-            style = MaterialTheme.typography.labelMedium,
+            style = Expressive.title(13.sp),
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -464,7 +466,7 @@ private fun DeckPicker(catalog: List<DeckAction>, onDeck: Set<String>, onPick: (
     }
     val workspaceLabel = stringResource(R.string.remote_workspaces)
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = cs.surfaceContainer) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = cs.surfaceContainerHigh) {
         TextField(
             value = query,
             onValueChange = { query = it },
@@ -473,8 +475,8 @@ private fun DeckPicker(catalog: List<DeckAction>, onDeck: Set<String>, onPick: (
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = cs.surfaceBright,
-                unfocusedContainerColor = cs.surfaceBright,
+                focusedContainerColor = Layer.field,
+                unfocusedContainerColor = Layer.field,
                 focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                 unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
             ),

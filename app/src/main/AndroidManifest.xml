@@ -122,6 +122,21 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:exported="false" />
 
+        <activity
+            android:name=".ToolsActivity"
+            android:exported="false" />
+
+        <!-- The webcam, held sideways like the camera it stands for (a placeholder for now). -->
+        <activity
+            android:name=".CameraActivity"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="false" />
+
+        <activity
+            android:name=".SecondScreenActivity"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"
