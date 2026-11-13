@@ -106,6 +106,12 @@
             android:exported="false" />
 
         <activity
+            android:name=".PresenterActivity"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="false" />
+
+        <activity
             android:name=".TouchpadActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:windowSoftInputMode="adjustResize"

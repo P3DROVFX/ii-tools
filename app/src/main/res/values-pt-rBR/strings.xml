@@ -233,4 +233,15 @@
     <string name="pcmedia_pause">Pausar</string>
     <string name="pcmedia_previous">Anterior</string>
     <string name="pcmedia_next">Próxima</string>
+    <string name="present_title">Apresentador</string>
+    <string name="present_laser_hint">Segure aqui para apontar o laser na tela em foco do PC</string>
+    <string name="present_off">O apresentador está desligado nas configurações do ii tools no PC</string>
+    <string name="present_no_keyboard">O PC não consegue digitar teclas: o compositor não tem teclado virtual</string>
+    <string name="present_start">Iniciar</string>
+    <string name="present_black">Escurecer</string>
+    <string name="present_end">Encerrar</string>
+    <string name="present_previous">Slide anterior</string>
+    <string name="present_next">Próximo slide</string>
+    <string name="present_volume_hint">As teclas de volume também passam os slides</string>
+    <string name="present_timer_reset">Zerar o cronômetro</string>
 </resources>

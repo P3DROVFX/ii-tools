@@ -98,6 +98,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   Needs the phone paired with the PC over Bluetooth.
 - **Drawing pad:** draw on the phone, held sideways, and the ink appears in the shell's
   live draw on the focused screen, with its tools, colours and undo.
+- **Presenter:** a slide clicker for any presentation app on the PC: next and previous
+  (the volume keys too), start, black screen and end, a laser dot on the focused screen
+  and a talk timer.
 - **Touchpad and keyboard:** the phone as the PC's touchpad (a real multitouch touchpad
   for libinput: tap to click, two-finger scroll, three and four-finger gestures, your
   touchpad settings) and keyboard (any character, whatever the PC's layout).

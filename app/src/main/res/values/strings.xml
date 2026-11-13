@@ -234,4 +234,15 @@
     <string name="pcmedia_pause">Pause</string>
     <string name="pcmedia_previous">Previous</string>
     <string name="pcmedia_next">Next</string>
+    <string name="present_title">Presenter</string>
+    <string name="present_laser_hint">Hold here to point the laser on the PC\'s focused screen</string>
+    <string name="present_off">The presenter is off in the PC\'s ii tools settings</string>
+    <string name="present_no_keyboard">The PC can\'t type keys: its compositor has no virtual keyboard</string>
+    <string name="present_start">Start</string>
+    <string name="present_black">Black</string>
+    <string name="present_end">End</string>
+    <string name="present_previous">Previous slide</string>
+    <string name="present_next">Next slide</string>
+    <string name="present_volume_hint">The volume keys change slides too</string>
+    <string name="present_timer_reset">Reset the timer</string>
 </resources>

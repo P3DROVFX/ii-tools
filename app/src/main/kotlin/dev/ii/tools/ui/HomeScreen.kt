@@ -23,7 +23,7 @@ import dev.ii.tools.live.LiveHub
  * descriptions. What a row needs to say beyond its name is one word of status.
  */
 @Composable
-fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: () -> Unit, onOpenDeck: () -> Unit, onOpenWallpaper: () -> Unit, onOpenCalls: () -> Unit, onOpenNotifs: () -> Unit, onOpenClipboard: () -> Unit, onOpenShots: () -> Unit, onOpenPhoneData: () -> Unit, onOpenPcLink: () -> Unit, onOpenPerf: () -> Unit, onOpenLive: () -> Unit, onOpenTouchpad: () -> Unit, onOpenDraw: () -> Unit) {
+fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: () -> Unit, onOpenDeck: () -> Unit, onOpenWallpaper: () -> Unit, onOpenCalls: () -> Unit, onOpenNotifs: () -> Unit, onOpenClipboard: () -> Unit, onOpenShots: () -> Unit, onOpenPhoneData: () -> Unit, onOpenPcLink: () -> Unit, onOpenPerf: () -> Unit, onOpenLive: () -> Unit, onOpenTouchpad: () -> Unit, onOpenDraw: () -> Unit, onOpenPresenter: () -> Unit) {
     val status = rememberDeviceStatus()
     val relayed by LiveHub.relayed.collectAsStateWithLifecycle()
     val link by LinkHub.status.collectAsStateWithLifecycle()
@@ -67,6 +67,12 @@ fun HomeScreen(onOpenLink: () -> Unit, onOpenRemote: () -> Unit, onOpenAudio: ()
                     icon = R.drawable.rounded_draw,
                     tint = Tint.PRIMARY,
                     onClick = onOpenDraw,
+                )
+                ToolRow(
+                    title = stringResource(R.string.present_title),
+                    icon = R.drawable.rounded_co_present,
+                    tint = Tint.PRIMARY,
+                    onClick = onOpenPresenter,
                 )
                 ToolRow(
                     title = stringResource(R.string.audio_title),

@@ -464,6 +464,10 @@ Desenhar no celular (com pressão, se houver caneta) e o traço aparecer no `liv
 
 Passador de slides (setas, laser na tela) e controle do `Teleprompter` (rolagem, velocidade).
 
+> **Apresentador feito (2026-11-13).** Teclas pelo teclado virtual do helper (qualquer app
+> de apresentação), laser como ponto da shell sobre a tela em foco, teclas de volume
+> passam slides, cronômetro. **Teleprompter pulado:** não vale o custo agora.
+
 ### 4.3 Ditado pelo celular · **M**
 
 Microfone do celular alimentando o `DictationService` do shell.

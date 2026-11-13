@@ -71,6 +71,7 @@ class MainActivity : ScreenActivity() {
         onOpenPerf = { open(PerfActivity::class.java) },
         onOpenTouchpad = { open(TouchpadActivity::class.java) },
         onOpenDraw = { open(DrawActivity::class.java) },
+        onOpenPresenter = { open(PresenterActivity::class.java) },
         onOpenLive = { open(LiveActivity::class.java) },
     )
 
@@ -210,6 +211,34 @@ class PcLinkActivity : ScreenActivity() {
 class DrawActivity : ScreenActivity() {
     @Composable
     override fun Screen() = dev.ii.tools.ui.DrawScreen(onBack = ::finish)
+}
+
+/** The slide clicker, held sideways: the volume keys change slides while it is open and the PC listens. */
+class PresenterActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = dev.ii.tools.ui.PresenterScreen(onBack = ::finish)
+
+    private fun slideKey(keyCode: Int): String? {
+        val key = when (keyCode) {
+            android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> "Right"
+            android.view.KeyEvent.KEYCODE_VOLUME_UP -> "Left"
+            else -> return null
+        }
+        val live = dev.ii.tools.link.LinkHub.status.value is dev.ii.tools.link.LinkStatus.Online &&
+            dev.ii.tools.link.LinkHub.shell.value?.caps?.contains("present") == true &&
+            dev.ii.tools.present.Presenter.problem.value == null
+        return if (live) key else null
+    }
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        val key = slideKey(keyCode) ?: return super.onKeyDown(keyCode, event)
+        if (event.repeatCount == 0) dev.ii.tools.present.Presenter.key(key)
+        return true
+    }
+
+    // Swallowed on the way up too, or the system shows its volume panel.
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean =
+        slideKey(keyCode) != null || super.onKeyUp(keyCode, event)
 }
 
 /** The touchpad; turning sideways resizes the PC's touchpad instead of rebuilding. */
