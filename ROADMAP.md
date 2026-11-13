@@ -406,6 +406,13 @@ desbloqueio rápido (com a 3.2). Usa o advertising BLE só quando a feature est�
 
 ### 3.4 Áudio das ligações no PC · **XL** (começa com spike)
 
+> **Spike feito e implementado (2026-11-13).** O PipeWire 1.6 já faz o papel HFP-HF pelo
+> backend nativo (sem oFono); com o S23 conectado só no perfil HFP, uma ligação de verdade
+> saiu no fone do PC, e o WirePlumber ligou sozinho a voz à saída padrão e o microfone
+> (via EasyEffects) à ligação. O shell conecta o perfil só durante a ligação: "Answer on
+> this PC" no popup de chamada, "Move audio to this PC/phone" durante ela, e desconecta
+> ao fim. O microfone não pôde ser testado ponta a ponta (caixa postal).
+
 O Android não deixa app de terceiros capturar o áudio de uma chamada. O único caminho é o PC
 virar um fone Bluetooth (perfil HFP, papel HF). **Spike primeiro:** testar o suporte a HFP-HF
 no PipeWire / oFono da distro. Se funcionar, o shell roteia microfone e alto-falante e o app
@@ -430,10 +437,10 @@ envio de arquivos, ping, compartilhamento de URL. Cada uma vira um toggle na pá
 
 ### 3.6 Touchpad e teclado · **M**
 
-> **Em andamento (2026-11-12).** Celular → PC feito: touchpad uinput multitouch (os gestos e
+> **Feito (2026-11-12).** Celular → PC: touchpad uinput multitouch (os gestos e
 > configurações do touchpad do usuário valem) e teclado virtual do Wayland (qualquer
-> caractere). Falta o PC → celular (o remotekeyboard do KDE Connect, na página de teclado
-> da aba Phone).
+> caractere). O PC → celular (remotekeyboard do KDE Connect) foi **pulado** a pedido
+> (2026-11-13): não é necessário.
 
 Celular como touchpad (gestos de vários dedos mapeados para o Hyprland) e teclado, via uinput.
 Substitui o mousepad e o remotekeyboard do KDE Connect.
