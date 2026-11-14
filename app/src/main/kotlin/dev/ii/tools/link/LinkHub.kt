@@ -279,6 +279,7 @@ object LinkHub {
         Look.caps().forEach { caps.put(it) }
         FileServer.caps(app).forEach { caps.put(it) }
         Gallery.caps(app).forEach { caps.put(it) }
+        dev.ii.tools.camera.Webcam.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -532,6 +533,7 @@ object LinkHub {
         PcMedia.clear()
         FileServer.stop()
         Gallery.onLinkLost(app)
+        dev.ii.tools.camera.Webcam.onLinkLost()
     }
 
     private fun remember(pc: PairedPc, host: String) {
@@ -643,6 +645,7 @@ object LinkHub {
             "draw" -> dev.ii.tools.draw.DrawPad.onMessage(m)
             "present" -> dev.ii.tools.present.Presenter.onMessage(m)
             "screen" -> dev.ii.tools.screen.SecondScreen.onMessage(m)
+            "camera" -> dev.ii.tools.camera.Webcam.onMessage(app, m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
             "look" -> Look.update(app, m.optString("wall"))
@@ -767,6 +770,23 @@ object LinkHub {
         val closed: CompletableDeferred<Unit>,
     )
 
+    /**
+     * A second WebSocket to the PC the link is on, at [path] (the webcam's video): same
+     * host, port and pinned certificate, so it needs no other port, route or trust.
+     */
+    fun openSide(path: String, listener: WebSocketListener, viaHost: String? = null): WebSocket? {
+        val pc = _pc.value ?: return null
+        val host = viaHost ?: (_status.value as? LinkStatus.Online)?.host ?: return null
+        // Video: every write goes out at once (Nagle would hold a frame's tail back for
+        // the PC's delayed ACK, a 40 ms hitch).
+        val client = clientFor(pc.fingerprint).newBuilder()
+            .pingInterval(10, TimeUnit.SECONDS)
+            .socketFactory(NoDelaySockets)
+            .build()
+        val host6 = if (':' in host) "[$host]" else host
+        return client.newWebSocket(Request.Builder().url("https://$host6:${pc.port}$path").build(), listener)
+    }
+
     private fun open(client: OkHttpClient, host: String, port: Int): Session {
         val first = CompletableDeferred<JSONObject?>()
         val closed = CompletableDeferred<Unit>()
@@ -807,6 +827,18 @@ object LinkHub {
             // The certificate names nothing; the pinned fingerprint is the identity.
             .hostnameVerifier { _, _ -> true }
             .build()
+    }
+
+    private object NoDelaySockets : javax.net.SocketFactory() {
+        private val base = javax.net.SocketFactory.getDefault()
+        private fun java.net.Socket.fast() = apply { tcpNoDelay = true }
+        override fun createSocket() = base.createSocket().fast()
+        override fun createSocket(host: String?, port: Int) = base.createSocket(host, port).fast()
+        override fun createSocket(host: String?, port: Int, localHost: java.net.InetAddress?, localPort: Int) =
+            base.createSocket(host, port, localHost, localPort).fast()
+        override fun createSocket(host: java.net.InetAddress?, port: Int) = base.createSocket(host, port).fast()
+        override fun createSocket(address: java.net.InetAddress?, port: Int, localAddress: java.net.InetAddress?, localPort: Int) =
+            base.createSocket(address, port, localAddress, localPort).fast()
     }
 
     /** Trusts exactly one certificate: the one whose SHA-256 the QR code carried. */

@@ -1,10 +1,8 @@
 # ii tools
 
-Android companion for the [ii](https://github.com/P3DROVFX/ii-vynx) Quickshell desktop: a
-helper alongside KDE Connect for the things it does not do and that only make sense
-with the ii shell. It talks to the shell over its own encrypted link (**ii link**), and
-the live notification relay still rides on the KDE Connect pairing. The plan is in
-[ROADMAP.md](ROADMAP.md).
+Android companion for the [ii](https://github.com/P3DROVFX/ii-vynx) Quickshell desktop,
+in place of KDE Connect: it talks to the shell over its own encrypted link (**ii link**)
+and needs nothing else on the phone or the PC. The plan is in [ROADMAP.md](ROADMAP.md).
 
 Kotlin + Jetpack Compose, Material 3 Expressive with Material You dynamic colour, in
 Google Sans Flex (the ii shell's face). The home is a dashboard of the PC: its card (the
@@ -12,8 +10,7 @@ lock, its state), what plays on it, its volume with output and input as split bu
 (the device list opens in a bottom sheet), what it is doing live, the tools used most,
 its quick toggles and its load. Every tool is in *Tools*, every permission and switch in
 *Settings* (where pairing lives too); each screen is its own activity (`Dest` →
-`MainActivity`). The webcam and the second screen already have their screens, as
-placeholders until those features exist.
+`MainActivity`).
 
 ## Integrations
 
@@ -24,7 +21,7 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 
 - **Pairing:** on the PC, *Settings → ii tools → Pair a phone* shows a QR code. The app
   scans it with Google's code scanner (no camera permission), or opens the same
-  `iilink://pair?…` link sent from the PC over KDE Connect. The PC's self-signed
+  `iilink://pair?…` link. The PC's self-signed
   certificate is pinned by its SHA-256; the PC keeps only a hash of this phone's token.
 - **Lifetime:** the link stays open in the background (*Stay connected*, on by default),
   so the PC can reach the phone at any time; it needs the app let off battery
@@ -74,9 +71,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   while the link is up, and the latest copy when it connects. The phone's clipboard goes
   to the PC on request (Android only lets a focused app read it): the *Clipboard to PC*
   tile, *Copy on the PC* in the share sheet, or the Clipboard screen.
-- **Screenshots:** a screenshot taken on the PC lands in the phone's gallery (Pictures/ii
-  tools) with a notification, now or when the link next comes up; one taken on the phone
-  opens in the shell's screenshot preview and lands in `~/Pictures/Screenshots/Phone`.
+- **Screenshots:** one taken on the phone opens in the shell's screenshot preview and
+  lands in `~/Pictures/Screenshots/Phone`. The other way is opt-in (*Receive the PC's
+  screenshots*, off by default): then a screenshot taken on the PC lands in the phone's
+  gallery (Pictures/ii tools) with a notification, now or when the link next comes up.
 - **Copied text, automatically (optional):** an accessibility service notices a copy and
   reads the clipboard for an instant, the only way Android 10+ allows it without the app
   open. It reads event text only, never the screen.
@@ -107,6 +105,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Second screen:** the phone as a monitor for the PC over USB: extend (a new screen the
   phone's size) or mirror the focused screen, with touch as the PC's touchscreen. Needs
   adb on the PC and USB debugging on the phone.
+- **Webcam:** the phone's camera as the PC's webcam (`/dev/videoN` via `ii_link`) over
+  ii link, with lens, zoom, exposure, focus, torch and stabilisation controls, 4:3 or 16:9
+  (720p or 1080p). Keeps streaming with the screen off, and the PC can request the
+  camera with the phone confirming from a notification.
 - **Presenter:** a slide clicker for any presentation app on the PC: next and previous
   (the volume keys too), start, black screen and end, a laser dot on the focused screen
   and a talk timer.
@@ -138,10 +140,11 @@ text empty, so not even `adb shell dumpsys notification` can read what they say.
 
 ii tools listens to notifications (`NotificationListenerService`) and, for each live
 one, inflates its layout off screen, reads the visible texts and progress bars, and
-re-posts the result as a plain, silent notification. KDE Connect forwards that copy
-over the existing pairing; the ii shell recognises it and shows it as a live update
-(a shell notification kept in step with the phone, an entry in the Phone tab and a
-glance on the dynamic island). Nothing to configure on the desktop.
+sends the result over ii link; the ii shell shows it as a live update (a shell
+notification kept in step with the phone, an entry in the Phone tab and a glance on the
+dynamic island). Nothing to configure on the desktop. While the PC is out of reach the
+app also re-posts it as a plain, silent notification, which KDE Connect, where it is
+still installed, forwards the same way.
 
 #### What counts as live
 

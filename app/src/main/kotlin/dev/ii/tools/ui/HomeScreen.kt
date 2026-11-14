@@ -64,6 +64,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
+import dev.ii.tools.camera.Webcam
+import dev.ii.tools.camera.WebcamPhase
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
@@ -569,11 +571,28 @@ private fun ControlsRow(shell: ShellInfo) {
     }
 }
 
-/** The phone as the PC's webcam (roadmap 4.6): its place on the home, ahead of the feature. */
+/** The phone as the PC's webcam (roadmap 4.6). */
 @Composable
 private fun WebcamCard(onOpen: (Dest) -> Unit) {
     val cs = MaterialTheme.colorScheme
-    var lens by remember { mutableIntStateOf(2) }
+    val ctx = LocalContext.current
+    val status by Webcam.status.collectAsStateWithLifecycle()
+    val settings by Webcam.settings.collectAsStateWithLifecycle()
+    val caps by Webcam.caps.collectAsStateWithLifecycle()
+    val shell by LinkHub.shell.collectAsStateWithLifecycle()
+    var hasPermission by remember { mutableStateOf(Webcam.hasPermission(ctx)) }
+    LifecycleResumeEffect(Unit) {
+        hasPermission = Webcam.hasPermission(ctx)
+        onPauseOrDispose { }
+    }
+    val live = status.phase == WebcamPhase.LIVE
+    val starting = status.phase == WebcamPhase.STARTING
+    val failed = status.phase == WebcamPhase.FAILED
+    val pcReady = shell?.caps?.contains("camera") == true
+    val now = rememberClock(live)
+    val elapsed = if (live && status.since > 0L) clockText((now - status.since) / 1000L) else "0:00"
+    val lenses = caps?.lenses.orEmpty()
+
     ExpressiveCard(Layer.pane, cs.onSurface, onClick = { onOpen(Dest.CAMERA) }) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -586,13 +605,40 @@ private fun WebcamCard(onOpen: (Dest) -> Unit) {
                         maxLines = 2,
                     )
                 }
-                ShapeBox(MaterialShapes.Cookie9Sided, 104.dp, cs.primaryContainer) {
-                    Icon(painterResource(R.drawable.rounded_videocam_fill1), null, tint = cs.onPrimaryContainer, modifier = Modifier.size(46.dp))
+                StateShape(active = live, size = 104.dp, color = if (live) cs.primary else cs.primaryContainer, on = MaterialShapes.Cookie9Sided) {
+                    Icon(painterResource(R.drawable.rounded_videocam_fill1), null, tint = if (live) cs.onPrimary else cs.onPrimaryContainer, modifier = Modifier.size(46.dp))
                 }
             }
-            Text(stringResource(R.string.coming_soon_body), style = Expressive.live(14.sp), color = cs.onSurfaceVariant)
-            LensPicker(lens, onPick = { lens = it }, idle = Layer.onPane, chosen = cs.secondaryContainer, onChosen = cs.onSecondaryContainer, size = 44.dp)
-            FilledPill(stringResource(R.string.webcam_start), onClick = { onOpen(Dest.CAMERA) }, icon = R.drawable.rounded_play_arrow_fill1, modifier = Modifier.fillMaxWidth())
+            if (live) {
+                val stats = stringResource(R.string.webcam_stats, elapsed, status.kbps, status.fps)
+                val liveText = if (status.device.isNotEmpty()) "$stats · ${status.device}" else stats
+                Row(
+                    Modifier.clip(CircleShape).background(cs.primaryContainer).padding(start = 10.dp, end = 12.dp).height(30.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(cs.primary))
+                    Text(liveText, style = Expressive.title(13.sp), color = cs.onPrimaryContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            } else {
+                val body = when {
+                    starting -> stringResource(R.string.webcam_starting)
+                    failed -> webcamErrorText(status.error)
+                    !hasPermission -> stringResource(R.string.webcam_perm_needed)
+                    !pcReady -> stringResource(R.string.webcam_pc_off)
+                    else -> stringResource(R.string.webcam_card_body)
+                }
+                Text(body, style = Expressive.live(14.sp), color = if (failed) cs.error else cs.onSurfaceVariant)
+            }
+            LensPicker(lenses, settings.lens, onPick = Webcam::setLens, idle = Layer.onPane, chosen = cs.secondaryContainer, onChosen = cs.onSecondaryContainer, size = 44.dp)
+            if (live) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledPill(stringResource(R.string.webcam_open), onClick = { onOpen(Dest.CAMERA) }, modifier = Modifier.weight(1f))
+                    DashedPill(stringResource(R.string.webcam_stop), onClick = { Webcam.stop() }, icon = R.drawable.rounded_stop, outline = cs.error, content = cs.error)
+                }
+            } else {
+                FilledPill(stringResource(R.string.webcam_start), onClick = { onOpen(Dest.CAMERA) }, icon = R.drawable.rounded_play_arrow_fill1, modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 }
@@ -723,7 +769,6 @@ private fun AwayTiles(onOpen: (Dest) -> Unit) {
                     Text(
                         stringResource(
                             when {
-                                !device.kdeConnectInstalled -> R.string.kdeconnect_missing_short
                                 !device.liveReady -> R.string.status_needs_setup
                                 else -> R.string.home_live_relay_on
                             },

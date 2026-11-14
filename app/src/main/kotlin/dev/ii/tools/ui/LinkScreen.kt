@@ -80,7 +80,6 @@ private data class SettingsState(
     val restricted: Boolean,
     val copyService: Boolean,
     val battery: Boolean,
-    val kdeConnect: Boolean,
 )
 
 /**
@@ -98,6 +97,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val favorite by FavoritePreset.name.collectAsStateWithLifecycle()
     val scanner = rememberPairScanner()
     val network = rememberNetworkPermission()
+    val cameraPerm = rememberCameraPermission()
 
     fun read() = readDeviceStatus(ctx).let { d ->
         SettingsState(
@@ -112,7 +112,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
             restricted = ClipWatchService.restricted(ctx),
             copyService = ClipWatchService.isEnabled(ctx),
             battery = LinkHub.batteryUnrestricted(),
-            kdeConnect = d.kdeConnectInstalled,
         )
     }
     var s by remember { mutableStateOf(read()) }
@@ -161,7 +160,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
 
     var confirmForget by remember { mutableStateOf(false) }
     val missing = listOf(
-        s.listener, s.post, s.phone, s.contacts, s.photos, s.gallery, s.files, !s.restricted, s.copyService, s.battery, network.granted,
+        s.listener, s.post, s.phone, s.contacts, s.photos, s.gallery, s.files, !s.restricted, s.copyService, s.battery, network.granted, cameraPerm.granted,
     ).count { !it }
 
     ToolScaffold(
@@ -206,6 +205,13 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 PermissionRow(stringResource(R.string.perm_files), stringResource(R.string.perm_files_body), R.drawable.rounded_folder_open, s.files) {
                     ctx.startActivity(FileServer.permissionIntent(ctx))
                 }
+                PermissionRow(
+                    stringResource(R.string.perm_camera),
+                    stringResource(if (cameraPerm.permanentlyDenied) R.string.perm_camera_denied else R.string.perm_camera_body),
+                    R.drawable.rounded_videocam,
+                    cameraPerm.granted,
+                    cameraPerm.request,
+                )
                 PermissionRow(stringResource(R.string.settings_restricted), stringResource(R.string.clip_step_restricted_body), R.drawable.rounded_shield, !s.restricted) {
                     ctx.startActivity(ClipWatchService.appInfoIntent(ctx))
                 }
@@ -294,12 +300,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     summary = favorite ?: stringResource(R.string.settings_preset_none),
                     icon = R.drawable.rounded_star,
                     onClick = { onOpen(Dest.REMOTE) },
-                )
-                ToolRow(
-                    title = stringResource(R.string.kdeconnect),
-                    summary = stringResource(if (s.kdeConnect) R.string.kdeconnect_installed else R.string.kdeconnect_missing_short),
-                    icon = if (s.kdeConnect) R.drawable.rounded_devices else R.drawable.rounded_warning,
-                    tint = if (s.kdeConnect) Tint.SECONDARY else Tint.ERROR,
                 )
                 ToolRow(
                     title = stringResource(R.string.tools_title),

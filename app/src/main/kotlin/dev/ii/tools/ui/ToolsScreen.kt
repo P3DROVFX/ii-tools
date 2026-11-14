@@ -106,7 +106,7 @@ fun ToolsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         item { GroupHeader(stringResource(R.string.tools_sync)) }
         item { ToolGrid(sync, needs, mapOf(Dest.LIVE to relayed.size), onOpen) }
         item { GroupHeader(stringResource(R.string.tools_device)) }
-        item { ToolGrid(device, needs, emptyMap(), onOpen, soon = setOf(Dest.CAMERA)) }
+        item { ToolGrid(device, needs, emptyMap(), onOpen) }
         item { GroupHeader(stringResource(R.string.tools_connection)) }
         item {
             CardGroup {
@@ -118,23 +118,17 @@ fun ToolsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     tint = if (current != null) Tint.PRIMARY else Tint.SECONDARY,
                     onClick = { onOpen(Dest.SETTINGS) },
                 )
-                ToolRow(
-                    title = stringResource(R.string.kdeconnect),
-                    summary = stringResource(if (status.kdeConnectInstalled) R.string.kdeconnect_installed else R.string.kdeconnect_missing_short),
-                    icon = if (status.kdeConnectInstalled) R.drawable.rounded_devices else R.drawable.rounded_warning,
-                    tint = if (status.kdeConnectInstalled) Tint.SECONDARY else Tint.ERROR,
-                )
             }
         }
     }
 }
 
 @Composable
-private fun ToolGrid(tools: List<Tool>, needs: Set<Dest>, badges: Map<Dest, Int>, onOpen: (Dest) -> Unit, soon: Set<Dest> = emptySet()) {
+private fun ToolGrid(tools: List<Tool>, needs: Set<Dest>, badges: Map<Dest, Int>, onOpen: (Dest) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         tools.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { ToolTile(it, it.dest in needs, badges[it.dest] ?: 0, it.dest in soon, onOpen, Modifier.weight(1f)) }
+                row.forEach { ToolTile(it, it.dest in needs, badges[it.dest] ?: 0, onOpen, Modifier.weight(1f)) }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -142,7 +136,7 @@ private fun ToolGrid(tools: List<Tool>, needs: Set<Dest>, badges: Map<Dest, Int>
 }
 
 @Composable
-private fun ToolTile(tool: Tool, needsSetup: Boolean, badge: Int, soon: Boolean, onOpen: (Dest) -> Unit, modifier: Modifier) {
+private fun ToolTile(tool: Tool, needsSetup: Boolean, badge: Int, onOpen: (Dest) -> Unit, modifier: Modifier) {
     val cs = MaterialTheme.colorScheme
     val (bg, fg) = if (needsSetup) cs.tertiaryContainer to cs.onTertiaryContainer else Layer.pane to cs.onSurface
     ExpressiveCard(bg, fg, modifier, radius = Radius.row, onClick = { onOpen(tool.dest) }) {
@@ -158,9 +152,8 @@ private fun ToolTile(tool: Tool, needsSetup: Boolean, badge: Int, soon: Boolean,
             }
             Column {
                 Text(stringResource(tool.title), style = Expressive.title(16.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                when {
-                    needsSetup -> Text(stringResource(R.string.status_needs_setup), style = Expressive.live(13.sp))
-                    soon -> Text(stringResource(R.string.coming_soon), style = Expressive.live(13.sp), color = cs.onSurfaceVariant)
+                if (needsSetup) {
+                    Text(stringResource(R.string.status_needs_setup), style = Expressive.live(13.sp))
                 }
             }
         }

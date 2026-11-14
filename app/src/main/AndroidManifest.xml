@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The webcam: the camera, kept in a camera foreground service while streaming. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- The webcam holds Wi-Fi in low-latency mode while it streams over the network. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <!-- ii link: the socket to the paired PC on the LAN (Android 17 gates the LAN
          behind ACCESS_LOCAL_NETWORK, a runtime permission). -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -24,8 +31,7 @@
     <!-- PC live updates (Fase 2.6): Android 16 Live Updates on the lock screen. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
-    <!-- App labels/icons for the apps that post live notifications, and the
-         KDE Connect install check. -->
+    <!-- App labels/icons for the apps that post live notifications. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <application
@@ -132,9 +138,11 @@
             android:name=".ToolsActivity"
             android:exported="false" />
 
-        <!-- The webcam, held sideways like the camera it stands for (a placeholder for now). -->
+        <!-- The webcam, held sideways like the camera it stands for. singleTop: the
+             "start" notification reaches an open screen instead of stacking another. -->
         <activity
             android:name=".CameraActivity"
+            android:launchMode="singleTop"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:exported="false" />
@@ -210,6 +218,11 @@
         </receiver>
 
         <!-- Copied text to the PC with no app open (optional, enabled by the user). -->
+        <service
+            android:name=".camera.WebcamService"
+            android:exported="false"
+            android:foregroundServiceType="camera" />
+
         <service
             android:name=".clip.ClipWatchService"
             android:exported="false"

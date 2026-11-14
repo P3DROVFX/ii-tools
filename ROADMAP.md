@@ -497,10 +497,22 @@ Passos, sono e batimentos para o `HealthService` do shell.
 A tela de workspaces da 1.1 ganha miniaturas reais das janelas, capturadas sob demanda e com
 baixa resolução.
 
-### 4.6 Câmera própria · **L**
+### 4.6 Câmera própria · **L** · feito
 
-Substituir o DroidCam por um stream de câmera do próprio app (CameraX + `MediaCodec`), integrado
-ao `PhoneCameraService`. Só vale se o DroidCam virar um problema.
+O celular como webcam do PC, no lugar do DroidCam sempre que o ii tools é o serviço ativo
+(Settings → ii tools → "Usar o DroidCam" volta a ele).
+
+- **Celular:** Camera2 + `MediaCodec` (H.264 do encoder de hardware, sem B-frames), prévia na
+  tela da webcam em 4:3 ou 16:9 (16:9 vira layout flutuante), lentes 0.6/1×/3× como zoom da
+  câmera lógica, frontal, exposição, foco (toque e manual), lanterna, estabilização. Um
+  foreground service de câmera mantém o stream com a tela desligada. O PC pode pedir: o
+  celular confirma por notificação (Android só abre a câmera com o usuário na frente).
+- **Transporte:** um segundo WebSocket na porta do link (`/iilink/1/camera`, mesmo TLS e
+  pinning, token de uso único), sem outra porta nem rota; quadros descartados até o próximo
+  key frame quando a rede engasga.
+- **PC:** o helper decodifica para um `v4l2loopback` ("ii tools camera", que todo app lista)
+  com ffmpeg, ou, sem o módulo de kernel, para uma câmera do PipeWire (GStreamer), sem root
+  mas lida por menos apps. Espelhar e girar ficam no PC.
 
 ### 4.7 Galeria do celular · **M**
 

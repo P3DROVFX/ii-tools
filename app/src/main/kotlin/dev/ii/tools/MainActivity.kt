@@ -276,8 +276,24 @@ class ToolsActivity : ScreenActivity() {
     override fun Screen() = ToolsScreen(onBack = ::finish, onOpen = ::open)
 }
 
-/** The webcam (a placeholder until ROADMAP 4.6), held sideways like the camera it drives. */
+/** The webcam, held sideways like the camera it drives. The "start" notification opens it to go live. */
 class CameraActivity : ScreenActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        takeStart(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        takeStart(intent)
+    }
+
+    private fun takeStart(intent: Intent?) {
+        if (intent?.getBooleanExtra(dev.ii.tools.camera.Webcam.EXTRA_START, false) != true) return
+        intent.removeExtra(dev.ii.tools.camera.Webcam.EXTRA_START)
+        dev.ii.tools.camera.Webcam.requestStart()
+    }
+
     @Composable
     override fun Screen() = CameraScreen(onBack = ::finish)
 }

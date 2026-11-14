@@ -44,7 +44,7 @@ object ShotSync {
 
     val PERMISSION = Manifest.permission.READ_MEDIA_IMAGES
 
-    fun receives(ctx: Context) = prefs(ctx).getBoolean(RECEIVE, true)
+    fun receives(ctx: Context) = prefs(ctx).getBoolean(RECEIVE, false)
     fun sends(ctx: Context) = prefs(ctx).getBoolean(SEND, true)
     fun canWatch(ctx: Context) = ctx.checkSelfPermission(PERMISSION) == PackageManager.PERMISSION_GRANTED
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
