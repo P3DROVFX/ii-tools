@@ -316,6 +316,7 @@ object LinkHub {
         dev.ii.tools.media.Handoff.caps(app).forEach { caps.put(it) }
         caps.put("launcherIcons")
         Look.caps().forEach { caps.put(it) }
+        WallSync.caps(app).forEach { caps.put(it) }
         FileServer.caps(app).forEach { caps.put(it) }
         Gallery.caps(app).forEach { caps.put(it) }
         PhoneUsage.caps(app).forEach { caps.put(it) }
@@ -617,6 +618,7 @@ object LinkHub {
                 "share" -> PcActions.saveDownload(app, inc.file, inc.name)
                 "pcMediaArt" -> PcMedia.artReceived(app, inc.file, inc.name)
                 "look" -> Look.received(app, inc.file, inc.name)
+                "wallSync" -> WallSync.received(app, inc.file, inc.name)
                 else -> false
             }
             inc.file.delete()

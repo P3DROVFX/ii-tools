@@ -262,6 +262,8 @@
     <string name="handoff_title">Continue on your phone</string>
     <string name="handoff_channel">Handoff from the PC</string>
     <string name="handoff_setting">Continue on the phone when the PC locks</string>
+    <string name="wallsync_title">Use the PC\'s wallpaper</string>
+    <string name="wallsync_summary">Sets this phone\'s home and lock wallpaper to the PC\'s</string>
     <string name="present_title">Presenter</string>
     <string name="present_laser_hint">Hold here to point the laser on the PC\'s focused screen</string>
     <string name="present_off">The presenter is off in the PC\'s ii tools settings</string>

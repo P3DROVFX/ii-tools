@@ -128,6 +128,17 @@ fun WallpaperScreen(shared: Uri?, onBack: () -> Unit, onDone: () -> Unit) {
                         tint = Tint.PRIMARY,
                         onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     )
+                    var sync by remember { mutableStateOf(dev.ii.tools.link.WallSync.isEnabled(ctx)) }
+                    SwitchRow(
+                        title = stringResource(R.string.wallsync_title),
+                        checked = sync,
+                        onCheckedChange = {
+                            sync = it
+                            dev.ii.tools.link.WallSync.setEnabled(ctx, it)
+                        },
+                        icon = R.drawable.rounded_desktop_windows,
+                        summary = stringResource(R.string.wallsync_summary),
+                    )
                 }
             }
             return@ToolScaffold

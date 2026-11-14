@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Normal permission: only used when "Use the PC's wallpaper" is on. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- The webcam: the camera, kept in a camera foreground service while streaming. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

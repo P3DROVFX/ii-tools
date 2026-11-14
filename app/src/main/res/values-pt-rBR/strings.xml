@@ -261,6 +261,8 @@
     <string name="handoff_title">Continue no celular</string>
     <string name="handoff_channel">Continuar do PC</string>
     <string name="handoff_setting">Continuar no celular quando o PC bloquear</string>
+    <string name="wallsync_title">Usar o wallpaper do PC</string>
+    <string name="wallsync_summary">Usa o wallpaper do PC como papel de parede e de bloqueio do celular</string>
     <string name="present_title">Apresentador</string>
     <string name="present_laser_hint">Segure aqui para apontar o laser na tela em foco do PC</string>
     <string name="present_off">O apresentador está desligado nas configurações do ii tools no PC</string>
