@@ -615,6 +615,77 @@ automático em viagem (`WorldClockService`). Desligado por padrão.
 
 Navegar pelo `Cliphist` no app e puxar uma cópia antiga (texto ou imagem) para o celular.
 
+### 5.11 Brilho do monitor e luz noturna no Controle remoto · **XS**
+
+Extensão da `RemoteScreen` (1.1) para quando você está na cama ou no sofá: slider de brilho físico
+do monitor conectado ao `Brightness.qml` (backlight e DDC/CI em monitores externos) e toggle +
+temperatura da luz noturna conectado ao `Hyprsunset.qml`. Estado no tópico `display` assinado só
+com a tela Controle aberta.
+
+### 5.12 Rotinas do celular que alteram o shell (Modes & Routines + presets no app) · **M**
+
+Mais do que acionar modes do shell manualmente pelo app: permitir que **rotinas do celular**
+disparem ações e estados diretamente no shell (`lock.activate`, `oledSaver.toggle`, pausar mídia,
+mutar áudio do PC, Wake-on-LAN, ativar/desativar um mode ou preset do shell).
+
+- **Integração com o Modes & Routines do sistema (Samsung / Android):** expor ações do shell como
+  atalhos/activities acionáveis sem abrir UI (`ShortcutInfo` / `Activity` invisível com
+  parâmetros + plugin de ação quando aplicável), para que o usuário monte rotinas nativas do
+  celular que alteram o shell (ex.: *"Quando sair de casa / desconectar do Wi-Fi → ativar a
+  lockscreen do shell"*).
+- **Motor leve + presets prontos dentro do próprio app:** tela com **presets de rotinas prontos**
+  (ativáveis em 1 toque, sem depender da marca do aparelho) para os cenários clássicos que
+  combinam gatilhos do celular com ações do shell:
+  - *Sair de casa* (desconectar do Wi-Fi de casa / perder alcance do link) → bloquear o shell (`lock.activate`, enviado no último fôlego ou via Tailscale).
+  - *Hora de dormir* (celular no carregador em horário noturno ou DND de sono ativo) → bloquear o PC + ligar `oledSaver` / pausar mídia.
+  - *Chegar em casa* (conectar no Wi-Fi de casa) → enviar Wake-on-LAN para acordar o PC.
+  - *Em ligação* → pausar mídia, silenciar notificações ou reduzir volume do PC.
+
+### 5.13 Media Mode de letras no app · **S**
+
+Botão no `MediaCard` que abre um **Media Mode focado em lyrics** dentro do app em **modo
+paisagem** (tela cheia, barras do sistema escondidas, tela acesa): fundo imersivo derivado da
+capa/cores da faixa (mesma linguagem visual do Media Mode do shell) e a letra sincronizada vinda
+do `LyricsService.qml` (`CustomLyricsStore` / LRCLIB) rolando em destaque pelo relógio local da
+sessão (`positionAt(now)`), enviada uma única vez por troca de música (zero polling).
+
+### 5.14 Microfone próprio no ii link · **M**
+
+O celular como microfone do PC pelo próprio link, aposentando o `droidcam-cli` no
+`PhoneMicService.qml` (assim como a 4.6 aposentou o DroidCam na câmera).
+
+- **Celular:** captura via `AudioRecord` codificada em Opus de baixa latência (ou PCM na LAN/USB),
+  mantida por um foreground service de `microphone` para funcionar com a tela desligada, tanto
+  **avulso** (atalho Mic na aba Phone ou tela no app) quanto **junto com a câmera nativa** (4.6).
+- **PC:** o helper cria uma fonte virtual do PipeWire (`ii-tools-mic`) que entra direto no
+  `PhoneMicService.qml` e no `EasyEffects.qml`. Toggle "Usar o DroidCam" no Settings continua como
+  fallback legado.
+
+### 5.15 scrcpy sem fio mais rápido · **S**
+
+Medido em 2026-11-14 (S23 no Wi-Fi de 5 GHz, 80 MHz, PC com power save desligado): ping
+PC → celular de 3 ms no melhor caso, 67 ms de média e picos de 317 ms a 1,4 s. É o power save
+do rádio do celular. Além disso, o shell limita o scrcpy na rede a 4 Mbit/s, 1600 px e 60 fps,
+com H.264.
+
+- **Qualidade:** na rede, 12–16 Mbit/s com `--video-codec=h265` (H.264 se o celular não tiver
+  encoder HEVC, verificado uma vez por aparelho); o limite antigo só vale em link fraco (taxa do
+  `nmcli` no início da sessão).
+- **Rádio acordado:** com uma sessão sem fio aberta, o shell avisa o app pelo link; o app segura
+  um `WifiLock` de baixa latência e manda um tráfego mínimo para o rádio não cochilar entre os
+  quadros. Só durante a sessão.
+
+### 5.16 Arrastar do celular para o PC · **M**
+
+Durante o espelhamento, uma faixa invisível na borda do celular voltada para o PC recebe arrastes
+de qualquer app (Arquivos, Fotos, imagens do Chrome) e acende com "Soltar no PC". Soltar ali envia
+o arquivo pelo link, como no compartilhar (2.2), e a imagem também vai para o clipboard do PC.
+
+No PC, nada de miniatura presa ao cursor: o **popup de transferência** que já existe ganha
+**Copiar**, **Abrir pasta** e **arrastar direto do popup** (a miniatura do popup inicia um drag
+Wayland com o arquivo, para soltar em qualquer app, na prateleira ou no chat da IA). Arquivo grande
+ainda chegando: o popup mostra o progresso e o drag fica disponível ao terminar.
+
 ---
 
 ## Resumo
@@ -626,4 +697,4 @@ Navegar pelo `Cliphist` no app e puxar uma cópia antiga (texto ou imagem) para 
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · arrastar do celular para o PC |
