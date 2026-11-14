@@ -453,4 +453,6 @@
     <string name="perm_usage">Usage access</string>
     <string name="perm_usage_body">To read how long apps are open and when the screen was used.</string>
     <string name="settings_needs_usage">Needs usage access</string>
+    <string name="mirror_radio">Low-latency Wi-Fi while mirroring</string>
+    <string name="mirror_radio_body">Keeps Wi-Fi out of power save during wireless scrcpy sessions so frames and touches stay responsive.</string>
 </resources>

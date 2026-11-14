@@ -305,6 +305,7 @@ object LinkHub {
         Gallery.caps(app).forEach { caps.put(it) }
         PhoneUsage.caps(app).forEach { caps.put(it) }
         dev.ii.tools.camera.Webcam.caps(app).forEach { caps.put(it) }
+        MirrorRadio.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -561,6 +562,7 @@ object LinkHub {
         ClipHistory.onLinkLost()
         PhoneUsage.onLinkDisconnected()
         dev.ii.tools.camera.Webcam.onLinkLost()
+        MirrorRadio.onLinkLost()
     }
 
     private fun remember(pc: PairedPc, host: String) {
@@ -693,6 +695,13 @@ object LinkHub {
             "screen" -> dev.ii.tools.screen.SecondScreen.onMessage(m)
             "camera" -> dev.ii.tools.camera.Webcam.onMessage(app, m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
+            "mirror" -> MirrorRadio.onMirror(
+                app,
+                m.optBoolean("on"),
+                (_status.value as? LinkStatus.Online)?.host,
+                _pc.value?.port ?: 0,
+                _shell.value?.caps?.contains("mirrorRadio") == true,
+            )
             "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
             "look" -> Look.update(app, m.optString("wall"))
         }

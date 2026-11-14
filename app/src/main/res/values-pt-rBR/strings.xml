@@ -456,4 +456,6 @@
     <string name="perm_usage">Acesso de uso</string>
     <string name="perm_usage_body">Para ler quanto tempo os apps ficam abertos e quando a tela foi usada.</string>
     <string name="settings_needs_usage">Precisa de acesso de uso</string>
+    <string name="mirror_radio">Wi-Fi de baixa latência ao espelhar</string>
+    <string name="mirror_radio_body">Evita economia de energia no Wi-Fi durante sessões scrcpy sem fio para manter quadros e toques ágeis.</string>
 </resources>

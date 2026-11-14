@@ -52,6 +52,7 @@ import dev.ii.tools.gallery.Gallery
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkProblem
 import dev.ii.tools.link.LinkStatus
+import dev.ii.tools.link.MirrorRadio
 import dev.ii.tools.link.PairedPc
 import dev.ii.tools.link.Wake
 import dev.ii.tools.live.LiveHub
@@ -126,6 +127,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     var clipAuto by remember { mutableStateOf(ClipSync.autoSend(ctx)) }
     var clipRecv by remember { mutableStateOf(ClipSync.receives(ctx)) }
     var clipHistory by remember { mutableStateOf(ClipHistory.isEnabled(ctx)) }
+    var mirrorRadio by remember { mutableStateOf(MirrorRadio.isEnabled(ctx)) }
     LifecycleResumeEffect(Unit) {
         val next = read()
         if (next.usageAccess != s.usageAccess)
@@ -137,6 +139,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         clipAuto = ClipSync.autoSend(ctx)
         clipRecv = ClipSync.receives(ctx)
         clipHistory = ClipHistory.isEnabled(ctx)
+        mirrorRadio = MirrorRadio.isEnabled(ctx)
         Gallery.onPermissionChanged(ctx)
         NotifMirror.load(ctx)
         FavoritePreset.load(ctx)
@@ -198,6 +201,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     stays = it
                     LinkHub.setStaysConnected(it)
                 }, R.drawable.rounded_sync, summary = stringResource(R.string.settings_stay_body))
+                SwitchRow(stringResource(R.string.mirror_radio), mirrorRadio, {
+                    mirrorRadio = it
+                    MirrorRadio.setEnabled(ctx, it)
+                }, R.drawable.rounded_speed, summary = stringResource(R.string.mirror_radio_body))
                 PermissionRow(
                     stringResource(R.string.link_battery), stringResource(R.string.settings_battery_body), R.drawable.rounded_battery_full, s.battery,
                 ) {

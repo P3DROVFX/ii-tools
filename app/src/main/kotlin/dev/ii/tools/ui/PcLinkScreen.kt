@@ -8,6 +8,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.ii.tools.R
 import dev.ii.tools.files.FileServer
+import dev.ii.tools.link.MirrorRadio
 import dev.ii.tools.pclive.DndSync
 import dev.ii.tools.pclive.PcLive
 import androidx.compose.runtime.getValue
@@ -23,9 +24,11 @@ fun PcLinkScreen(onBack: () -> Unit) {
     var media by remember { mutableStateOf(dev.ii.tools.media.PhoneMedia.isEnabled(ctx)) }
     var pcMedia by remember { mutableStateOf(dev.ii.tools.media.PcMedia.isEnabled(ctx)) }
     var files by remember { mutableStateOf(FileServer.isEnabled(ctx)) }
+    var mirrorRadio by remember { mutableStateOf(MirrorRadio.isEnabled(ctx)) }
     var filesGranted by remember { mutableStateOf(FileServer.hasPermission()) }
     LifecycleResumeEffect(Unit) {
         filesGranted = FileServer.hasPermission()
+        mirrorRadio = MirrorRadio.isEnabled(ctx)
         onPauseOrDispose { }
     }
 
@@ -109,6 +112,17 @@ fun PcLinkScreen(onBack: () -> Unit) {
                     checked = dnd,
                     onCheckedChange = toggleDnd,
                     icon = R.drawable.rounded_do_not_disturb_on,
+                )
+                val toggleMirrorRadio = { on: Boolean ->
+                    mirrorRadio = on
+                    MirrorRadio.setEnabled(ctx, on)
+                }
+                SwitchRow(
+                    title = stringResource(R.string.mirror_radio),
+                    summary = stringResource(R.string.mirror_radio_body),
+                    checked = mirrorRadio,
+                    onCheckedChange = toggleMirrorRadio,
+                    icon = R.drawable.rounded_speed,
                 )
             }
         }

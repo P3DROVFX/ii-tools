@@ -128,6 +128,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **PC media on the phone:** what plays on the PC shows as a media player on the phone's
   lock screen and Quick Settings (title, artist, cover, position), with play, skip and
   seek. The phone's own players are never echoed back.
+- **Low-latency Wi-Fi while mirroring:** when the shell starts a wireless scrcpy session
+  (`mirror` over ii link), the phone acquires Android's low-latency and high-perf Wi-Fi
+  locks and trickles a 4-byte UDP keep-awake datagram (`iim\n`) every 50 ms to keep the
+  radio out of power save until the last session ends, the link drops, or a 3 h safety
+  timeout fires. Nothing runs outside a wireless session.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; app keys fetch and cache their 96×96 PNG theme icons
   from the shell on demand (falling back to the app's initial letter); the app bundles only
