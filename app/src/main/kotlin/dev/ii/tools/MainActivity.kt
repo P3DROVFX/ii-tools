@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -132,13 +133,27 @@ class AudioActivity : ScreenActivity() {
  */
 class DeckActivity : ScreenActivity() {
     private var dock by mutableStateOf(false)
+    private var launchFolder by mutableStateOf<String?>(null)
+    private var launchNonce by mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Loaded here, not at app start: only the deck needs its layout.
         DeckStore.init(this)
         super.onCreate(savedInstanceState)
         dock = savedInstanceState?.getBoolean(DOCK) ?: false
+        if (savedInstanceState == null) {
+            launchFolder = intent?.getStringExtra(EXTRA_FOLDER)
+        }
         applyDock()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val folder = intent.getStringExtra(EXTRA_FOLDER)
+        if (folder != null) {
+            launchFolder = folder
+            launchNonce++
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -147,10 +162,16 @@ class DeckActivity : ScreenActivity() {
     }
 
     @Composable
-    override fun Screen() = DeckScreen(onBack = ::finish, dock = dock, onDock = {
-        dock = it
-        applyDock()
-    })
+    override fun Screen() = DeckScreen(
+        onBack = ::finish,
+        dock = dock,
+        onDock = {
+            dock = it
+            applyDock()
+        },
+        initialFolder = launchFolder,
+        folderNonce = launchNonce,
+    )
 
     private fun applyDock() {
         requestedOrientation = if (dock) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -165,10 +186,11 @@ class DeckActivity : ScreenActivity() {
         }
     }
 
-    private companion object {
-        const val DOCK = "dock"
+    companion object {
+        const val EXTRA_FOLDER = "folder"
+        private const val DOCK = "dock"
         /** Low enough to sit on a desk all day, still readable at a glance. */
-        const val DOCK_BRIGHTNESS = 0.08f
+        private const val DOCK_BRIGHTNESS = 0.08f
     }
 }
 

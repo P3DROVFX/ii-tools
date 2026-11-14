@@ -43,9 +43,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   values a second.
 - **Deck:** the phone as a stream deck. Keys come from the shell's catalog (screenshots,
   recording, media, windows, look, Discord, your own commands from *Settings → ii tools*),
-  modes, presets, workspaces and apps. Toggle keys light up with the shell's real state.
-  Pages fit the screen; *Edit* adds, removes and reorders (long press, drag); *Dock mode*
-  turns the phone sideways, keeps the screen on and dims it. The layout lives on the phone.
+  modes, presets, workspaces, apps (with their PC theme icon when cached) and one-level folders.
+  Toggle keys light up with the shell's real state, including inside folders. Pages fit the
+  screen; *Edit* adds keys and folders, renames or deletes folders, moves keys between the top
+  level and folders, and reorders (long press, drag); *Dock mode* turns the phone sideways,
+  keeps the screen on and dims it. The layout lives on the phone.
 - **Wallpaper:** share an image to *Set on PC* (or pick one in the app) and choose desktop,
   lock screen or both. The original file goes over the link in 256 KiB frames; the shell
   saves it with the other wallpapers and applies it, and the colours follow.
@@ -62,7 +64,7 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Quick Settings and widget:** tiles for Lock PC, Lock + AOD, Media mode and a
   favourite preset (the star in Remote control). With the panel open the tiles show the
   PC's real state; a tap connects, runs and lets the link go. A home screen widget holds
-  the first eight deck keys.
+  the first eight top-level deck keys (tapping a folder opens the deck directly in that folder).
 - **Send to PC:** in Android's share sheet. A link opens in the PC's browser or goes to
   its AI chat; text becomes a note, a reminder or a task; a photo or any file goes
   to `~/Downloads` as KDE Connect does (never overwriting), to the shell's file shelf, or
@@ -127,7 +129,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   lock screen and Quick Settings (title, artist, cover, position), with play, skip and
   seek. The phone's own players are never echoed back.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
-  font, once, and cached on the phone; the app bundles only what its screens use.
+  font, once, and cached on the phone; app keys fetch and cache their 96×96 PNG theme icons
+  from the shell on demand (falling back to the app's initial letter); the app bundles only
+  what its screens use.
 - Android 17 needs the *Nearby devices* permission (`ACCESS_LOCAL_NETWORK`) to reach
   the LAN.
 

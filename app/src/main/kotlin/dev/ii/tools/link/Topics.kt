@@ -76,7 +76,7 @@ internal object Topics {
 data class DeckAction(val id: String, val name: String, val icon: String, val group: String, val toggle: Boolean)
 
 /** An installed app on the PC, listed only while the deck's picker asks. */
-data class PcApp(val id: String, val name: String)
+data class PcApp(val id: String, val name: String, val icon: String = "")
 
 internal object DeckTopics {
     fun deck(m: JSONObject): List<DeckAction> {
@@ -94,7 +94,7 @@ internal object DeckTopics {
         return buildList {
             for (i in 0 until list.length()) {
                 val a = list.optJSONObject(i) ?: continue
-                add(PcApp(a.optString("id"), a.optString("name")))
+                add(PcApp(a.optString("id"), a.optString("name"), a.optString("icon")))
             }
         }
     }

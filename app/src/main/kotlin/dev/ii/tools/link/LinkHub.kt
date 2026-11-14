@@ -168,6 +168,7 @@ object LinkHub {
         if (::app.isInitialized) return
         app = ctx.applicationContext
         Symbols.init(app)
+        AppIcons.init(app)
         scope.launch { Look.load(app) }
         _pc.value = LinkPrefs.load(app)
         _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Idle
@@ -236,6 +237,9 @@ object LinkHub {
 
     /** The PC accepts the mirrored notification app filter right now. */
     fun supportsNotifFilter(): Boolean = socket != null && _shell.value?.caps?.contains("notifFilter") == true
+
+    /** The PC can resolve and send desktop app icons right now. */
+    fun supportsAppIcons(): Boolean = socket != null && _shell.value?.caps?.contains("appIcons") == true
 
     fun sendJson(m: JSONObject) {
         socket?.send(m.toString())
@@ -604,6 +608,7 @@ object LinkHub {
                 if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
                 if (_shell.value?.caps?.contains("media") == true) PhoneMedia.sendAll()
                 NotifMirror.onShellHello(app)
+                AppIcons.onLinkChanged()
                 Gallery.syncObserver(app)
                 // A panel open across a reconnect asks again.
                 if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
@@ -628,6 +633,7 @@ object LinkHub {
             "apps" -> _apps.value = DeckTopics.apps(m)
             "perf" -> if (perfWanted) _perf.value = PcPerf.from(m)
             "icons" -> Symbols.put(DeckTopics.paths(m))
+            "appIcon" -> AppIcons.put(m.optString("name"), m.optString("png"))
             "ok" -> pending.remove(m.optInt("id"))?.complete(null)
             "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
             "unpaired" -> unpairedByPc = true
@@ -759,6 +765,12 @@ object LinkHub {
     internal fun requestSymbols(names: Collection<String>): Boolean {
         val ws = socket ?: return false
         return ws.send(JSONObject().put("t", "icons").put("names", org.json.JSONArray(names)).toString())
+    }
+
+    /** Desktop app icons rendered to 96x96 PNG on the PC; they arrive in [AppIcons]. */
+    internal fun requestAppIcons(names: Collection<String>): Boolean {
+        val ws = socket ?: return false
+        return ws.send(JSONObject().put("t", "get").put("what", "appIcons").put("icons", org.json.JSONArray(names)).toString())
     }
 
     private fun command(id: Int, actionId: String, arg: Any?): String {

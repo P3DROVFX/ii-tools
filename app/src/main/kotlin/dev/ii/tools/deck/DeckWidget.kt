@@ -6,18 +6,22 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.view.View
 import android.widget.RemoteViews
+import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.PathParser
 import androidx.core.graphics.drawable.toBitmap
 import dev.ii.tools.DeckActivity
 import dev.ii.tools.R
+import dev.ii.tools.link.AppIcons
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.Symbols
 import dev.ii.tools.ui.bundledSymbol
@@ -27,9 +31,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * The first eight deck keys on the home screen. A tap is a broadcast back here, which
- * brings the link up just for it (LinkHub.runWhenReady) and lets it go: the widget keeps
- * nothing running. Keys show no on/off state, since that would need the link held open.
+ * The first eight top-level deck keys on the home screen. Action taps send a broadcast
+ * back here, which brings the link up just for it (LinkHub.runWhenReady) and lets it go;
+ * folder taps open the deck directly inside that folder.
  */
 class DeckWidget : AppWidgetProvider() {
 
@@ -82,6 +86,7 @@ class DeckWidget : AppWidgetProvider() {
         private fun render(ctx: Context): RemoteViews {
             DeckStore.init(ctx)
             Symbols.init(ctx)
+            AppIcons.init(ctx)
             val keys = DeckStore.keys.value.take(MAX_KEYS)
             val views = RemoteViews(ctx.packageName, R.layout.widget_deck)
             views.setViewVisibility(R.id.widget_empty, if (keys.isEmpty()) View.VISIBLE else View.GONE)
@@ -95,30 +100,59 @@ class DeckWidget : AppWidgetProvider() {
                 views.setViewVisibility(keyId, if (key == null) (if (keys.isEmpty()) View.GONE else View.INVISIBLE) else View.VISIBLE)
                 if (key == null) return@forEachIndexed
                 views.setTextViewText(LABEL_IDS[i], key.label)
-                icon(ctx, key)?.let { views.setImageViewBitmap(ICON_IDS[i], it) }
-                val run = Intent(ctx, DeckWidget::class.java)
-                    .setAction(ACTION_RUN)
-                    .putExtra(EXTRA_KIND, key.kind)
-                    .putExtra(EXTRA_REF, key.ref)
-                views.setOnClickPendingIntent(
-                    keyId,
-                    PendingIntent.getBroadcast(ctx, i, run, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
-                )
+                val (bmp, tinted) = icon(ctx, key)
+                bmp?.let { views.setImageViewBitmap(ICON_IDS[i], it) }
+                if (tinted) {
+                    views.setColorStateList(ICON_IDS[i], "setImageTintList", R.color.widget_on_key)
+                } else {
+                    views.setColorStateList(ICON_IDS[i], "setImageTintList", null as ColorStateList?)
+                }
+                if (key.isFolder) {
+                    val open = Intent(ctx, DeckActivity::class.java)
+                        .putExtra(DeckActivity.EXTRA_FOLDER, key.ref)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    views.setOnClickPendingIntent(
+                        keyId,
+                        PendingIntent.getActivity(ctx, 100 + i, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+                    )
+                } else {
+                    val run = Intent(ctx, DeckWidget::class.java)
+                        .setAction(ACTION_RUN)
+                        .putExtra(EXTRA_KIND, key.kind)
+                        .putExtra(EXTRA_REF, key.ref)
+                    views.setOnClickPendingIntent(
+                        keyId,
+                        PendingIntent.getBroadcast(ctx, i, run, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+                    )
+                }
             }
             return views
         }
 
-        /** A white mask (the layout tints it): bundled vector, or the PC-drawn outline. */
-        private fun icon(ctx: Context, key: DeckKey): Bitmap? {
+        /** Returns `(bitmap, needsTint)`: app icons keep full colour; symbols/initials are white masks tinted by the layout. */
+        private fun icon(ctx: Context, key: DeckKey): Pair<Bitmap?, Boolean> {
+            if (key.kind == "app") {
+                val iconName = if (key.icon.isEmpty() || key.icon == "apps") key.ref.removeSuffix(".desktop") else key.icon
+                AppIcons.bitmapNow(iconName)?.let { bmp ->
+                    val scaled = if (bmp.width == ICON_PX && bmp.height == ICON_PX) bmp else scaleFit(bmp, ICON_PX)
+                    return scaled to false
+                }
+                return initialBitmap(key.label.take(1).uppercase()) to true
+            }
             val symbol = when (key.kind) {
                 "workspace" -> "grid_view"
-                "app" -> "apps"
+                "folder" -> key.icon.ifEmpty { "folder" }
                 else -> key.icon
             }
+            val fallback = if (key.isFolder) R.drawable.rounded_folder_open else R.drawable.rounded_bolt
+            return symbolBitmap(ctx, symbol, fallback) to true
+        }
+
+        private fun symbolBitmap(ctx: Context, symbol: String, @DrawableRes fallback: Int): Bitmap? {
             bundledSymbol(symbol)?.let { res ->
                 return ContextCompat.getDrawable(ctx, res)?.toBitmap(ICON_PX, ICON_PX)
             }
-            val d = Symbols.pathNow(symbol) ?: return ContextCompat.getDrawable(ctx, R.drawable.rounded_bolt)?.toBitmap(ICON_PX, ICON_PX)
+            val d = Symbols.pathNow(symbol) ?: return ContextCompat.getDrawable(ctx, fallback)?.toBitmap(ICON_PX, ICON_PX)
             return runCatching {
                 val path = PathParser.createPathFromPathData(d)
                 path.transform(Matrix().apply { setScale(ICON_PX / 960f, ICON_PX / 960f) })
@@ -126,6 +160,26 @@ class DeckWidget : AppWidgetProvider() {
                     Canvas(it).drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
                 }
             }.getOrNull()
+        }
+
+        private fun initialBitmap(letter: String): Bitmap =
+            Bitmap.createBitmap(ICON_PX, ICON_PX, Bitmap.Config.ARGB_8888).also { bmp ->
+                val canvas = Canvas(bmp)
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.WHITE
+                    textSize = ICON_PX * 0.72f
+                    textAlign = Paint.Align.CENTER
+                    typeface = Typeface.DEFAULT_BOLD
+                }
+                val y = ICON_PX / 2f - (paint.descent() + paint.ascent()) / 2f
+                canvas.drawText(letter.ifEmpty { "?" }, ICON_PX / 2f, y, paint)
+            }
+
+        private fun scaleFit(src: Bitmap, box: Int): Bitmap {
+            val scale = minOf(box.toFloat() / src.width.coerceAtLeast(1), box.toFloat() / src.height.coerceAtLeast(1))
+            val w = (src.width * scale).toInt().coerceAtLeast(1)
+            val h = (src.height * scale).toInt().coerceAtLeast(1)
+            return Bitmap.createScaledBitmap(src, w, h, true)
         }
     }
 }
