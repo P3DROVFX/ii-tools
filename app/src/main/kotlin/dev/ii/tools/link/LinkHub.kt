@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
+import dev.ii.tools.clip.ClipHistory
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.files.FileServer
 import dev.ii.tools.gallery.Gallery
@@ -135,12 +136,24 @@ object LinkHub {
     private val _perf = MutableStateFlow<PcPerf?>(null)
     val perf: StateFlow<PcPerf?> = _perf.asStateFlow()
     @Volatile private var perfWanted = false
+    @Volatile private var clipHistoryWanted = false
 
     /** The performance panel is on screen: the PC samples only while it is. */
     fun subscribePerf(on: Boolean) {
         perfWanted = on
         if (!on) _perf.value = null
         socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", on).toString())
+    }
+
+    /** The clipboard history section is on screen: the PC pushes `clipHistoryChanged` only while it is. */
+    fun subscribeClipHistory(on: Boolean) {
+        clipHistoryWanted = on
+        if (on && supportsClipHistory()) {
+            socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", true).toString())
+            ClipHistory.refresh()
+        } else if (!on) {
+            socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", false).toString())
+        }
     }
 
     private lateinit var app: Context
@@ -170,6 +183,7 @@ object LinkHub {
         app = ctx.applicationContext
         Symbols.init(app)
         AppIcons.init(app)
+        ClipHistory.init(app)
         scope.launch { Look.load(app) }
         _pc.value = LinkPrefs.load(app)
         _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Idle
@@ -242,6 +256,7 @@ object LinkHub {
     /** The PC can resolve and send desktop app icons right now. */
     fun supportsAppIcons(): Boolean = socket != null && _shell.value?.caps?.contains("appIcons") == true
     fun supportsUsage(): Boolean = socket != null && _shell.value?.caps?.contains("usage") == true
+    fun supportsClipHistory(): Boolean = socket != null && _shell.value?.caps?.contains("clipHistory") == true
 
     fun sendJson(m: JSONObject) {
         socket?.send(m.toString())
@@ -543,6 +558,7 @@ object LinkHub {
         PcMedia.clear()
         FileServer.stop()
         Gallery.onLinkLost(app)
+        ClipHistory.onLinkLost()
         PhoneUsage.onLinkDisconnected()
         dev.ii.tools.camera.Webcam.onLinkLost()
     }
@@ -617,6 +633,10 @@ object LinkHub {
                 Gallery.syncObserver(app)
                 // A panel open across a reconnect asks again.
                 if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
+                if (clipHistoryWanted && supportsClipHistory()) {
+                    socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", true).toString())
+                    ClipHistory.refresh()
+                }
                 // The PC takes notifications: give it the whole list, and the live
                 // updates their link path.
                 if (isOnline()) {
@@ -640,7 +660,13 @@ object LinkHub {
             "icons" -> Symbols.put(DeckTopics.paths(m))
             "appIcon" -> AppIcons.put(m.optString("name"), m.optString("png"))
             "ok" -> pending.remove(m.optInt("id"))?.complete(null)
-            "err" -> pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
+            "err" -> {
+                if (m.has("id")) pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
+                val what = m.optString("what")
+                if (what == "clipHistory" || what == "clipThumbs") {
+                    ClipHistory.onError(m.optString("code").ifEmpty { "failed" })
+                }
+            }
             "unpaired" -> unpairedByPc = true
             "phone" -> CallWatcher.command(m.optString("a"), m.optString("arg").ifEmpty { null })
             "get" -> when (m.optString("what")) {
@@ -653,6 +679,9 @@ object LinkHub {
             "notifAct" -> NotifMirror.command(m)
             "notifFilter" -> NotifMirror.onFilterMessage(app, m)
             "clip" -> ClipSync.receive(app, m)
+            "clipHistory" -> ClipHistory.onHistoryReceived(m)
+            "clipThumb" -> ClipHistory.onThumbReceived(m.optString("id"), m.optString("png"))
+            "clipHistoryChanged" -> ClipHistory.onChanged()
             "act" -> PcActions.handle(app, m)
             "mediaCmd" -> PhoneMedia.command(m)
             "pcMedia" -> PcMedia.update(app, m)

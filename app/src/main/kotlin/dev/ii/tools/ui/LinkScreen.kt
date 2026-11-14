@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.calls.CallWatcher
+import dev.ii.tools.clip.ClipHistory
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.clip.ClipWatchService
 import dev.ii.tools.files.FileServer
@@ -122,6 +123,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     var gallery by remember { mutableStateOf(Gallery.isEnabled(ctx)) }
     var notifs by remember { mutableStateOf(NotifMirror.isEnabled(ctx)) }
     var usageEnabled by remember { mutableStateOf(PhoneUsage.isEnabled(ctx)) }
+    var clipAuto by remember { mutableStateOf(ClipSync.autoSend(ctx)) }
+    var clipRecv by remember { mutableStateOf(ClipSync.receives(ctx)) }
+    var clipHistory by remember { mutableStateOf(ClipHistory.isEnabled(ctx)) }
     LifecycleResumeEffect(Unit) {
         val next = read()
         if (next.usageAccess != s.usageAccess)
@@ -130,6 +134,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         gallery = Gallery.isEnabled(ctx)
         notifs = NotifMirror.isEnabled(ctx)
         usageEnabled = PhoneUsage.isEnabled(ctx)
+        clipAuto = ClipSync.autoSend(ctx)
+        clipRecv = ClipSync.receives(ctx)
+        clipHistory = ClipHistory.isEnabled(ctx)
         Gallery.onPermissionChanged(ctx)
         NotifMirror.load(ctx)
         FavoritePreset.load(ctx)
@@ -142,12 +149,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     var calls by remember { mutableStateOf(CallWatcher.isEnabled(ctx)) }
     var data by remember { mutableStateOf(PhoneData.isEnabled(ctx)) }
     var shotsSend by remember { mutableStateOf(ShotSync.sends(ctx)) }
-    var clipAuto by remember { mutableStateOf(ClipSync.autoSend(ctx)) }
     var browse by remember { mutableStateOf(FileServer.isEnabled(ctx)) }
     var pcLive by remember { mutableStateOf(PcLive.isEnabled(ctx)) }
     var pcMedia by remember { mutableStateOf(PcMedia.isEnabled(ctx)) }
     var shotsRecv by remember { mutableStateOf(ShotSync.receives(ctx)) }
-    var clipRecv by remember { mutableStateOf(ClipSync.receives(ctx)) }
     var dnd by remember { mutableStateOf(DndSync.isEnabled(ctx)) }
 
     val askPhone = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -296,6 +301,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     clipRecv = it
                     ClipSync.setReceives(ctx, it)
                 }, R.drawable.rounded_content_paste)
+                SwitchRow(stringResource(R.string.clip_history_show), clipHistory, {
+                    clipHistory = it
+                    ClipHistory.setEnabled(ctx, it)
+                }, R.drawable.rounded_history)
                 SwitchRow(stringResource(R.string.pclink_dnd), dnd, {
                     dnd = it
                     DndSync.setEnabled(ctx, it)

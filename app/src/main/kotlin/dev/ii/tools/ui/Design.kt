@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -137,6 +139,8 @@ fun ToolScaffold(
     onBack: (() -> Unit)? = null,
     subtitle: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
+    listState: LazyListState = rememberLazyListState(),
+    snackbarHost: @Composable () -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) {
     val page = Layer.page
@@ -145,6 +149,7 @@ fun ToolScaffold(
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = page,
+        snackbarHost = snackbarHost,
         topBar = {
             LargeFlexibleTopAppBar(
                 title = {
@@ -178,6 +183,7 @@ fun ToolScaffold(
         },
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 16.dp, end = 16.dp,

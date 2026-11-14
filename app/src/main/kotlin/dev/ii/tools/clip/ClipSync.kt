@@ -61,7 +61,8 @@ object ClipSync {
     // ── PC → phone ────────────────────────────────────────────────────────
 
     fun receive(ctx: Context, m: JSONObject) {
-        if (!receives(ctx)) return
+        val expected = ClipHistory.consumeExpectedPull()
+        if (!receives(ctx) && !expected) return
         scope.launch {
             val clip = runCatching {
                 val data = m.optString("data")
