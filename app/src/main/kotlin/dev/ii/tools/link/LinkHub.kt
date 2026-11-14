@@ -313,6 +313,7 @@ object LinkHub {
         PcLive.caps(app).forEach { caps.put(it) }
         PhoneMedia.caps(app).forEach { caps.put(it) }
         PcMedia.caps(app).forEach { caps.put(it) }
+        dev.ii.tools.media.Handoff.caps(app).forEach { caps.put(it) }
         caps.put("launcherIcons")
         Look.caps().forEach { caps.put(it) }
         FileServer.caps(app).forEach { caps.put(it) }
@@ -704,6 +705,7 @@ object LinkHub {
             "act" -> PcActions.handle(app, m)
             "mediaCmd" -> PhoneMedia.command(m)
             "pcMedia" -> PcMedia.update(app, m)
+            "handoff" -> dev.ii.tools.media.Handoff.onPc(app, m)
             "files" -> FileServer.command(app, m)
             "gallery" -> Gallery.onMessage(app, m)
             "pad" -> dev.ii.tools.touchpad.Touchpad.onReply(m)

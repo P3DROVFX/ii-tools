@@ -75,6 +75,7 @@ import dev.ii.tools.link.PcAudio
 import dev.ii.tools.link.PcPerf
 import dev.ii.tools.link.ShellInfo
 import dev.ii.tools.link.Wake
+import dev.ii.tools.media.Handoff
 import dev.ii.tools.media.PcMedia
 import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.pclive.PcLiveItem
@@ -279,6 +280,21 @@ private fun MediaCard(onOpen: (Dest) -> Unit) {
                     Icon(painterResource(R.drawable.rounded_music_note), null, tint = cs.secondaryContainer, modifier = Modifier.size(18.dp))
                 }
                 Text(p.app, style = Expressive.caption, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                if (p.url.startsWith("http")) {
+                    val ctx = LocalContext.current
+                    val haptics = LocalHapticFeedback.current
+                    Row(
+                        Modifier.clip(CircleShape).background(cs.onSecondaryContainer.copy(alpha = 0.12f)).clickable {
+                            haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                            Handoff.continueHere(ctx)
+                        }.padding(start = 8.dp, end = 12.dp).height(30.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(painterResource(R.drawable.rounded_smartphone), null, Modifier.size(16.dp))
+                        Text(stringResource(R.string.handoff_action), style = Expressive.title(13.sp), maxLines = 1)
+                    }
+                }
                 audio?.output?.let { out ->
                     Row(
                         Modifier.clip(CircleShape).background(cs.onSecondaryContainer.copy(alpha = 0.12f)).clickable { picking = true }.padding(start = 8.dp, end = 12.dp).height(30.dp),

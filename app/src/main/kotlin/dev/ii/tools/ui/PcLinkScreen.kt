@@ -23,6 +23,7 @@ fun PcLinkScreen(onBack: () -> Unit) {
     var dnd by remember { mutableStateOf(DndSync.isEnabled(ctx)) }
     var media by remember { mutableStateOf(dev.ii.tools.media.PhoneMedia.isEnabled(ctx)) }
     var pcMedia by remember { mutableStateOf(dev.ii.tools.media.PcMedia.isEnabled(ctx)) }
+    var handoff by remember { mutableStateOf(dev.ii.tools.media.Handoff.isEnabled(ctx)) }
     var files by remember { mutableStateOf(FileServer.isEnabled(ctx)) }
     var mirrorRadio by remember { mutableStateOf(MirrorRadio.isEnabled(ctx)) }
     var filesGranted by remember { mutableStateOf(FileServer.hasPermission()) }
@@ -92,6 +93,15 @@ fun PcLinkScreen(onBack: () -> Unit) {
                     checked = pcMedia,
                     onCheckedChange = togglePcMedia,
                     icon = R.drawable.rounded_queue_music,
+                )
+                SwitchRow(
+                    title = stringResource(R.string.handoff_setting),
+                    checked = handoff,
+                    onCheckedChange = {
+                        handoff = it
+                        dev.ii.tools.media.Handoff.setEnabled(ctx, it)
+                    },
+                    icon = R.drawable.rounded_smartphone,
                 )
                 val toggleFiles = { on: Boolean ->
                     files = on

@@ -56,6 +56,7 @@ import dev.ii.tools.link.MirrorRadio
 import dev.ii.tools.link.PairedPc
 import dev.ii.tools.link.Wake
 import dev.ii.tools.live.LiveHub
+import dev.ii.tools.media.Handoff
 import dev.ii.tools.media.PcMedia
 import dev.ii.tools.media.PhoneMedia
 import dev.ii.tools.notify.NotifMirror
@@ -155,6 +156,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     var browse by remember { mutableStateOf(FileServer.isEnabled(ctx)) }
     var pcLive by remember { mutableStateOf(PcLive.isEnabled(ctx)) }
     var pcMedia by remember { mutableStateOf(PcMedia.isEnabled(ctx)) }
+    var handoff by remember { mutableStateOf(Handoff.isEnabled(ctx)) }
     var shotsRecv by remember { mutableStateOf(ShotSync.receives(ctx)) }
     var dnd by remember { mutableStateOf(DndSync.isEnabled(ctx)) }
 
@@ -300,6 +302,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     pcMedia = it
                     PcMedia.setEnabled(ctx, it)
                 }, R.drawable.rounded_queue_music)
+                SwitchRow(stringResource(R.string.handoff_setting), handoff, {
+                    handoff = it
+                    Handoff.setEnabled(ctx, it)
+                }, R.drawable.rounded_smartphone)
                 SwitchRow(stringResource(R.string.shots_receive), shotsRecv, {
                     shotsRecv = it
                     ShotSync.setReceives(ctx, it)

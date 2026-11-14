@@ -45,6 +45,7 @@ data class PcPlayer(
     val canNext: Boolean,
     val canPrevious: Boolean,
     val canSeek: Boolean,
+    val url: String = "",
 ) {
     /** Where the track is at [now] (elapsed realtime). */
     fun positionAt(now: Long): Long {
@@ -164,6 +165,12 @@ object PcMedia {
         app?.let(::show)
     }
 
+    /** The page of what plays and where it is now, for a handoff; null when the player has no web page. */
+    fun handoffTarget(): Pair<String, Long>? {
+        val url = current?.optString("url").orEmpty()
+        return if (url.startsWith("http")) url to position() else null
+    }
+
     /** Where the track is now, from the last push and the time since. */
     private fun position(): Long {
         val m = current ?: return 0
@@ -190,6 +197,7 @@ object PcMedia {
             canNext = m.optBoolean("canNext"),
             canPrevious = m.optBoolean("canPrevious"),
             canSeek = m.optBoolean("canSeek"),
+            url = m.optString("url"),
         )
         val s = session ?: MediaSession(ctx, "ii tools PC").also {
             it.setCallback(callback, main)
@@ -243,6 +251,18 @@ object PcMedia {
             )
             if (m.optBoolean("canNext")) add(button(ctx, R.drawable.rounded_skip_next, R.string.pcmedia_next, "next"))
         }
+        val handoffUrl = m.optString("url")
+        val handoff = if (Handoff.isEnabled(ctx) && handoffUrl.startsWith("http")) {
+            Notification.Action.Builder(
+                Icon.createWithResource(ctx, R.drawable.rounded_smartphone),
+                ctx.getString(R.string.handoff_action),
+                PendingIntent.getActivity(
+                    ctx, 1,
+                    Intent(ctx, HandoffActivity::class.java).putExtra("url", handoffUrl).putExtra("position", position()),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            ).build()
+        } else null
         val compact = IntArray(buttons.size) { it }
         val n = Notification.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.rounded_desktop_windows)
@@ -257,7 +277,10 @@ object PcMedia {
             .setShowWhen(false)
             .setOngoing(playing)
             .setStyle(Notification.MediaStyle().setMediaSession(s.sessionToken).setShowActionsInCompactView(*compact))
-            .apply { buttons.forEach(::addAction) }
+            .apply {
+                buttons.forEach(::addAction)
+                handoff?.let(::addAction)
+            }
             .build()
         runCatching { nm.notify(NOTIF_ID, n) }
     }

@@ -258,6 +258,10 @@
     <string name="pcmedia_pause">Pause</string>
     <string name="pcmedia_previous">Previous</string>
     <string name="pcmedia_next">Next</string>
+    <string name="handoff_action">Continue on phone</string>
+    <string name="handoff_title">Continue on your phone</string>
+    <string name="handoff_channel">Handoff from the PC</string>
+    <string name="handoff_setting">Continue on the phone when the PC locks</string>
     <string name="present_title">Presenter</string>
     <string name="present_laser_hint">Hold here to point the laser on the PC\'s focused screen</string>
     <string name="present_off">The presenter is off in the PC\'s ii tools settings</string>

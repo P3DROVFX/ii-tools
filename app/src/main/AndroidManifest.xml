@@ -91,6 +91,15 @@
 
         <!-- The clipboard tile opens this for a moment: only a focused window may read
              the clipboard. -->
+        <!-- Opens a page the PC was playing, from a notification, and pauses the PC. -->
+        <activity
+            android:name=".media.HandoffActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.IiTools.Invisible" />
+
         <activity
             android:name=".clip.ClipActivity"
             android:exported="false"
