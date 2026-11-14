@@ -137,6 +137,17 @@ object LinkHub {
     val perf: StateFlow<PcPerf?> = _perf.asStateFlow()
     @Volatile private var perfWanted = false
     @Volatile private var focusWanted = false
+    @Volatile private var displayWanted = false
+
+    private val _display = MutableStateFlow<PcDisplay?>(null)
+    /** The PC's brightness and night light, pushed only while the remote screen is open. */
+    val display: StateFlow<PcDisplay?> = _display.asStateFlow()
+
+    fun subscribeDisplay(on: Boolean) {
+        displayWanted = on
+        if (!on) _display.value = null
+        socket?.send(JSONObject().put("t", "sub").put("what", "display").put("on", on).toString())
+    }
 
     private val _focus = MutableStateFlow<DeckFocus?>(null)
     /** The PC's focused window, pushed only while a deck with app folders is on screen. */
@@ -572,6 +583,7 @@ object LinkHub {
         _audio.value = null
         _deck.value = null
         _focus.value = null
+        _display.value = null
         _apps.value = null
         PcMedia.clear()
         FileServer.stop()
@@ -655,6 +667,7 @@ object LinkHub {
                 // A panel open across a reconnect asks again.
                 if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
                 if (focusWanted) socket?.send(JSONObject().put("t", "sub").put("what", "focus").put("on", true).toString())
+                if (displayWanted) socket?.send(JSONObject().put("t", "sub").put("what", "display").put("on", true).toString())
                 if (clipHistoryWanted && supportsClipHistory()) {
                     socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", true).toString())
                     ClipHistory.refresh()
@@ -678,6 +691,7 @@ object LinkHub {
             "audio" -> _audio.value = Topics.audio(m)
             "deck" -> _deck.value = DeckTopics.deck(m)
             "focus" -> if (focusWanted) _focus.value = DeckTopics.focus(m)
+            "display" -> if (displayWanted) _display.value = DeckTopics.display(m)
             "apps" -> _apps.value = DeckTopics.apps(m)
             "perf" -> if (perfWanted) _perf.value = PcPerf.from(m)
             "icons" -> Symbols.put(DeckTopics.paths(m))

@@ -650,6 +650,10 @@ Navegar pelo `Cliphist` no app e puxar uma cópia antiga (texto ou imagem) para 
 
 ### 5.11 Brilho do monitor e luz noturna no Controle remoto · **XS**
 
+> **Status (2026-11-14): implementado, falta o teste visual.** Tópico `display` (cap `display`, assinado só com a tela
+> Controle aberta): brilho do monitor em foco (`Brightness`, backlight ou DDC/CI), luz noturna ligada/desligada e a
+> temperatura (1200–6500 K). Comandos `brightness`, `night`, `nightTemp`. Cartão "Tela" na `RemoteScreen`.
+
 Extensão da `RemoteScreen` (1.1) para quando você está na cama ou no sofá: slider de brilho físico
 do monitor conectado ao `Brightness.qml` (backlight e DDC/CI em monitores externos) e toggle +
 temperatura da luz noturna conectado ao `Hyprsunset.qml`. Estado no tópico `display` assinado só

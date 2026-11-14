@@ -78,6 +78,9 @@ data class DeckAction(val id: String, val name: String, val icon: String, val gr
 /** An installed app on the PC, listed only while the deck's picker asks. */
 data class PcApp(val id: String, val name: String, val icon: String = "")
 
+/** The focused monitor's brightness (0–1, -1 when it cannot be read) and the night light. */
+data class PcDisplay(val monitor: String, val brightness: Float, val floor: Float, val night: Boolean, val temp: Int, val auto: Boolean)
+
 /** The window in focus on the PC (its Wayland app id) and the classes of every open window. */
 data class DeckFocus(val cls: String, val open: List<String>)
 
@@ -101,6 +104,15 @@ internal object DeckTopics {
             }
         }
     }
+
+    fun display(m: JSONObject) = PcDisplay(
+        monitor = m.optString("monitor"),
+        brightness = m.optDouble("brightness", -1.0).toFloat(),
+        floor = m.optDouble("floor", 0.01).toFloat(),
+        night = m.optBoolean("night"),
+        temp = m.optInt("temp", 5000),
+        auto = m.optBoolean("auto"),
+    )
 
     fun focus(m: JSONObject): DeckFocus {
         val arr = m.optJSONArray("open")

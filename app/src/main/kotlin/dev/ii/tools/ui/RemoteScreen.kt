@@ -52,12 +52,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.link.LinkHub
+import dev.ii.tools.link.PcDisplay
 import dev.ii.tools.link.Modes
 import dev.ii.tools.link.Presets
 import dev.ii.tools.link.ShellAction
 import dev.ii.tools.link.Workspaces
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import kotlin.math.roundToInt
 import androidx.compose.runtime.setValue
 
 /** Remote control: the shell's toggles, workspaces, modes and presets, all live. */
@@ -70,6 +73,7 @@ fun RemoteScreen(onBack: () -> Unit) {
     val workspaces by LinkHub.workspaces.collectAsStateWithLifecycle()
     val modes by LinkHub.modes.collectAsStateWithLifecycle()
     val presets by LinkHub.presets.collectAsStateWithLifecycle()
+    val display by LinkHub.display.collectAsStateWithLifecycle()
     val subtitle = listOfNotNull(
         pc?.name?.takeIf { it.isNotEmpty() },
         workspaces?.active?.takeIf { it > 0 }?.let { stringResource(R.string.home_workspace, it) },
@@ -85,6 +89,16 @@ fun RemoteScreen(onBack: () -> Unit) {
         }
 
         if (info.actions.isNotEmpty()) item { ActionBento(info.actions, active) }
+        val showDisplay = "display" in info.caps
+        item(key = "display") {
+            if (showDisplay) {
+                DisposableEffect(Unit) {
+                    LinkHub.subscribeDisplay(true)
+                    onDispose { LinkHub.subscribeDisplay(false) }
+                }
+                display?.let { DisplayCard(it) }
+            }
+        }
         workspaces?.let { ws ->
             item { GroupHeader(stringResource(R.string.remote_workspaces)) }
             item { WorkspaceGrid(ws) }
@@ -322,6 +336,107 @@ private fun PresetGroup(presets: Presets) {
                     }
                 },
             )
+        }
+    }
+}
+
+/** A value the PC owns, dragged from here: follows the finger while held, then the PC's push. */
+@Composable
+private fun rememberLiveValue(remote: Float, send: (Float) -> Unit): Triple<Float, (Float) -> Unit, () -> Unit> {
+    var held by remember { mutableStateOf(false) }
+    var local by remember { mutableStateOf(remote) }
+    var settling by remember { mutableStateOf(false) }
+    var lastSent by remember { mutableStateOf(0L) }
+    androidx.compose.runtime.LaunchedEffect(remote, held, settling) {
+        if (!held && (!settling || kotlin.math.abs(remote - local) < 0.015f)) {
+            settling = false
+            local = remote
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(settling) {
+        if (settling) {
+            kotlinx.coroutines.delay(800)
+            settling = false
+        }
+    }
+    return Triple(
+        local,
+        { v ->
+            held = true
+            local = v
+            val now = System.currentTimeMillis()
+            if (now - lastSent >= 50) {
+                lastSent = now
+                send(v)
+            }
+        },
+        {
+            send(local)
+            held = false
+            settling = true
+        },
+    )
+}
+
+/**
+ * For the bed or the sofa: the focused monitor's brightness and the night light (on or
+ * off, and how warm). The PC's push is the truth; a drag shows at once.
+ */
+@Composable
+private fun DisplayCard(d: PcDisplay) {
+    val cs = MaterialTheme.colorScheme
+    val haptics = LocalHapticFeedback.current
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+        GroupHeader(stringResource(R.string.remote_display))
+        if (d.brightness >= 0f) {
+            val (value, change, finish) = rememberLiveValue(d.brightness) { v ->
+                LinkHub.send("brightness", v.toDouble())
+            }
+            ExpressiveCard(cs.tertiaryContainer, cs.onTertiaryContainer, radius = Radius.row) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("${(value * 100).roundToInt()}", style = Expressive.digits(64.sp))
+                        Text("%", style = Expressive.digitsSoft(24.sp), modifier = Modifier.padding(bottom = 8.dp))
+                        Spacer(Modifier.weight(1f))
+                        Text(d.monitor, style = Expressive.caption, maxLines = 1, modifier = Modifier.padding(bottom = 10.dp))
+                    }
+                    BigSlider(
+                        value = value,
+                        onValueChange = { change(it.coerceAtLeast(d.floor)) },
+                        onValueChangeFinished = finish,
+                        label = stringResource(R.string.display_brightness),
+                        height = 48.dp,
+                        fill = cs.onTertiaryContainer,
+                        track = cs.onTertiaryContainer.copy(alpha = 0.18f),
+                        icon = R.drawable.rounded_brightness_6,
+                        iconTint = cs.tertiaryContainer,
+                    )
+                }
+            }
+        }
+        CardGroup {
+            SwitchRow(
+                title = stringResource(R.string.display_night),
+                checked = d.night,
+                onCheckedChange = {
+                    haptics.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                    LinkHub.send("night", it)
+                },
+                icon = R.drawable.rounded_nightlight,
+                summary = "${d.temp} K",
+            )
+            val (warm, change, finish) = rememberLiveValue((6500 - d.temp) / 5300f) { v ->
+                LinkHub.send("nightTemp", (6500 - v * 5300).roundToInt())
+            }
+            Box(Modifier.background(Layer.pane).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                BigSlider(
+                    value = warm,
+                    onValueChange = change,
+                    onValueChangeFinished = finish,
+                    label = stringResource(R.string.display_warmth),
+                    height = 36.dp,
+                )
+            }
         }
     }
 }

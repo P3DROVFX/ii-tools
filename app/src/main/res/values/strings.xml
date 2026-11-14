@@ -269,6 +269,10 @@
     <string name="wallsave_saving">Downloading…</string>
     <string name="wallsave_done">Wallpaper saved to Pictures/ii tools</string>
     <string name="wallsave_failed">Could not save the wallpaper</string>
+    <string name="remote_display">Display</string>
+    <string name="display_brightness">Brightness</string>
+    <string name="display_night">Night light</string>
+    <string name="display_warmth">Warmth</string>
     <string name="present_title">Presenter</string>
     <string name="present_laser_hint">Hold here to point the laser on the PC\'s focused screen</string>
     <string name="present_off">The presenter is off in the PC\'s ii tools settings</string>

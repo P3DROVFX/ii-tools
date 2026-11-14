@@ -268,6 +268,10 @@
     <string name="wallsave_saving">Baixando…</string>
     <string name="wallsave_done">Wallpaper salvo em Pictures/ii tools</string>
     <string name="wallsave_failed">Não foi possível salvar o wallpaper</string>
+    <string name="remote_display">Tela</string>
+    <string name="display_brightness">Brilho</string>
+    <string name="display_night">Luz noturna</string>
+    <string name="display_warmth">Temperatura</string>
     <string name="present_title">Apresentador</string>
     <string name="present_laser_hint">Segure aqui para apontar o laser na tela em foco do PC</string>
     <string name="present_off">O apresentador está desligado nas configurações do ii tools no PC</string>
