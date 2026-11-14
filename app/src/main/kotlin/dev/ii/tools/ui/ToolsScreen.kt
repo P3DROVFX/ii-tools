@@ -66,6 +66,7 @@ private val sync = listOf(
     Tool(Dest.SHOTS, R.drawable.rounded_screenshot, R.string.shots_title),
     Tool(Dest.GALLERY, R.drawable.rounded_photo_library, R.string.gallery_title),
     Tool(Dest.CALLS, R.drawable.rounded_call, R.string.calls_title),
+    Tool(Dest.ROUTINES, R.drawable.rounded_routine, R.string.routines_title),
     Tool(Dest.PHONE_DATA, R.drawable.rounded_contacts, R.string.data_title),
     Tool(Dest.PC_LINK, R.drawable.rounded_timer, R.string.pclink_title),
     Tool(Dest.WALLPAPER, R.drawable.rounded_wallpaper, R.string.wallpaper_title),

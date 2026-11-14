@@ -263,6 +263,7 @@ object LinkHub {
     /** The call state changed: tell the PC, opening the link for it if needed. */
     fun reportCall(state: String, name: String) {
         if (_pc.value == null) return
+        dev.ii.tools.routines.Routines.onCall(state)
         socket?.send(JSONObject().put("t", "call").put("state", state).put("name", name).toString())
         if (state == "idle") release("call") else hold("call")
     }

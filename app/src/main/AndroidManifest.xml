@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Routines: leaving and arriving home are Wi-Fi changes. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Normal permission: only used when "Use the PC's wallpaper" is on. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- The webcam: the camera, kept in a camera foreground service while streaming. -->
@@ -55,7 +57,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- The shortcuts' target: runs one PC action without showing anything, so the
+             phone's own routines (Modes and Routines, launcher shortcuts) can drive the PC.
+             Not exported: shortcuts reach it through the launcher, other apps cannot. -->
+        <activity
+            android:name=".routines.RunActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.IiTools.Invisible" />
+
+        <activity
+            android:name=".RoutinesActivity"
+            android:exported="false" />
 
         <!-- One activity per screen: the system's own transitions and predictive back. -->
         <activity

@@ -147,6 +147,16 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Screen time and clipboard history:** the phone's screen time (usage access) appears in the
   PC's usage app (*PC / Phone / All*) and bedtime record, on by default once usage access is
   allowed; the PC's clipboard history can be browsed on the phone to pull an old copy.
+- **Routines:** ready-made routines of the phone that act on the PC, over the same link and
+  with the app closed (the triggers are registered from the notification listener's process):
+  *Leaving home* (the Wi-Fi where the PC was reachable stays gone for a minute → lock it, over
+  whatever route is left), *Bedtime* (charger in during a window, 22:00–05:00 by default → pause
+  media, lock with the always-on display), *Arriving home* (back on that Wi-Fi → Wake-on-LAN) and
+  *In a call* (the PC's volume goes down, then back). "Home" is the network the link was online on
+  (gateway and subnet), learned: reading a Wi-Fi's name would need the location permission. Four
+  launcher shortcuts (lock, bedtime, pause media, wake; long-press the icon, or pin them) run the
+  same actions through a hidden, non-exported activity, so Modes and Routines can open them as app
+  shortcuts. All off by default.
 - **Low-latency Wi-Fi while mirroring:** when the shell starts a wireless scrcpy session
   (`mirror` over ii link), the phone acquires Android's low-latency and high-perf Wi-Fi
   locks and trickles a 4-byte UDP keep-awake datagram (`iim\n`) every 50 ms to keep the

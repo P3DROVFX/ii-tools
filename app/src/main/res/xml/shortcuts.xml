@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="pc_lock"
+        android:enabled="true"
+        android:icon="@drawable/rounded_lock"
+        android:shortcutShortLabel="@string/shortcut_lock">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.ii.tools"
+            android:targetClass="dev.ii.tools.routines.RunActivity">
+            <extra android:name="a" android:value="lock" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="pc_lockAod"
+        android:enabled="true"
+        android:icon="@drawable/rounded_bedtime"
+        android:shortcutShortLabel="@string/shortcut_lock_aod">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.ii.tools"
+            android:targetClass="dev.ii.tools.routines.RunActivity">
+            <extra android:name="a" android:value="lockAod" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="pc_pauseMedia"
+        android:enabled="true"
+        android:icon="@drawable/rounded_pause"
+        android:shortcutShortLabel="@string/shortcut_pause_media">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.ii.tools"
+            android:targetClass="dev.ii.tools.routines.RunActivity">
+            <extra android:name="a" android:value="pauseMedia" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="pc_wake"
+        android:enabled="true"
+        android:icon="@drawable/rounded_power_settings_new"
+        android:shortcutShortLabel="@string/shortcut_wake">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.ii.tools"
+            android:targetClass="dev.ii.tools.routines.RunActivity">
+            <extra android:name="a" android:value="wake" />
+        </intent>
+    </shortcut>
+</shortcuts>

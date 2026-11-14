@@ -83,6 +83,7 @@ class LiveListener : NotificationListenerService() {
         DndSync.start(this)
         PhoneMedia.start(this)
         dev.ii.tools.usage.PhoneUsage.start(this)
+        dev.ii.tools.routines.Routines.start(this)
         LinkHub.announceCaps()
     }
 

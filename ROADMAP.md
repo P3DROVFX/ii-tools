@@ -661,6 +661,15 @@ com a tela Controle aberta.
 
 ### 5.12 Rotinas do celular que alteram o shell (Modes & Routines + presets no app) · **M**
 
+> **Status (2026-11-14): implementado, falta o teste visual e no dia a dia.** `routines/Routines.kt` (gatilhos
+> registrados pelo processo do listener: `NetworkCallback` de Wi-Fi, carregador, estado da ligação) com quatro
+> presets: Saindo de casa (Wi-Fi da casa some por 1 min → `lock`), Hora de dormir (carregador na janela →
+> pausar mídia + `lockAod`), Chegando em casa (volta ao Wi-Fi → Wake-on-LAN) e Em ligação (baixa o volume do PC e
+> devolve). "Casa" é a rede (gateway + máscara) onde o link esteve online, sem permissão de localização. Quatro
+> atalhos estáticos (`RunActivity` invisível, não exportada) para o Modos e rotinas do Samsung. Testado: a ação
+> pausar mídia pelo atalho. Não testado: bloquear, Wake-on-LAN e os gatilhos de rede/carregador/ligação. Modes e
+> presets do shell como ação ficam para uma versão com rotinas livres.
+
 Mais do que acionar modes do shell manualmente pelo app: permitir que **rotinas do celular**
 disparem ações e estados diretamente no shell (`lock.activate`, `oledSaver.toggle`, pausar mídia,
 mutar áudio do PC, Wake-on-LAN, ativar/desativar um mode ou preset do shell).

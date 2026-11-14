@@ -20,6 +20,7 @@ import dev.ii.tools.live.LiveListener
 import dev.ii.tools.ui.AudioScreen
 import dev.ii.tools.ui.CallsScreen
 import dev.ii.tools.ui.ClipboardScreen
+import dev.ii.tools.ui.RoutinesScreen
 import dev.ii.tools.ui.DeckScreen
 import dev.ii.tools.ui.GalleryScreen
 import dev.ii.tools.ui.HomeScreen
@@ -78,6 +79,7 @@ private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
     Dest.PHONE_DATA -> PhoneDataActivity::class.java
     Dest.PC_LINK -> PcLinkActivity::class.java
     Dest.CALLS -> CallsActivity::class.java
+    Dest.ROUTINES -> RoutinesActivity::class.java
 }
 
 /** The home: a dashboard of the PC, or pairing when there is none. */
@@ -203,6 +205,11 @@ class WallpaperActivity : ScreenActivity() {
         onBack = ::finish,
         onDone = ::finish,
     )
+}
+
+class RoutinesActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = RoutinesScreen(onBack = ::finish)
 }
 
 class CallsActivity : ScreenActivity() {
