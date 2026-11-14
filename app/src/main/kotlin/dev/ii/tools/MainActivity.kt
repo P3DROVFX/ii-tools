@@ -275,8 +275,20 @@ class CameraActivity : ScreenActivity() {
     override fun Screen() = CameraScreen(onBack = ::finish)
 }
 
-/** The phone as a monitor (a placeholder until ROADMAP 3.1). */
+/** The phone as a monitor: extend or mirror, over USB. */
 class SecondScreenActivity : ScreenActivity() {
     @Composable
-    override fun Screen() = SecondScreenScreen(onBack = ::finish)
+    override fun Screen() = dev.ii.tools.ui.SecondScreenScreen(onBack = ::finish)
+}
+
+/** The PC's output itself: full screen, sideways; leaving it ends the session. */
+class SecondScreenViewActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = dev.ii.tools.ui.SecondScreenView(onDone = ::finish)
+
+    // Gone from view is gone: the PC would keep an output nobody sees.
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) finish()
+    }
 }

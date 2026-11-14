@@ -497,7 +497,7 @@ private fun ToolsStrip(onOpen: (Dest) -> Unit) {
     }
 }
 
-/** The phone as a monitor (roadmap 3.1): its place on the home, ahead of the feature. */
+/** The phone as a monitor (roadmap 3.1): Extend and Mirror start it from the home. */
 @Composable
 private fun SecondScreenCard(onOpen: (Dest) -> Unit) {
     val cs = MaterialTheme.colorScheme
@@ -517,10 +517,10 @@ private fun SecondScreenCard(onOpen: (Dest) -> Unit) {
                 }
                 MonitorDrawing(scale = 0.7f)
             }
-            Text(stringResource(R.string.coming_soon_body), style = Expressive.live(14.sp))
+            Text(stringResource(R.string.second_card_body), style = Expressive.live(14.sp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledPill(stringResource(R.string.second_extend), onClick = { onOpen(Dest.SECOND_SCREEN) }, icon = R.drawable.rounded_add_to_queue, container = cs.tertiary, content = cs.onTertiary, modifier = Modifier.weight(1f))
-                DashedPill(stringResource(R.string.second_mirror), onClick = { onOpen(Dest.SECOND_SCREEN) }, icon = R.drawable.rounded_screen_share, outline = cs.onTertiaryContainer, content = cs.onTertiaryContainer, modifier = Modifier.weight(1f))
+                FilledPill(stringResource(R.string.second_extend), onClick = { dev.ii.tools.screen.SecondScreen.pendingMode = "extend"; onOpen(Dest.SECOND_SCREEN) }, icon = R.drawable.rounded_add_to_queue, container = cs.tertiary, content = cs.onTertiary, modifier = Modifier.weight(1f))
+                DashedPill(stringResource(R.string.second_mirror), onClick = { dev.ii.tools.screen.SecondScreen.pendingMode = "mirror"; onOpen(Dest.SECOND_SCREEN) }, icon = R.drawable.rounded_screen_share, outline = cs.onTertiaryContainer, content = cs.onTertiaryContainer, modifier = Modifier.weight(1f))
             }
         }
     }

@@ -69,7 +69,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
 /** What the hidden field holds, so a backspace on "empty" still has something to delete. */
-private const val SENTINEL = " "
+internal const val SENTINEL = " "
 
 /**
  * The phone as the PC's touchpad: the whole surface reports every finger, the PC's
@@ -281,7 +281,7 @@ private fun PadButton(label: String, which: String, enabled: Boolean, modifier: 
 /** Keys an on-screen keyboard lacks, and sticky modifiers for the next key. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun KeysRow(mods: List<String>, onKey: (String) -> Unit, onMod: (String) -> Unit) {
+internal fun KeysRow(mods: List<String>, onKey: (String) -> Unit, onMod: (String) -> Unit) {
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),

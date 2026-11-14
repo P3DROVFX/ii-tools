@@ -200,27 +200,3 @@ fun CameraScreen(onBack: () -> Unit) {
         }
     }
 }
-
-/** The phone as a monitor (ROADMAP 3.1): the screen it will have, until the stream exists. */
-@Composable
-fun SecondScreenScreen(onBack: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    ToolScaffold(title = stringResource(R.string.second_title), onBack = onBack, subtitle = stringResource(R.string.coming_soon)) {
-        item {
-            ExpressiveCard(cs.tertiaryContainer, cs.onTertiaryContainer, Modifier.height(280.dp)) {
-                Ornament(MaterialShapes.Sunny, 360.dp, cs.tertiary, Alignment.TopEnd, x = 140.dp, y = (-120).dp, alpha = 0.16f)
-                MonitorDrawing(Modifier.align(Alignment.Center))
-            }
-        }
-        item {
-            Text(stringResource(R.string.second_headline), style = Expressive.xwide(32.sp), modifier = Modifier.padding(horizontal = 4.dp))
-        }
-        item { Hint(stringResource(R.string.second_soon_body)) }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledPill(stringResource(R.string.second_extend), onClick = {}, enabled = false, icon = R.drawable.rounded_add_to_queue, modifier = Modifier.weight(1f))
-                FilledPill(stringResource(R.string.second_mirror), onClick = {}, enabled = false, icon = R.drawable.rounded_screen_share, modifier = Modifier.weight(1f))
-            }
-        }
-    }
-}

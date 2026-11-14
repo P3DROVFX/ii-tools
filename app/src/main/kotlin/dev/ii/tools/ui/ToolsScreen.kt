@@ -103,7 +103,7 @@ fun ToolsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         item { GroupHeader(stringResource(R.string.tools_sync)) }
         item { ToolGrid(sync, needs, mapOf(Dest.LIVE to relayed.size), onOpen) }
         item { GroupHeader(stringResource(R.string.tools_device)) }
-        item { ToolGrid(device, needs, emptyMap(), onOpen, soon = setOf(Dest.CAMERA, Dest.SECOND_SCREEN)) }
+        item { ToolGrid(device, needs, emptyMap(), onOpen, soon = setOf(Dest.CAMERA)) }
         item { GroupHeader(stringResource(R.string.tools_connection)) }
         item {
             CardGroup {

@@ -392,6 +392,18 @@ deck.
   **Depois:** cliente próprio dentro do app, com USB (`adb reverse`) para menor latência.
 - O scrcpy não serve aqui: ele só transmite do celular para o PC.
 
+> **Começado (2026-11-13), só por USB.** Cliente próprio em vez de Sunshine + Moonlight:
+> saída headless do Hyprland (estender) ou a tela em foco (espelhar), wf-recorder com
+> NVENC/VA-API/x264 em FLV, socket local trazido ao celular por `adb reverse` com token de
+> uso único, `MediaCodec` de baixa latência numa `SurfaceView`, toque de volta como
+> touchscreen uinput mapeada na saída. Espelhar escolhe a tela (e troca durante a
+> sessão); a barra flutuante tem teclado, desenhar na tela e parar; resolução, fps, escala,
+> lado e qualidade vêm do app.
+>
+> **Pendente — versão sem fio:** o mesmo stream pela rede, sem `adb reverse` (porta
+> negociada pelo link, token igual, TLS ou o próprio link para proteger o vídeo), com
+> bitrate adaptativo para o Wi-Fi.
+
 ### 3.2 Celular como autenticador · **L**
 
 > **Pulado (2026-11-13):** pouca utilidade para o custo e o cuidado de segurança.
@@ -472,9 +484,13 @@ Passador de slides (setas, laser na tela) e controle do `Teleprompter` (rolagem,
 
 Microfone do celular alimentando o `DictationService` do shell.
 
+> **Pulado (2026-11-13):** não vale o custo e o esforço.
+
 ### 4.4 Health Connect · **M**
 
 Passos, sono e batimentos para o `HealthService` do shell.
+
+> **Pulado (2026-11-13):** não vale o custo e o esforço.
 
 ### 4.5 Miniaturas ao vivo dos workspaces · **M**
 
@@ -486,6 +502,23 @@ baixa resolução.
 Substituir o DroidCam por um stream de câmera do próprio app (CameraX + `MediaCodec`), integrado
 ao `PhoneCameraService`. Só vale se o DroidCam virar um problema.
 
+### 4.7 Galeria do celular · **M**
+
+As fotos e os vídeos do celular no PC, como no Phone Link: uma página **Galeria** na aba
+Phone da sidebar (ao lado de Contatos e Android Apps), em grade de 4 colunas, mais recentes
+primeiro, agrupadas por data e com filtro por álbum. Um clique abre o visualizador central
+(setas para navegar) com Salvar em `~/Pictures/Phone`, Copiar, Abrir no app padrão, Mostrar
+na pasta e arrastar para outros apps. **Sem apagar pelo PC.**
+
+- **Celular:** `MediaStore` (`READ_MEDIA_IMAGES`/`READ_MEDIA_VIDEO`, só leitura) lido em
+  páginas de ~200 sob demanda; miniaturas com `ContentResolver.loadThumbnail` só das
+  visíveis; um `ContentObserver` avisa o PC de cada foto nova na hora.
+- **Transporte:** a lista em JSON pelo link; as miniaturas em binário, gravadas pelo
+  próprio helper no cache (`~/.cache/quickshell/phone_gallery/<dev>/`), sem passar pela
+  shell arquivo a arquivo; a foto inteira pelo link, em cache (HEIC vira JPEG no envio);
+  vídeos pelo SFTP que já existe, para tocar e avançar sem baixar tudo.
+- **Etapas:** lista e miniaturas → visualizador e ações → vídeos e fotos novas ao vivo.
+
 ---
 
 ## Resumo
@@ -496,4 +529,4 @@ ao `PhoneCameraService`. Só vale se o DroidCam virar um problema.
 | 1 Essenciais | Controle remoto · áudio do PC · deck · controle de ligações · wallpaper · notificações pelo link |
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
-| 4 Nicho | Mesa de desenho · apresentação · ditado · Health Connect · miniaturas · câmera própria |
+| 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
