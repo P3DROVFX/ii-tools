@@ -619,6 +619,7 @@ object LinkHub {
                 "pcMediaArt" -> PcMedia.artReceived(app, inc.file, inc.name)
                 "look" -> Look.received(app, inc.file, inc.name)
                 "wallSync" -> WallSync.received(app, inc.file, inc.name)
+                "wallSave" -> WallSync.saved(app, inc.file, inc.name)
                 else -> false
             }
             inc.file.delete()

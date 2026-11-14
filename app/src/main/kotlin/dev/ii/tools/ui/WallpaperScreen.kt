@@ -139,6 +139,15 @@ fun WallpaperScreen(shared: Uri?, onBack: () -> Unit, onDone: () -> Unit) {
                         icon = R.drawable.rounded_desktop_windows,
                         summary = stringResource(R.string.wallsync_summary),
                     )
+                    val saving by dev.ii.tools.link.WallSync.saving.collectAsStateWithLifecycle()
+                    if (shell?.caps?.contains("wallSave") == true) {
+                        ToolRow(
+                            title = stringResource(R.string.wallsave_title),
+                            icon = R.drawable.rounded_download,
+                            summary = stringResource(if (saving) R.string.wallsave_saving else R.string.wallsave_summary),
+                            onClick = { if (!saving) dev.ii.tools.link.WallSync.requestSave() },
+                        )
+                    }
                 }
             }
             return@ToolScaffold

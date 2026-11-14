@@ -4,6 +4,16 @@ import android.app.WallpaperManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.os.Handler
+import android.os.Looper
+import android.content.ContentValues
+import android.provider.MediaStore
+import android.widget.Toast
+import dev.ii.tools.R
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import org.json.JSONObject
 import java.io.File
 
 /**
@@ -30,6 +40,39 @@ object WallSync {
     }
 
     fun caps(c: Context): List<String> = if (isEnabled(c)) listOf("wallSync") else emptyList()
+
+    private val main = Handler(Looper.getMainLooper())
+    private val _saving = MutableStateFlow(false)
+    /** True from the button press until the file lands (or 20 s pass). */
+    val saving: StateFlow<Boolean> = _saving.asStateFlow()
+
+    fun canSave(): Boolean = LinkHub.shell.value?.caps?.contains("wallSave") == true
+
+    /** The "Save the PC's wallpaper" button: the PC sends its wallpaper whole, uncropped. */
+    fun requestSave() {
+        if (_saving.value || !canSave()) return
+        _saving.value = true
+        LinkHub.sendJson(JSONObject().put("t", "get").put("what", "wallpaper"))
+        main.postDelayed({ _saving.value = false }, 20_000)
+    }
+
+    /** The file arrived (purpose `wallSave`): into Pictures/ii tools, to move around in the gallery. */
+    fun saved(c: Context, file: File, name: String): Boolean {
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "pc-wallpaper-${name.take(8)}.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ii tools")
+        }
+        val ok = runCatching {
+            val uri = c.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: error("insert")
+            c.contentResolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } } ?: error("open")
+        }.isSuccess
+        main.post {
+            _saving.value = false
+            Toast.makeText(c, c.getString(if (ok) R.string.wallsave_done else R.string.wallsave_failed), Toast.LENGTH_SHORT).show()
+        }
+        return ok
+    }
 
     /** The image arrived (purpose `wallSync`), named by its hash; true when it needs no resend. */
     fun received(c: Context, file: File, name: String): Boolean = synchronized(lock) {

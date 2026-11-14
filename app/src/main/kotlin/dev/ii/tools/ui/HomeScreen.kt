@@ -287,12 +287,12 @@ private fun MediaCard(onOpen: (Dest) -> Unit) {
                         Modifier.clip(CircleShape).background(cs.onSecondaryContainer.copy(alpha = 0.12f)).clickable {
                             haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
                             Handoff.continueHere(ctx)
-                        }.padding(start = 8.dp, end = 12.dp).height(30.dp),
+                        }.size(30.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.Center,
                     ) {
-                        Icon(painterResource(R.drawable.rounded_smartphone), null, Modifier.size(16.dp))
-                        Text(stringResource(R.string.handoff_action), style = Expressive.title(13.sp), maxLines = 1)
+                        // Icon only: the output chip beside it keeps its room.
+                        Icon(painterResource(R.drawable.rounded_smartphone), stringResource(R.string.handoff_action), Modifier.size(16.dp))
                     }
                 }
                 audio?.output?.let { out ->
