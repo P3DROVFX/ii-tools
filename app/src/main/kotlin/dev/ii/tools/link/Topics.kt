@@ -78,6 +78,9 @@ data class DeckAction(val id: String, val name: String, val icon: String, val gr
 /** An installed app on the PC, listed only while the deck's picker asks. */
 data class PcApp(val id: String, val name: String, val icon: String = "")
 
+/** The window in focus on the PC (its Wayland app id) and the classes of every open window. */
+data class DeckFocus(val cls: String, val open: List<String>)
+
 internal object DeckTopics {
     fun deck(m: JSONObject): List<DeckAction> {
         val list = m.optJSONArray("list") ?: return emptyList()
@@ -97,6 +100,12 @@ internal object DeckTopics {
                 add(PcApp(a.optString("id"), a.optString("name"), a.optString("icon")))
             }
         }
+    }
+
+    fun focus(m: JSONObject): DeckFocus {
+        val arr = m.optJSONArray("open")
+        val open = buildList { if (arr != null) for (i in 0 until arr.length()) add(arr.optString(i)) }
+        return DeckFocus(m.optString("class"), open)
     }
 
     fun paths(m: JSONObject): Map<String, String> {

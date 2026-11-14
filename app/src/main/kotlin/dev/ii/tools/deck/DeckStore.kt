@@ -15,6 +15,8 @@ import java.util.UUID
  * - `app`: a desktop id, run as `deck` `app:<id>`;
  * - `mode`, `preset`, `workspace`: the remote's own commands;
  * - `folder`: a one-level folder holding its own child [keys] ([ref] is a generated id).
+ *   A folder with [match] (window classes on the PC) is a profile: the deck opens it by
+ *   itself while one of those apps has focus.
  * [label] and [icon] are what the key showed when it was added, kept so a key still
  * reads right while the PC is away; the live catalog wins when it has the key.
  */
@@ -24,9 +26,13 @@ data class DeckKey(
     val label: String,
     val icon: String,
     val keys: List<DeckKey> = emptyList(),
+    val match: List<String> = emptyList(),
 ) {
     val key: String get() = "$kind:$ref"
     val isFolder: Boolean get() = kind == "folder"
+
+    /** True when this profile folder belongs to the focused window [cls] (case-insensitive). */
+    fun matches(cls: String): Boolean = cls.isNotEmpty() && match.any { it.equals(cls, ignoreCase = true) }
 }
 
 /**
@@ -98,22 +104,22 @@ object DeckStore {
         }
     }
 
-    fun createFolder(label: String, icon: String): String {
+    fun createFolder(label: String, icon: String, match: List<String> = emptyList()): String {
         val cleanLabel = label.trim()
         val cleanIcon = icon.ifBlank { "folder" }
         var ref = UUID.randomUUID().toString().take(8)
         while (_keys.value.any { it.isFolder && it.ref == ref }) {
             ref = UUID.randomUUID().toString().take(8)
         }
-        set(_keys.value + DeckKey("folder", ref, cleanLabel, cleanIcon, emptyList()))
+        set(_keys.value + DeckKey("folder", ref, cleanLabel, cleanIcon, emptyList(), match.clean()))
         return ref
     }
 
-    fun renameFolder(ref: String, label: String, icon: String) {
+    fun renameFolder(ref: String, label: String, icon: String, match: List<String>? = null) {
         val cleanLabel = label.trim()
         if (cleanLabel.isEmpty()) return
         val cleanIcon = icon.ifBlank { "folder" }
-        updateFolder(ref) { f -> f.copy(label = cleanLabel, icon = cleanIcon) }
+        updateFolder(ref) { f -> f.copy(label = cleanLabel, icon = cleanIcon, match = match?.clean() ?: f.match) }
     }
 
     fun deleteFolder(ref: String, moveKeysOut: Boolean) {
@@ -219,13 +225,18 @@ object DeckStore {
         set(first.mapNotNull { id -> catalog[id]?.let { (name, icon) -> DeckKey("action", id, name, icon) } })
     }
 
+    private fun List<String>.clean() = map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }
+
     private fun toJson(k: DeckKey): JSONObject = JSONObject()
         .put("kind", k.kind)
         .put("ref", k.ref)
         .put("label", k.label)
         .put("icon", k.icon)
         .apply {
-            if (k.isFolder) put("keys", JSONArray(k.keys.map(::toJson)))
+            if (k.isFolder) {
+                put("keys", JSONArray(k.keys.map(::toJson)))
+                if (k.match.isNotEmpty()) put("match", JSONArray(k.match))
+            }
         }
 
     private fun parse(raw: String): List<DeckKey> = runCatching {
@@ -241,7 +252,8 @@ object DeckStore {
                 o.optJSONArray("keys")?.let { parseArray(it, allowFolders = false) }.orEmpty()
             } else emptyList()
             val icon = o.optString("icon").ifEmpty { if (kind == "folder") "folder" else "" }
-            add(DeckKey(kind, o.optString("ref"), o.optString("label"), icon, children))
+            val match = if (kind == "folder") o.optJSONArray("match")?.let { m -> List(m.length()) { m.optString(it) } }.orEmpty() else emptyList()
+            add(DeckKey(kind, o.optString("ref"), o.optString("label"), icon, children, match))
         }
     }
 }

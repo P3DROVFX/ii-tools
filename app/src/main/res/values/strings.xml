@@ -95,6 +95,9 @@
     <string name="deck_new_folder">New folder</string>
     <string name="deck_folder_name">Folder name</string>
     <string name="deck_folder_icon">Icon</string>
+    <string name="deck_folder_apps">Show automatically for apps</string>
+    <string name="deck_folder_apps_hint">Opens by itself while one of these apps has focus on the PC. Pick an open window or type its class.</string>
+    <string name="deck_folder_app_other">Other app class</string>
     <string name="deck_folder_create">Create</string>
     <string name="deck_folder_save">Save</string>
     <string name="deck_folder_open">Open</string>

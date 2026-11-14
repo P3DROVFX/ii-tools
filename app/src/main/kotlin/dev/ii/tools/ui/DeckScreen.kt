@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +55,7 @@ import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -162,6 +168,31 @@ fun DeckScreen(
 
     val byId = remember(catalog) { catalog.orEmpty().associateBy { it.id } }
     val ready = pc != null && status is LinkStatus.Online && shell != null
+
+    // Profile folders: the PC pushes its focused window only while this deck has one (or
+    // a folder is being edited and needs the open windows to pick from).
+    val focus by LinkHub.focus.collectAsStateWithLifecycle()
+    val hasProfiles = remember(keys) { keys.any { it.isFolder && it.match.isNotEmpty() } }
+    val wantFocus = (hasProfiles || creatingFolder || editingFolderRef != null) &&
+        ready && shell?.caps?.contains("deckFocus") == true
+    DisposableEffect(wantFocus) {
+        if (wantFocus) LinkHub.subscribeFocus(true)
+        onDispose { if (wantFocus) LinkHub.subscribeFocus(false) }
+    }
+    var autoFolderRef by remember { mutableStateOf<String?>(null) }
+    val focusCls = focus?.cls
+    LaunchedEffect(focusCls, hasProfiles, editing) {
+        if (focus == null || editing) return@LaunchedEffect
+        val hit = keys.firstOrNull { it.isFolder && it.matches(focusCls.orEmpty()) }
+        if (hit != null) {
+            if (openFolderRef != hit.ref) openFolderRef = hit.ref
+            autoFolderRef = hit.ref
+        } else {
+            // Only a folder the deck opened itself goes back to the main page.
+            if (autoFolderRef != null && openFolderRef == autoFolderRef) openFolderRef = null
+            autoFolderRef = null
+        }
+    }
     val folders = remember(keys) { keys.filter { it.isFolder } }
     val activeKeys = openFolder?.keys ?: keys
 
@@ -281,8 +312,9 @@ fun DeckScreen(
     if (creatingFolder) {
         FolderEditorDialog(
             initial = null,
-            onConfirm = { name, icon ->
-                DeckStore.createFolder(name, icon)
+            openClasses = focus?.open.orEmpty(),
+            onConfirm = { name, icon, match ->
+                DeckStore.createFolder(name, icon, match)
                 creatingFolder = false
             },
             onDismiss = { creatingFolder = false },
@@ -296,8 +328,9 @@ fun DeckScreen(
         } else {
             FolderEditorDialog(
                 initial = folder,
-                onConfirm = { name, icon ->
-                    DeckStore.renameFolder(folder.ref, name, icon)
+                openClasses = focus?.open.orEmpty(),
+                onConfirm = { name, icon, match ->
+                    DeckStore.renameFolder(folder.ref, name, icon, match)
                     editingFolderRef = null
                 },
                 onDismiss = { editingFolderRef = null },
@@ -818,13 +851,17 @@ private fun AddKey(modifier: Modifier, onAdd: () -> Unit) {
 @Composable
 private fun FolderEditorDialog(
     initial: DeckKey?,
-    onConfirm: (name: String, icon: String) -> Unit,
+    openClasses: List<String>,
+    onConfirm: (name: String, icon: String, match: List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
     var name by remember { mutableStateOf(initial?.label.orEmpty()) }
     var icon by remember { mutableStateOf(initial?.icon?.ifEmpty { "folder" } ?: "folder") }
+    var match by remember { mutableStateOf(initial?.match.orEmpty()) }
+    var typed by remember { mutableStateOf("") }
+    val choices = (match + openClasses).distinctBy { it.lowercase() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -835,7 +872,7 @@ private fun FolderEditorDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextField(
                     value = name,
                     onValueChange = { name = it },
@@ -877,13 +914,55 @@ private fun FolderEditorDialog(
                         }
                     }
                 }
+                Text(stringResource(R.string.deck_folder_apps), style = Expressive.title(13.sp), color = cs.onSurfaceVariant)
+                Text(stringResource(R.string.deck_folder_apps_hint), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    choices.forEach { cls ->
+                        val on = match.any { it.equals(cls, ignoreCase = true) }
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(if (on) 12.dp else 20.dp))
+                                .background(if (on) cs.primaryContainer else Layer.field)
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                                    match = if (on) match.filterNot { it.equals(cls, ignoreCase = true) } else match + cls
+                                }
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                        ) {
+                            Text(cls, style = MaterialTheme.typography.labelLarge, color = if (on) cs.onPrimaryContainer else cs.onSurface)
+                        }
+                    }
+                }
+                TextField(
+                    value = typed,
+                    onValueChange = { typed = it },
+                    placeholder = { Text(stringResource(R.string.deck_folder_app_other)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Layer.field,
+                        unfocusedContainerColor = Layer.field,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        val c = typed.trim()
+                        if (c.isNotEmpty() && match.none { it.equals(c, ignoreCase = true) }) match = match + c
+                        typed = ""
+                    }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
-                    onConfirm(name, icon)
+                    onConfirm(name, icon, match)
                 },
                 enabled = name.isNotBlank(),
             ) {

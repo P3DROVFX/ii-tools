@@ -136,6 +136,20 @@ object LinkHub {
     private val _perf = MutableStateFlow<PcPerf?>(null)
     val perf: StateFlow<PcPerf?> = _perf.asStateFlow()
     @Volatile private var perfWanted = false
+    @Volatile private var focusWanted = false
+
+    private val _focus = MutableStateFlow<DeckFocus?>(null)
+    /** The PC's focused window, pushed only while a deck with app folders is on screen. */
+    val focus: StateFlow<DeckFocus?> = _focus.asStateFlow()
+
+    fun supportsDeckFocus(): Boolean = socket != null && _shell.value?.caps?.contains("deckFocus") == true
+
+    /** The deck is on screen with folders bound to apps: the PC pushes `focus` only while it is. */
+    fun subscribeFocus(on: Boolean) {
+        focusWanted = on
+        if (!on) _focus.value = null
+        socket?.send(JSONObject().put("t", "sub").put("what", "focus").put("on", on).toString())
+    }
     @Volatile private var clipHistoryWanted = false
 
     /** The performance panel is on screen: the PC samples only while it is. */
@@ -555,6 +569,7 @@ object LinkHub {
         _presets.value = null
         _audio.value = null
         _deck.value = null
+        _focus.value = null
         _apps.value = null
         PcMedia.clear()
         FileServer.stop()
@@ -635,6 +650,7 @@ object LinkHub {
                 Gallery.syncObserver(app)
                 // A panel open across a reconnect asks again.
                 if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
+                if (focusWanted) socket?.send(JSONObject().put("t", "sub").put("what", "focus").put("on", true).toString())
                 if (clipHistoryWanted && supportsClipHistory()) {
                     socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", true).toString())
                     ClipHistory.refresh()
@@ -657,6 +673,7 @@ object LinkHub {
             "presets" -> _presets.value = Topics.presets(m)
             "audio" -> _audio.value = Topics.audio(m)
             "deck" -> _deck.value = DeckTopics.deck(m)
+            "focus" -> if (focusWanted) _focus.value = DeckTopics.focus(m)
             "apps" -> _apps.value = DeckTopics.apps(m)
             "perf" -> if (perfWanted) _perf.value = PcPerf.from(m)
             "icons" -> Symbols.put(DeckTopics.paths(m))

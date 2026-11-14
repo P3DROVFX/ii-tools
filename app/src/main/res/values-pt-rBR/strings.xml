@@ -94,6 +94,9 @@
     <string name="deck_new_folder">Nova pasta</string>
     <string name="deck_folder_name">Nome da pasta</string>
     <string name="deck_folder_icon">Ícone</string>
+    <string name="deck_folder_apps">Abrir sozinha para os apps</string>
+    <string name="deck_folder_apps_hint">Abre sozinha enquanto um destes apps estiver em foco no PC. Escolha uma janela aberta ou digite a classe.</string>
+    <string name="deck_folder_app_other">Outra classe de app</string>
     <string name="deck_folder_create">Criar</string>
     <string name="deck_folder_save">Salvar</string>
     <string name="deck_folder_open">Abrir</string>
