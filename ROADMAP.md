@@ -533,6 +533,84 @@ na pasta e arrastar para outros apps. **Sem apagar pelo PC.**
 
 ---
 
+## Fase 5 — Dia a dia
+
+Saída da auditoria de 2026-11-14: buracos deixados ao tirar o KDE Connect e integrações de uso
+diário que se apoiam em ganchos que o shell já tem. Mesmo critério das fases anteriores: só
+entra o que tem uso diário ou quase.
+
+### 5.0 Buracos da auditoria · **XS–S**
+
+- **Pausar a mídia do PC na ligação:** o celular tocando ou em chamada pausa os players MPRIS
+  que estavam tocando; ao fim da chamada, retoma só os que o shell pausou. Era um plugin do
+  KDE Connect. Toggle `iiTools.calls.pauseMedia`.
+- **Filtro de notificações por app:** pendência da 1.6. A lista de apps do celular vem pelo
+  link; o filtro mora no celular (o app nem envia o que está bloqueado) e é editável dos dois
+  lados.
+- **Pastas e ícones reais no deck:** pendência da 1.3. Pastas como tecla que abre uma página
+  própria; ícone do app do PC rasterizado pelo helper a partir do tema de ícones, guardado no
+  celular como os símbolos.
+- **SMS:** ler conversas e responder (`READ_SMS`/`SEND_SMS`, APK fora da Play Store). Hoje só a
+  resposta rápida da notificação cobre.
+- **Medição:** rodar de novo o script da 0.6 (câmera, monitor e galeria entraram depois da última).
+
+### 5.1 Códigos 2FA no PC · **S**
+
+Código de verificação que chega no celular (SMS ou app) vira um popup no PC com "Copiar" e vai
+direto para o clipboard. Extraído do texto da notificação já espelhada, sem permissão de SMS.
+Some do clipboard depois de um tempo, sem entrar no histórico do `Cliphist`.
+
+### 5.2 O PC avisa quando você está longe · **S**
+
+Com o PC ocioso ou bloqueado (`Idle`), eventos do shell viram notificação no celular: comando
+longo terminado (gancho `precmd` do zsh, com duração mínima), download concluído
+(`jobview_monitor`), progresso terminado (`ProgressService`), resposta da IA pronta
+(`AiResponseBus`), lembrete vencendo (`RemindersService`). Cada fonte com seu toggle.
+
+### 5.3 Câmera e scanner para o PC · **S**
+
+Estilo Continuity Camera: um tile/atalho no PC pede "foto" ou "escanear documento"; o celular
+abre a câmera ou o scanner de documentos do Play services (sem permissão de câmera, como o QR) e
+o resultado cai no clipboard, em Downloads (PDF) ou como anexo da IA.
+
+### 5.4 Deck por app em foco · **S**
+
+Páginas do deck ligadas a uma classe de janela (perfis do Stream Deck): o deck troca de página
+sozinho conforme o app em foco no Hyprland (`activewindow` do `HyprlandData`), com uma página
+padrão para o resto.
+
+### 5.5 Handoff de mídia · **S**
+
+Ao bloquear o PC ou pelo botão "Continuar no celular", a mídia do PC abre no celular no mesmo
+ponto (`xesam:url` do MPRIS com `t=` para YouTube e afins). O inverso a partir da mídia do
+celular (3.5 passo 3a).
+
+### 5.6 Tempo de tela unificado · **M**
+
+O uso do celular (`UsageStatsManager`) entra no app de uso do PC e no `BedtimeService`
+("parou o PC às 23h, celular até 1h"). Opcional: os limites do `ScreenTimeLimits` valem nos dois.
+
+### 5.7 Avisos de bateria · **XS**
+
+Celular chegou a 80%/100% ou está baixo enquanto você usa o PC → aviso no shell. Bateria do
+notebook baixa com você longe → aviso no celular. Dados já existem em `phoneStatus` e `Battery`.
+
+### 5.8 Mesmo wallpaper nos dois · **XS**
+
+Toggle: o wallpaper do PC vira o do celular (`WallpaperManager`, permissão comum), e o Material
+You dos dois fica com as mesmas cores.
+
+### 5.9 Localização do celular para o PC · **S**
+
+Uma leitura aproximada por conexão: clima (`Weather`), horário do `Hyprsunset` e fuso
+automático em viagem (`WorldClockService`). Desligado por padrão.
+
+### 5.10 Histórico do clipboard no celular · **S**
+
+Navegar pelo `Cliphist` no app e puxar uma cópia antiga (texto ou imagem) para o celular.
+
+---
+
 ## Resumo
 
 | Fase | Features |
@@ -542,3 +620,4 @@ na pasta e arrastar para outros apps. **Sem apagar pelo PC.**
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard |
