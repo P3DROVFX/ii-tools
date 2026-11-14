@@ -562,6 +562,13 @@ entra o que tem uso diário ou quase.
 
 ### 5.1 Códigos 2FA no PC · **S**
 
+> **Status (2026-11-14): implementado, falta testar com um SMS real.** Sem mudança no app: o shell
+> acha o código no texto da notificação espelhada (palavra-chave + número de 4–8 dígitos, ignora
+> valores, horas e datas), copia com `wl-copy --sensitive` (fora do `Cliphist`), mostra o popup com
+> Copiar e limpa o clipboard depois de 60 s. Funciona em Não Perturbe (só o popup some). Risco: o
+> Android 15+ pode esconder o texto de notificações com código de apps que não são o de SMS padrão;
+> os testes por `cmd notification post` chegaram inteiros.
+
 Código de verificação que chega no celular (SMS ou app) vira um popup no PC com "Copiar" e vai
 direto para o clipboard. Extraído do texto da notificação já espelhada, sem permissão de SMS.
 Some do clipboard depois de um tempo, sem entrar no histórico do `Cliphist`.
@@ -581,17 +588,33 @@ o resultado cai no clipboard, em Downloads (PDF) ou como anexo da IA.
 
 ### 5.4 Deck por app em foco · **S**
 
+> **Status (2026-11-14): implementado, falta o teste visual.** Em vez de páginas, uma pasta do deck
+> ganha uma lista de classes de janela (perfil); com o deck aberto e uma pasta assim, o celular assina
+> `focus` (cap `deckFocus`) e abre a pasta sozinho enquanto o app está em foco, voltando à página
+> principal depois (só se foi o deck que abriu). O editor da pasta lista as janelas abertas no PC.
+
 Páginas do deck ligadas a uma classe de janela (perfis do Stream Deck): o deck troca de página
 sozinho conforme o app em foco no Hyprland (`activewindow` do `HyprlandData`), com uma página
 padrão para o resto.
 
 ### 5.5 Handoff de mídia · **S**
 
+> **Status (2026-11-14): PC → celular implementado.** `pcMedia` leva `url`; botão "Continuar no
+> celular" no card e na notificação de mídia, e `handoff` ao bloquear o PC tocando uma página web
+> (notificação). `t=` no YouTube/Twitch, `#t=` no Vimeo; pausa o player do PC ao abrir. O inverso
+> (celular → PC) fica de fora: o helper não publica `xesam:url` do celular e quase nenhum app o expõe.
+
 Ao bloquear o PC ou pelo botão "Continuar no celular", a mídia do PC abre no celular no mesmo
 ponto (`xesam:url` do MPRIS com `t=` para YouTube e afins). O inverso a partir da mídia do
 celular (3.5 passo 3a).
 
 ### 5.6 Tempo de tela unificado · **M**
+
+> **Status (2026-11-14): implementado.** Chips PC / Phone / All no app de uso e último uso do
+> celular no registro de dormir. Correção: ficava invisível atrás de três travas desligadas (shell,
+> app e acesso de uso); agora ligado por padrão (age só com o celular pareado e o acesso de uso
+> concedido) e o app Usage mostra uma dica enquanto o celular não compartilha. Os limites do
+> `ScreenTimeLimits` continuam só do PC.
 
 O uso do celular (`UsageStatsManager`) entra no app de uso do PC e no `BedtimeService`
 ("parou o PC às 23h, celular até 1h"). Opcional: os limites do `ScreenTimeLimits` valem nos dois.
@@ -603,6 +626,11 @@ notebook baixa com você longe → aviso no celular. Dados já existem em `phone
 
 ### 5.8 Mesmo wallpaper nos dois · **XS**
 
+> **Status (2026-11-14): implementado, falta o teste no aparelho.** Switch "Usar o wallpaper do PC"
+> no app (desligado por padrão; troca o papel de parede e o de bloqueio). O shell gera um JPEG de até
+> 3840 px por imagem e envia ao celular que anunciou `wallSync`; o celular recorta no centro. As cores
+> do Material You vêm da mesma imagem, mas o Android e o shell escolhem o destaque cada um.
+
 Toggle: o wallpaper do PC vira o do celular (`WallpaperManager`, permissão comum), e o Material
 You dos dois fica com as mesmas cores.
 
@@ -612,6 +640,9 @@ Uma leitura aproximada por conexão: clima (`Weather`), horário do `Hyprsunset`
 automático em viagem (`WorldClockService`). Desligado por padrão.
 
 ### 5.10 Histórico do clipboard no celular · **S**
+
+> **Status (2026-11-14): implementado** (cap `clipHistory`, navegar, miniaturas de imagem, puxar uma
+> cópia para o celular e copiar para o PC); falta o teste visual.
 
 Navegar pelo `Cliphist` no app e puxar uma cópia antiga (texto ou imagem) para o celular.
 

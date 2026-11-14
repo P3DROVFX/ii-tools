@@ -128,6 +128,24 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **PC media on the phone:** what plays on the PC shows as a media player on the phone's
   lock screen and Quick Settings (title, artist, cover, position), with play, skip and
   seek. The phone's own players are never echoed back.
+- **Verification codes:** a code in a mirrored notification (SMS or app) is copied on the
+  PC and shown in a popup with *Copy*; the PC reads it from the notification text, so the
+  phone has nothing extra to allow. The copy is marked sensitive (no clipboard history) and
+  cleared after a minute.
+- **Deck profiles:** a deck folder can be bound to PC apps (window classes, picked from the
+  windows open on the PC); the deck opens it by itself while one of those apps has focus and
+  goes back to the main page after. The PC reports its focused window only while the deck is
+  on screen with such a folder.
+- **Media handoff:** a web page playing on the PC (YouTube, Twitch, Vimeo…) continues on the
+  phone at the same point: *Continue on phone* on the home's media card and in the media
+  notification, and a notification when the PC locks while it plays. The PC's player is
+  paused when the page opens. *Handoff* has its own switch.
+- **PC wallpaper on the phone (off by default):** *Use the PC's wallpaper* sets the PC's
+  wallpaper as the home and lock wallpaper (`SET_WALLPAPER`, a normal permission), centre-cropped
+  from a 3840 px original, again whenever the PC's changes. Material You follows the picture.
+- **Screen time and clipboard history:** the phone's screen time (usage access) appears in the
+  PC's usage app (*PC / Phone / All*) and bedtime record, on by default once usage access is
+  allowed; the PC's clipboard history can be browsed on the phone to pull an old copy.
 - **Low-latency Wi-Fi while mirroring:** when the shell starts a wireless scrcpy session
   (`mirror` over ii link), the phone acquires Android's low-latency and high-perf Wi-Fi
   locks and trickles a 4-byte UDP keep-awake datagram (`iim\n`) every 50 ms to keep the
