@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -83,16 +85,29 @@ object ClipSync {
         }
     }
 
+    private const val MAX_IMAGE_BYTES = 64L * 1024L * 1024L
+
     // ── Phone → PC ────────────────────────────────────────────────────────
+
+    fun imageClipUri(ctx: Context, clip: ClipData?): Pair<Uri, String>? {
+        val item = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0) ?: return null
+        val uri = item.uri ?: return null
+        val resolved = ctx.contentResolver.getType(uri)?.lowercase()
+        if (resolved?.startsWith("image/") == true) return uri to resolved
+        val desc = clip.description
+        for (i in 0 until desc.mimeTypeCount) {
+            val m = desc.getMimeType(i).lowercase()
+            if (m.startsWith("image/")) return uri to m
+        }
+        return null
+    }
 
     /** Reads the clipboard (call with a focused window) and sends it. Null when sent, else why not. */
     suspend fun sendCurrent(ctx: Context): String? {
-        val item = ctx.getSystemService(ClipboardManager::class.java).primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)
-            ?: return "empty"
-        val uri = item.uri
-        val mime = uri?.let { ctx.contentResolver.getType(it) }
-        if (uri != null && mime?.startsWith("image/") == true) return sendImage(ctx, uri, mime)
-        val text = item.coerceToText(ctx)?.toString().orEmpty()
+        val clip = ctx.getSystemService(ClipboardManager::class.java).primaryClip ?: return "empty"
+        val image = imageClipUri(ctx, clip)
+        if (image != null) return sendImage(ctx, image.first, image.second)
+        val text = clip.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty()
         if (text.isBlank()) return "empty"
         return sendText(text)
     }
@@ -103,20 +118,91 @@ object ClipSync {
     }
 
     suspend fun sendImage(ctx: Context, uri: Uri, mime: String): String? {
-        val size = withContext(Dispatchers.IO) {
-            runCatching {
-                ctx.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
-                    if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else null
-                }
-            }.getOrNull() ?: runCatching { ctx.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull() ?: 0L
-        }
-        if (size <= 0) return "read"
-        val ext = when (mime) {
+        val resolved = (ctx.contentResolver.getType(uri)
+            ?.takeIf { it.startsWith("image/") && it != "image/*" }
+            ?: mime).lowercase()
+        val directExt = when (resolved) {
             "image/png" -> "png"
+            "image/jpeg", "image/jpg" -> "jpg"
             "image/webp" -> "webp"
-            else -> "jpg"
+            else -> null
         }
-        return LinkHub.upload("clip.$ext", size, { ctx.contentResolver.openInputStream(uri) }, "clip", "") { }
+        if (directExt != null) {
+            val knownSize = withContext(Dispatchers.IO) {
+                runCatching {
+                    ctx.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
+                        if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else null
+                    }
+                }.getOrNull() ?: runCatching {
+                    ctx.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+                }.getOrNull() ?: 0L
+            }
+            if (knownSize > MAX_IMAGE_BYTES) return "too_large"
+            if (knownSize > 0L) {
+                return LinkHub.upload("clip.$directExt", knownSize, { ctx.contentResolver.openInputStream(uri) }, "clip", "") { }
+            }
+            // Virtual/streaming providers may omit length; spool to a temp file first.
+            val tmp = withContext(Dispatchers.IO) {
+                runCatching { File.createTempFile("clip_", ".$directExt", ctx.cacheDir) }.getOrNull()
+            } ?: return "read"
+            try {
+                val copied = withContext(Dispatchers.IO) {
+                    runCatching {
+                        ctx.contentResolver.openInputStream(uri)?.use { input ->
+                            tmp.outputStream().buffered().use { out ->
+                                val buf = ByteArray(16 * 1024)
+                                var total = 0L
+                                while (true) {
+                                    val n = input.read(buf)
+                                    if (n <= 0) break
+                                    total += n
+                                    if (total > MAX_IMAGE_BYTES) return@runCatching -1L
+                                    out.write(buf, 0, n)
+                                }
+                                total
+                            }
+                        } ?: 0L
+                    }.getOrDefault(0L)
+                }
+                if (copied < 0L) return "too_large"
+                if (copied == 0L) return "read"
+                return LinkHub.upload("clip.$directExt", copied, { tmp.inputStream() }, "clip", "") { }
+            } finally {
+                tmp.delete()
+            }
+        }
+
+        // Other formats (HEIC/HEIF/AVIF/BMP/GIF/image/*): decode honoring EXIF orientation and encode as PNG.
+        val tmp = withContext(Dispatchers.IO) {
+            runCatching { File.createTempFile("clip_", ".png", ctx.cacheDir) }.getOrNull()
+        } ?: return "read"
+        try {
+            val encodedExt = withContext(Dispatchers.IO) {
+                val bmp = runCatching {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(ctx.contentResolver, uri)) { decoder, _, _ ->
+                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                    }
+                }.getOrNull() ?: return@withContext null
+                try {
+                    val pngOk = runCatching {
+                        tmp.outputStream().buffered().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    }.getOrDefault(false)
+                    if (pngOk && tmp.length() in 1L..MAX_IMAGE_BYTES) return@withContext "png"
+                    val jpgOk = runCatching {
+                        tmp.outputStream().buffered().use { bmp.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+                    }.getOrDefault(false)
+                    if (jpgOk && tmp.length() in 1L..MAX_IMAGE_BYTES) "jpg" else null
+                } finally {
+                    bmp.recycle()
+                }
+            } ?: return "read"
+            val len = tmp.length()
+            if (len <= 0L) return "read"
+            if (len > MAX_IMAGE_BYTES) return "too_large"
+            return LinkHub.upload("clip.$encodedExt", len, { tmp.inputStream() }, "clip", "") { }
+        } finally {
+            tmp.delete()
+        }
     }
 }
 
@@ -138,16 +224,13 @@ class ClipActivity : Activity() {
         sent = true
         val app = applicationContext
         // Read here, while focused; send from the app's scope, after this window is gone.
-        val text = runCatching {
-            getSystemService(ClipboardManager::class.java).primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)
-        }.getOrNull()
-        val uri = text?.uri
-        val mime = uri?.let { contentResolver.getType(it) }
-        val plain = if (uri == null || mime?.startsWith("image/") != true) text?.coerceToText(this)?.toString() else null
+        val clip = runCatching { getSystemService(ClipboardManager::class.java).primaryClip }.getOrNull()
+        val image = ClipSync.imageClipUri(this, clip)
+        val plain = if (image == null) clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString() else null
         finish()
         CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
             val why = when {
-                uri != null && mime?.startsWith("image/") == true -> ClipSync.sendImage(app, uri, mime)
+                image != null -> ClipSync.sendImage(app, image.first, image.second)
                 !plain.isNullOrBlank() -> ClipSync.sendText(plain)
                 else -> "empty"
             }
