@@ -23,7 +23,7 @@ import androidx.compose.runtime.setValue
 /** Every screen the app opens, mapped to its activity in MainActivity. */
 enum class Dest {
     SETTINGS, REMOTE, AUDIO, DECK, WALLPAPER, TOOLS, TOUCHPAD, DRAW, PRESENTER, PERF,
-    CAMERA, SECOND_SCREEN, LIVE, NOTIFS, CLIPBOARD, SHOTS, PHONE_DATA, PC_LINK, CALLS,
+    CAMERA, SECOND_SCREEN, LIVE, NOTIFS, CLIPBOARD, SHOTS, GALLERY, PHONE_DATA, PC_LINK, CALLS,
 }
 
 /**

@@ -370,4 +370,10 @@
     <string name="second_mirror_which">Tela a espelhar</string>
     <string name="second_mirror_focused">Em foco</string>
     <string name="second_switch">Espelhar a próxima tela</string>
+    <string name="gallery_title">Galeria do celular</string>
+    <string name="gallery_hint">O PC vê suas fotos e vídeos só para leitura; nada é apagado ou alterado por ele. Os vídeos abrem pelos Arquivos do celular (SFTP).</string>
+    <string name="gallery_share">Deixar o PC ver a galeria</string>
+    <string name="perm_gallery">Fotos e vídeos</string>
+    <string name="perm_gallery_body">Para mostrar suas fotos e vídeos no PC.</string>
+    <string name="settings_needs_gallery">Precisa da permissão Fotos e vídeos</string>
 </resources>

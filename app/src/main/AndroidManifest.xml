@@ -13,8 +13,10 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    <!-- Screenshots (Fase 2.7): seeing new ones in the gallery, to send them to the PC. -->
+    <!-- Screenshots (Fase 2.7) and Phone gallery: photos and videos for the PC. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- Phone data (Fase 2.4): contacts with photos for the PC. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- The PC browses the phone's storage (SFTP), as with KDE Connect. -->
@@ -93,6 +95,10 @@
 
         <activity
             android:name=".ShotsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".GalleryActivity"
             android:exported="false" />
 
         <activity

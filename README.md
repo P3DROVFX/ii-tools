@@ -116,6 +116,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Phone files on the PC:** the PC's file manager opens the phone's storage (an SFTP
   server that runs only while the PC uses it, mounted with sshfs), as with KDE Connect.
   Needs *All files access*.
+- **Phone gallery:** browse the phone's photos and videos from the PC, read only
+  (nothing is ever deleted or changed from the PC), with live updates when new items
+  arrive. Images stream over the link (HEIC/DNG and other formats are sent as JPEG);
+  videos play through *Phone files* (SFTP). Needs *Photos and videos* permission and
+  defaults to off.
 - **PC media on the phone:** what plays on the PC shows as a media player on the phone's
   lock screen and Quick Settings (title, artist, cover, position), with play, skip and
   seek. The phone's own players are never echoed back.

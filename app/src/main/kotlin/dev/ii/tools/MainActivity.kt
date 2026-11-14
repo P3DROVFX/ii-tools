@@ -20,6 +20,7 @@ import dev.ii.tools.ui.AudioScreen
 import dev.ii.tools.ui.CallsScreen
 import dev.ii.tools.ui.ClipboardScreen
 import dev.ii.tools.ui.DeckScreen
+import dev.ii.tools.ui.GalleryScreen
 import dev.ii.tools.ui.HomeScreen
 import dev.ii.tools.ui.CameraScreen
 import dev.ii.tools.ui.Dest
@@ -72,6 +73,7 @@ private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
     Dest.NOTIFS -> NotifsActivity::class.java
     Dest.CLIPBOARD -> ClipboardActivity::class.java
     Dest.SHOTS -> ShotsActivity::class.java
+    Dest.GALLERY -> GalleryActivity::class.java
     Dest.PHONE_DATA -> PhoneDataActivity::class.java
     Dest.PC_LINK -> PcLinkActivity::class.java
     Dest.CALLS -> CallsActivity::class.java
@@ -205,6 +207,11 @@ class ClipboardActivity : ScreenActivity() {
 class ShotsActivity : ScreenActivity() {
     @Composable
     override fun Screen() = ShotsScreen(onBack = ::finish)
+}
+
+class GalleryActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = GalleryScreen(onBack = ::finish)
 }
 
 class PhoneDataActivity : ScreenActivity() {

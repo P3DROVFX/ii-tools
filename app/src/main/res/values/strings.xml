@@ -367,4 +367,10 @@
     <string name="second_mirror_which">Screen to mirror</string>
     <string name="second_mirror_focused">Focused</string>
     <string name="second_switch">Mirror the next screen</string>
+    <string name="gallery_title">Phone gallery</string>
+    <string name="gallery_hint">The PC sees your photos and videos read only; nothing is ever deleted or changed from it. Videos open through Phone files (SFTP).</string>
+    <string name="gallery_share">Let the PC browse gallery</string>
+    <string name="perm_gallery">Photos and videos</string>
+    <string name="perm_gallery_body">To show your photos and videos on the PC.</string>
+    <string name="settings_needs_gallery">Needs the Photos and videos permission</string>
 </resources>

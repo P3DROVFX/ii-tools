@@ -17,11 +17,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.files.FileServer
+import dev.ii.tools.gallery.Gallery
 import dev.ii.tools.media.PcMedia
 import dev.ii.tools.media.PhoneMedia
 import dev.ii.tools.pcactions.PcActions
@@ -275,6 +278,7 @@ object LinkHub {
         caps.put("launcherIcons")
         Look.caps().forEach { caps.put(it) }
         FileServer.caps(app).forEach { caps.put(it) }
+        Gallery.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
 
@@ -527,6 +531,7 @@ object LinkHub {
         _apps.value = null
         PcMedia.clear()
         FileServer.stop()
+        Gallery.onLinkLost(app)
     }
 
     private fun remember(pc: PairedPc, host: String) {
@@ -593,6 +598,7 @@ object LinkHub {
                 if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
                 if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
                 if (_shell.value?.caps?.contains("media") == true) PhoneMedia.sendAll()
+                Gallery.syncObserver(app)
                 // A panel open across a reconnect asks again.
                 if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
                 // The PC takes notifications: give it the whole list, and the live
@@ -632,6 +638,7 @@ object LinkHub {
             "mediaCmd" -> PhoneMedia.command(m)
             "pcMedia" -> PcMedia.update(app, m)
             "files" -> FileServer.command(app, m)
+            "gallery" -> Gallery.onMessage(app, m)
             "pad" -> dev.ii.tools.touchpad.Touchpad.onReply(m)
             "draw" -> dev.ii.tools.draw.DrawPad.onMessage(m)
             "present" -> dev.ii.tools.present.Presenter.onMessage(m)
@@ -685,6 +692,8 @@ object LinkHub {
         socket?.send(command(nextId.getAndIncrement(), actionId, arg))
     }
 
+    private val uploadMutex = Mutex()
+
     /**
      * Sends a file for [purpose] (PROTOCOL.md, "Files"): a header, then binary frames,
      * paced by OkHttp's send queue so a large photo never sits whole in memory. Waits a
@@ -700,34 +709,36 @@ object LinkHub {
         waitForLink: Boolean = true,
         onProgress: (Float) -> Unit,
     ): String? = withContext(Dispatchers.IO) {
-        if (!waitForLink && socket == null) return@withContext "offline"
-        if (withTimeoutOrNull(15_000) { status.first { it is LinkStatus.Online } } == null) return@withContext "offline"
-        val ws = socket ?: return@withContext "offline"
-        val id = nextId.getAndIncrement()
-        val reply = CompletableDeferred<String?>()
-        pending[id] = reply
-        try {
-            val header = JSONObject().put("t", "file").put("id", id).put("name", name).put("size", size)
-                .put("purpose", purpose).put("target", target)
-            if (!ws.send(header.toString())) return@withContext "offline"
-            val input = open() ?: return@withContext "read"
-            var sent = 0L
-            input.use { stream ->
-                val buf = ByteArray(FILE_CHUNK)
-                while (sent < size) {
-                    val n = stream.read(buf, 0, minOf(buf.size.toLong(), size - sent).toInt())
-                    if (n <= 0) break
-                    while (ws.queueSize() > FILE_QUEUE) delay(15)
-                    if (!ws.send(okio.ByteString.of(*buf.copyOf(n)))) return@withContext "offline"
-                    sent += n
-                    onProgress(sent.toFloat() / size)
+        uploadMutex.withLock {
+            if (!waitForLink && socket == null) return@withLock "offline"
+            if (withTimeoutOrNull(15_000) { status.first { it is LinkStatus.Online } } == null) return@withLock "offline"
+            val ws = socket ?: return@withLock "offline"
+            val id = nextId.getAndIncrement()
+            val reply = CompletableDeferred<String?>()
+            pending[id] = reply
+            try {
+                val header = JSONObject().put("t", "file").put("id", id).put("name", name).put("size", size)
+                    .put("purpose", purpose).put("target", target)
+                if (!ws.send(header.toString())) return@withLock "offline"
+                val input = open() ?: return@withLock "read"
+                var sent = 0L
+                input.use { stream ->
+                    val buf = ByteArray(FILE_CHUNK)
+                    while (sent < size) {
+                        val n = stream.read(buf, 0, minOf(buf.size.toLong(), size - sent).toInt())
+                        if (n <= 0) break
+                        while (ws.queueSize() > FILE_QUEUE) delay(15)
+                        if (!ws.send(okio.ByteString.of(*buf.copyOf(n)))) return@withLock "offline"
+                        sent += n
+                        onProgress(sent.toFloat() / size)
+                    }
                 }
+                if (sent != size) return@withLock "read"
+                val outcome = withTimeoutOrNull(60_000) { Reply(reply.await()) }
+                if (outcome == null) "timeout" else outcome.code
+            } finally {
+                pending.remove(id)
             }
-            if (sent != size) return@withContext "read"
-            val outcome = withTimeoutOrNull(60_000) { Reply(reply.await()) }
-            if (outcome == null) "timeout" else outcome.code
-        } finally {
-            pending.remove(id)
         }
     }
 

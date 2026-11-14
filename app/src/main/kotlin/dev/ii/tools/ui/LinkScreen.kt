@@ -47,6 +47,7 @@ import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.clip.ClipWatchService
 import dev.ii.tools.files.FileServer
+import dev.ii.tools.gallery.Gallery
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkProblem
 import dev.ii.tools.link.LinkStatus
@@ -73,6 +74,8 @@ private data class SettingsState(
     val phone: Boolean,
     val contacts: Boolean,
     val photos: Boolean,
+    val gallery: Boolean,
+    val galleryImages: Boolean,
     val files: Boolean,
     val restricted: Boolean,
     val copyService: Boolean,
@@ -103,6 +106,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
             phone = CallWatcher.hasPermissions(ctx),
             contacts = PhoneData.canReadContacts(ctx),
             photos = ShotSync.canWatch(ctx),
+            gallery = Gallery.hasPermission(ctx),
+            galleryImages = Gallery.canReadImages(ctx),
             files = FileServer.hasPermission(),
             restricted = ClipWatchService.restricted(ctx),
             copyService = ClipWatchService.isEnabled(ctx),
@@ -111,8 +116,11 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         )
     }
     var s by remember { mutableStateOf(read()) }
+    var gallery by remember { mutableStateOf(Gallery.isEnabled(ctx)) }
     LifecycleResumeEffect(Unit) {
         s = read()
+        gallery = Gallery.isEnabled(ctx)
+        Gallery.onPermissionChanged(ctx)
         FavoritePreset.load(ctx)
         onPauseOrDispose { }
     }
@@ -144,12 +152,16 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         s = read()
         if (ok) ShotSync.setSends(ctx, shotsSend)
     }
+    val askGallery = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        s = read()
+        Gallery.onPermissionChanged(ctx)
+    }
     val askPost = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { s = read() }
     val listenerSettings = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
 
     var confirmForget by remember { mutableStateOf(false) }
     val missing = listOf(
-        s.listener, s.post, s.phone, s.contacts, s.photos, s.files, !s.restricted, s.copyService, s.battery, network.granted,
+        s.listener, s.post, s.phone, s.contacts, s.photos, s.gallery, s.files, !s.restricted, s.copyService, s.battery, network.granted,
     ).count { !it }
 
     ToolScaffold(
@@ -190,6 +202,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 PermissionRow(stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_body), R.drawable.rounded_call, s.phone) { askPhone.launch(CallWatcher.PERMISSIONS) }
                 PermissionRow(stringResource(R.string.perm_contacts), stringResource(R.string.perm_contacts_body), R.drawable.rounded_contacts, s.contacts) { askContacts.launch(PhoneData.CONTACTS) }
                 PermissionRow(stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_body), R.drawable.rounded_photo_library, s.photos) { askPhotos.launch(ShotSync.PERMISSION) }
+                PermissionRow(stringResource(R.string.perm_gallery), stringResource(R.string.perm_gallery_body), R.drawable.rounded_photo_library, s.gallery) { askGallery.launch(Gallery.PERMISSIONS) }
                 PermissionRow(stringResource(R.string.perm_files), stringResource(R.string.perm_files_body), R.drawable.rounded_folder_open, s.files) {
                     ctx.startActivity(FileServer.permissionIntent(ctx))
                 }
@@ -225,6 +238,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     shotsSend = it
                     ShotSync.setSends(ctx, it)
                 }, R.drawable.rounded_screenshot, enabled = s.photos, summary = if (!s.photos) stringResource(R.string.settings_needs_photos) else null)
+                SwitchRow(stringResource(R.string.gallery_share), gallery, {
+                    gallery = it
+                    Gallery.setEnabled(ctx, it)
+                }, R.drawable.rounded_photo_library, enabled = s.galleryImages, summary = if (!s.galleryImages) stringResource(R.string.settings_needs_gallery) else null)
                 SwitchRow(stringResource(R.string.clip_auto), clipAuto, {
                     clipAuto = it
                     ClipSync.setAutoSend(ctx, it)

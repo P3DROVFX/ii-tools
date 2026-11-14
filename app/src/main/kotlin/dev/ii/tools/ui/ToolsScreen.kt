@@ -38,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.clip.ClipWatchService
+import dev.ii.tools.gallery.Gallery
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.live.LiveHub
 import dev.ii.tools.notify.NotifMirror
@@ -62,6 +63,7 @@ private val sync = listOf(
     Tool(Dest.LIVE, R.drawable.rounded_notifications_active, R.string.live_title),
     Tool(Dest.CLIPBOARD, R.drawable.rounded_content_paste, R.string.clip_title),
     Tool(Dest.SHOTS, R.drawable.rounded_screenshot, R.string.shots_title),
+    Tool(Dest.GALLERY, R.drawable.rounded_photo_library, R.string.gallery_title),
     Tool(Dest.CALLS, R.drawable.rounded_call, R.string.calls_title),
     Tool(Dest.PHONE_DATA, R.drawable.rounded_contacts, R.string.data_title),
     Tool(Dest.PC_LINK, R.drawable.rounded_timer, R.string.pclink_title),
@@ -90,6 +92,7 @@ fun ToolsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         if (!status.liveReady) add(Dest.LIVE)
         if (clipSetup) add(Dest.CLIPBOARD)
         if (NotifMirror.isEnabled(ctx) && !status.listenerGranted) add(Dest.NOTIFS)
+        if (Gallery.isEnabled(ctx) && !Gallery.canReadImages(ctx)) add(Dest.GALLERY)
     }
     val all = control.size + sync.size + device.size
     ToolScaffold(
