@@ -541,6 +541,12 @@ entra o que tem uso diário ou quase.
 
 ### 5.0 Buracos da auditoria · **XS–S**
 
+> **Status (2026-11-14): três primeiros itens implementados, falta o teste no aparelho.**
+> Mídia pausada na ligação (`PhoneCallService._setState`, vale para link e ADB); filtro por
+> app (`notifApps`/`notifFilter`, lista no app e no Settings); pastas de um nível no deck e
+> ícones reais (`get appIcons` → `appIcon`, renderizados sob demanda por
+> `render_app_icons.py`, um processo por lote). SMS e medição ainda não.
+
 - **Pausar a mídia do PC na ligação:** o celular tocando ou em chamada pausa os players MPRIS
   que estavam tocando; ao fim da chamada, retoma só os que o shell pausou. Era um plugin do
   KDE Connect. Toggle `iiTools.calls.pauseMedia`.
