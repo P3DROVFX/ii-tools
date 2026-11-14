@@ -412,4 +412,15 @@
     <string name="perm_gallery">Fotos e vídeos</string>
     <string name="perm_gallery_body">Para mostrar suas fotos e vídeos no PC.</string>
     <string name="settings_needs_gallery">Precisa da permissão Fotos e vídeos</string>
+    <string name="notifs_apps_title">Apps</string>
+    <string name="notifs_apps_hint">Apps que já mostraram notificações. Desative um para parar de espelhar no PC.</string>
+    <string name="notifs_apps_empty">Nenhum app visto ainda — novas notificações aparecem aqui.</string>
+    <string name="notifs_apps_search">Buscar apps</string>
+    <string name="notifs_apps_no_match">Nenhum app encontrado</string>
+    <string name="settings_notifs_apps">Apps nas notificações</string>
+    <string name="settings_notifs_apps_body">Escolha quais apps espelhar no PC</string>
+    <plurals name="settings_notifs_blocked">
+        <item quantity="one">%d app bloqueado no PC</item>
+        <item quantity="other">%d apps bloqueados no PC</item>
+    </plurals>
 </resources>

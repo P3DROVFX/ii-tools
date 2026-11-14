@@ -234,6 +234,9 @@ object LinkHub {
     /** The PC takes notifications right now. */
     fun isOnline(): Boolean = socket != null && _shell.value?.caps?.contains("notifs") == true
 
+    /** The PC accepts the mirrored notification app filter right now. */
+    fun supportsNotifFilter(): Boolean = socket != null && _shell.value?.caps?.contains("notifFilter") == true
+
     fun sendJson(m: JSONObject) {
         socket?.send(m.toString())
     }
@@ -600,6 +603,7 @@ object LinkHub {
                 if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
                 if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
                 if (_shell.value?.caps?.contains("media") == true) PhoneMedia.sendAll()
+                NotifMirror.onShellHello(app)
                 Gallery.syncObserver(app)
                 // A panel open across a reconnect asks again.
                 if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
@@ -635,6 +639,7 @@ object LinkHub {
                 "photos" -> m.optJSONArray("keys")?.let { k -> PhoneData.onPhotosAsked(List(k.length()) { k.optString(it) }) }
             }
             "notifAct" -> NotifMirror.command(m)
+            "notifFilter" -> NotifMirror.onFilterMessage(app, m)
             "clip" -> ClipSync.receive(app, m)
             "act" -> PcActions.handle(app, m)
             "mediaCmd" -> PhoneMedia.command(m)

@@ -15,8 +15,10 @@ import androidx.core.graphics.scale
 import dev.ii.tools.link.LinkHub
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +26,9 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+
+/** One app that has posted a notification (or is blocked), newest first. */
+data class NotifApp(val pkg: String, val name: String, val blocked: Boolean)
 
 /**
  * The phone's notifications on the PC, over ii link (PROTOCOL.md, "Notifications").
@@ -40,18 +45,33 @@ import java.io.ByteArrayOutputStream
 object NotifMirror {
     private const val PREFS = "notifs"
     private const val ENABLED = "enabled"
+    private const val BLOCKED = "blocked"
+    private const val SEEN = "seen"
     private const val ICONS_SENT = "iconsSent"
+    private const val APPS_DEBOUNCE_MS = 1000L
+    private const val SEEN_MAX = 200
     private const val IMAGE_MAX = 480
     private const val AVATAR_MAX = 128
     private const val ICON_SIZE = 96
     /** The system's own placeholders ("2 more notifications", media holders), never news. */
     private val SYSTEM = setOf("android", "com.android.systemui")
 
+    private data class SeenApp(val pkg: String, val name: String)
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val lock = Any()
+    @Volatile private var appCtx: Context? = null
     private var listener: NotificationListenerService? = null
+    private var loaded = false
+    private var blocked = emptySet<String>()
+    private val seen = mutableListOf<SeenApp>()
+    private var appsPushJob: Job? = null
 
     private val _running = MutableStateFlow(false)
     val running: StateFlow<Boolean> = _running.asStateFlow()
+
+    private val _apps = MutableStateFlow<List<NotifApp>>(emptyList())
+    val apps: StateFlow<List<NotifApp>> = _apps.asStateFlow()
 
     /** Icons go one at a time (one file per phone on the link), in the order they are needed. */
     private val iconQueue = Channel<String>(Channel.UNLIMITED)
@@ -62,6 +82,54 @@ object NotifMirror {
             for (pkg in iconQueue) sendIcon(pkg)
         }
     }
+
+    fun load(ctx: Context) {
+        val app = ctx.applicationContext
+        appCtx = app
+        synchronized(lock) {
+            if (loaded) return
+            val sp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            blocked = sp.getStringSet(BLOCKED, emptySet())?.toSet().orEmpty()
+            seen.clear()
+            val seenPkgs = HashSet<String>()
+            val raw = sp.getString(SEEN, null)
+            if (!raw.isNullOrEmpty()) {
+                val arr = runCatching { JSONArray(raw) }.getOrNull()
+                if (arr != null) {
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val pkg = o.optString("pkg")
+                        if (pkg.isEmpty() || !seenPkgs.add(pkg)) continue
+                        seen += SeenApp(pkg, o.optString("name").ifEmpty { appLabel(app, pkg) })
+                    }
+                }
+            }
+            loaded = true
+            _apps.value = buildListLocked(app)
+        }
+    }
+
+    private fun saveSeenLocked(ctx: Context) {
+        val arr = JSONArray()
+        seen.forEach { arr.put(JSONObject().put("pkg", it.pkg).put("name", it.name)) }
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(SEEN, arr.toString()).apply()
+    }
+
+    private fun buildListLocked(ctx: Context): List<NotifApp> {
+        val seenPkgs = HashSet<String>(seen.size)
+        val out = ArrayList<NotifApp>(seen.size + blocked.size)
+        for (s in seen) {
+            seenPkgs += s.pkg
+            out += NotifApp(s.pkg, s.name, s.pkg in blocked)
+        }
+        val extraBlocked = blocked.filter { it !in seenPkgs }
+            .map { NotifApp(it, appLabel(ctx, it), blocked = true) }
+            .sortedBy { it.name.lowercase() }
+        out += extraBlocked
+        return out
+    }
+
+    private fun isBlocked(pkg: String): Boolean = synchronized(lock) { pkg in blocked }
 
     fun isEnabled(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ENABLED, true)
 
@@ -74,6 +142,8 @@ object NotifMirror {
 
     fun start(service: NotificationListenerService) {
         listener = service
+        load(service)
+        seedFromActive(service)
         _running.value = isEnabled(service)
         LinkHub.announceCaps()
         // The link may have come up first (the app just updated): its hello found no
@@ -90,7 +160,7 @@ object NotifMirror {
 
     private fun active(): Boolean = _running.value
 
-    fun shouldMirror(sbn: StatusBarNotification, ownPackage: String): Boolean {
+    private fun isMirrorableCandidate(sbn: StatusBarNotification, ownPackage: String): Boolean {
         val n = sbn.notification
         val pkg = sbn.packageName
         if (pkg == ownPackage || pkg.startsWith("org.kde.kdeconnect") || pkg in SYSTEM) return false
@@ -101,14 +171,89 @@ object NotifMirror {
         return !e.getCharSequence(Notification.EXTRA_TITLE).isNullOrBlank() || !e.getCharSequence(Notification.EXTRA_TEXT).isNullOrBlank()
     }
 
+    fun shouldMirror(sbn: StatusBarNotification, ownPackage: String): Boolean {
+        if (!isMirrorableCandidate(sbn, ownPackage)) return false
+        return !isBlocked(sbn.packageName)
+    }
+
+    private fun seedFromActive(service: NotificationListenerService) {
+        val activeList = runCatching { service.activeNotifications }.getOrNull().orEmpty()
+            .filter { isMirrorableCandidate(it, service.packageName) }
+            .sortedByDescending { it.postTime }
+        if (activeList.isEmpty()) return
+        val changed = synchronized(lock) {
+            val existing = seen.map { it.pkg }.toHashSet()
+            var added = false
+            for (sbn in activeList) {
+                val pkg = sbn.packageName
+                if (existing.add(pkg)) {
+                    seen += SeenApp(pkg, appLabel(service, pkg))
+                    added = true
+                }
+            }
+            if (added) {
+                saveSeenLocked(service)
+                _apps.value = buildListLocked(service)
+            }
+            added
+        }
+        if (changed) scheduleAppsPush(service)
+    }
+
+    private fun recordSeen(ctx: Context, pkg: String) {
+        load(ctx)
+        val label = appLabel(ctx, pkg)
+        // Reordering stays local; the PC only hears about apps it has not seen yet.
+        val isNew = synchronized(lock) {
+            val first = seen.firstOrNull()
+            if (first != null && first.pkg == pkg && first.name == label) return
+            val fresh = seen.removeAll { it.pkg == pkg }.not()
+            seen.add(0, SeenApp(pkg, label))
+            while (seen.size > SEEN_MAX) seen.removeAt(seen.lastIndex)
+            saveSeenLocked(ctx)
+            _apps.value = buildListLocked(ctx)
+            fresh
+        }
+        if (isNew) scheduleAppsPush(ctx)
+    }
+
+    fun setBlocked(ctx: Context, pkg: String, block: Boolean) {
+        if (pkg.isBlank()) return
+        load(ctx)
+        val app = ctx.applicationContext
+        val changed = synchronized(lock) {
+            val was = pkg in blocked
+            if (was == block) return
+            blocked = if (block) blocked + pkg else blocked - pkg
+            app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putStringSet(BLOCKED, blocked).apply()
+            _apps.value = buildListLocked(app)
+            true
+        }
+        if (!changed) return
+        scheduleAppsPush(app)
+        val l = listener ?: return
+        if (!active() || !LinkHub.isOnline()) return
+        scope.launch {
+            val activeList = runCatching { l.activeNotifications }.getOrNull().orEmpty()
+            if (block) {
+                activeList.filter { it.packageName == pkg }.forEach { sbn ->
+                    LinkHub.sendJson(JSONObject().put("t", "notifGone").put("key", sbn.key))
+                }
+            } else if (activeList.any { it.packageName == pkg && shouldMirror(it, l.packageName) }) {
+                sendAll()
+            }
+        }
+    }
+
     // ── Phone → PC ────────────────────────────────────────────────────────
 
     fun onPosted(sbn: StatusBarNotification) {
         val l = listener ?: return
+        if (isMirrorableCandidate(sbn, l.packageName)) recordSeen(l, sbn.packageName)
         if (!active() || !shouldMirror(sbn, l.packageName)) return
         if (LinkHub.isOnline()) {
             scope.launch { LinkHub.sendJson(JSONObject().put("t", "notif").put("n", describe(l, sbn))) }
-            queueIcon(sbn.packageName)
+            queueIcon(l, sbn.packageName)
         }
         // Up or not, the burst keeps (or brings) the link up; a new link sends everything.
         LinkHub.notifBurst()
@@ -130,8 +275,42 @@ object NotifMirror {
             val arr = JSONArray()
             list.forEach { arr.put(describe(l, it)) }
             LinkHub.sendJson(JSONObject().put("t", "notifs").put("list", arr))
-            list.map { it.packageName }.distinct().forEach(::queueIcon)
+            list.map { it.packageName }.distinct().forEach { queueIcon(l, it) }
         }
+    }
+
+    fun onShellHello(ctx: Context) {
+        load(ctx)
+        if (!LinkHub.supportsNotifFilter()) return
+        appsPushJob?.cancel()
+        appsPushJob = scope.launch { sendApps(ctx) }
+    }
+
+    private fun scheduleAppsPush(ctx: Context) {
+        if (!LinkHub.supportsNotifFilter()) return
+        val app = ctx.applicationContext
+        appsPushJob?.cancel()
+        appsPushJob = scope.launch {
+            delay(APPS_DEBOUNCE_MS)
+            sendApps(app)
+        }
+    }
+
+    private fun sendApps(ctx: Context) {
+        if (!LinkHub.supportsNotifFilter()) return
+        val list = _apps.value
+        val arr = JSONArray()
+        list.forEach { a ->
+            arr.put(JSONObject().put("pkg", a.pkg).put("name", a.name).put("blocked", a.blocked))
+        }
+        LinkHub.sendJson(JSONObject().put("t", "notifApps").put("list", arr))
+        list.forEach { queueIcon(ctx, it.pkg) }
+    }
+
+    fun onFilterMessage(ctx: Context, m: JSONObject) {
+        val pkg = m.optString("pkg")
+        if (pkg.isEmpty()) return
+        setBlocked(ctx, pkg, m.optBoolean("blocked"))
     }
 
     private fun describe(ctx: Context, sbn: StatusBarNotification): JSONObject {
@@ -203,9 +382,9 @@ object NotifMirror {
 
     // ── Icons: once per app per PC, kept there for good ───────────────────
 
-    private fun queueIcon(pkg: String) {
-        val ctx = listener ?: return
-        val sent = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(sentKey(), emptySet()).orEmpty()
+    private fun queueIcon(ctx: Context, pkg: String) {
+        val app = ctx.applicationContext
+        val sent = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(sentKey(), emptySet()).orEmpty()
         synchronized(iconsQueued) {
             if (pkg in sent || !iconsQueued.add(pkg)) return
         }
@@ -215,7 +394,7 @@ object NotifMirror {
     private fun sentKey() = "$ICONS_SENT:${LinkHub.pc.value?.id.orEmpty()}"
 
     private suspend fun sendIcon(pkg: String) {
-        val ctx = listener ?: return
+        val ctx = appCtx ?: listener ?: return
         try {
             val png = runCatching {
                 val out = ByteArrayOutputStream()

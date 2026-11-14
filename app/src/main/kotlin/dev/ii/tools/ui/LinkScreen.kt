@@ -94,6 +94,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     val relayed by LiveHub.relayed.collectAsStateWithLifecycle()
+    val notifApps by NotifMirror.apps.collectAsStateWithLifecycle()
     val favorite by FavoritePreset.name.collectAsStateWithLifecycle()
     val scanner = rememberPairScanner()
     val network = rememberNetworkPermission()
@@ -116,17 +117,19 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     }
     var s by remember { mutableStateOf(read()) }
     var gallery by remember { mutableStateOf(Gallery.isEnabled(ctx)) }
+    var notifs by remember { mutableStateOf(NotifMirror.isEnabled(ctx)) }
     LifecycleResumeEffect(Unit) {
         s = read()
         gallery = Gallery.isEnabled(ctx)
+        notifs = NotifMirror.isEnabled(ctx)
         Gallery.onPermissionChanged(ctx)
+        NotifMirror.load(ctx)
         FavoritePreset.load(ctx)
         onPauseOrDispose { }
     }
 
     // The switches, each over its feature's own preference.
     var stays by remember { mutableStateOf(LinkHub.staysConnected()) }
-    var notifs by remember { mutableStateOf(NotifMirror.isEnabled(ctx)) }
     var phoneMedia by remember { mutableStateOf(PhoneMedia.isEnabled(ctx)) }
     var calls by remember { mutableStateOf(CallWatcher.isEnabled(ctx)) }
     var data by remember { mutableStateOf(PhoneData.isEnabled(ctx)) }
@@ -287,7 +290,15 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
 
         item { GroupHeader(stringResource(R.string.settings_more)) }
         item {
+            val blockedCount = notifApps.count { it.blocked }
             CardGroup {
+                ToolRow(
+                    title = stringResource(R.string.settings_notifs_apps),
+                    summary = if (blockedCount > 0) pluralStringResource(R.plurals.settings_notifs_blocked, blockedCount, blockedCount) else stringResource(R.string.settings_notifs_apps_body),
+                    icon = R.drawable.rounded_notifications,
+                    tint = if (s.listener && notifs) Tint.PRIMARY else Tint.TERTIARY,
+                    onClick = { onOpen(Dest.NOTIFS) },
+                )
                 ToolRow(
                     title = stringResource(R.string.live_title),
                     summary = if (relayed.isEmpty()) stringResource(R.string.settings_relay_rules) else pluralStringResource(R.plurals.settings_relaying, relayed.size, relayed.size),

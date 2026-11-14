@@ -409,4 +409,15 @@
     <string name="perm_gallery">Photos and videos</string>
     <string name="perm_gallery_body">To show your photos and videos on the PC.</string>
     <string name="settings_needs_gallery">Needs the Photos and videos permission</string>
+    <string name="notifs_apps_title">Apps</string>
+    <string name="notifs_apps_hint">Apps that have posted notifications. Turn one off to stop mirroring it to the PC.</string>
+    <string name="notifs_apps_empty">No apps seen yet — new notifications will show up here.</string>
+    <string name="notifs_apps_search">Search apps</string>
+    <string name="notifs_apps_no_match">No matching apps</string>
+    <string name="settings_notifs_apps">Notification apps</string>
+    <string name="settings_notifs_apps_body">Choose which apps mirror to the PC</string>
+    <plurals name="settings_notifs_blocked">
+        <item quantity="one">%d app blocked on the PC</item>
+        <item quantity="other">%d apps blocked on the PC</item>
+    </plurals>
 </resources>

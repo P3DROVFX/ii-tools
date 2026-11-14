@@ -432,10 +432,11 @@ fun SwitchRow(
     title: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    @DrawableRes icon: Int,
+    @DrawableRes icon: Int? = null,
     modifier: Modifier = Modifier,
     summary: String? = null,
     enabled: Boolean = true,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
@@ -457,8 +458,12 @@ fun SwitchRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        StateShape(active = on, size = 40.dp, color = if (on) cs.tertiaryContainer else Layer.field) {
-            Icon(painterResource(icon), null, tint = if (on) cs.onTertiaryContainer else cs.onSurface, modifier = Modifier.size(22.dp))
+        if (leading != null) {
+            leading()
+        } else if (icon != null) {
+            StateShape(active = on, size = 40.dp, color = if (on) cs.tertiaryContainer else Layer.field) {
+                Icon(painterResource(icon), null, tint = if (on) cs.onTertiaryContainer else cs.onSurface, modifier = Modifier.size(22.dp))
+            }
         }
         Column(Modifier.weight(1f)) {
             Text(title, style = Expressive.title(16.sp), color = content)
