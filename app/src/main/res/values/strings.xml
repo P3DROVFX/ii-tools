@@ -434,4 +434,9 @@
         <item quantity="one">%d app blocked on the PC</item>
         <item quantity="other">%d apps blocked on the PC</item>
     </plurals>
+    <string name="usage_share">Screen time on the PC</string>
+    <string name="usage_share_body">Send app usage and screen sessions to App usage and Bedtime</string>
+    <string name="perm_usage">Usage access</string>
+    <string name="perm_usage_body">To read how long apps are open and when the screen was used.</string>
+    <string name="settings_needs_usage">Needs usage access</string>
 </resources>

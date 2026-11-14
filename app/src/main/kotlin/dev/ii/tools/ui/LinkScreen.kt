@@ -62,6 +62,7 @@ import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.phonedata.PhoneData
 import dev.ii.tools.shots.ShotSync
 import dev.ii.tools.tiles.FavoritePreset
+import dev.ii.tools.usage.PhoneUsage
 import dev.ii.tools.ui.theme.Expressive
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
@@ -77,6 +78,7 @@ private data class SettingsState(
     val gallery: Boolean,
     val galleryImages: Boolean,
     val files: Boolean,
+    val usageAccess: Boolean,
     val restricted: Boolean,
     val copyService: Boolean,
     val battery: Boolean,
@@ -110,6 +112,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
             gallery = Gallery.hasPermission(ctx),
             galleryImages = Gallery.canReadImages(ctx),
             files = FileServer.hasPermission(),
+            usageAccess = PhoneUsage.hasPermission(ctx),
             restricted = ClipWatchService.restricted(ctx),
             copyService = ClipWatchService.isEnabled(ctx),
             battery = LinkHub.batteryUnrestricted(),
@@ -118,10 +121,15 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     var s by remember { mutableStateOf(read()) }
     var gallery by remember { mutableStateOf(Gallery.isEnabled(ctx)) }
     var notifs by remember { mutableStateOf(NotifMirror.isEnabled(ctx)) }
+    var usageEnabled by remember { mutableStateOf(PhoneUsage.isEnabled(ctx)) }
     LifecycleResumeEffect(Unit) {
-        s = read()
+        val next = read()
+        if (next.usageAccess != s.usageAccess)
+            PhoneUsage.onPermissionChanged(ctx)
+        s = next
         gallery = Gallery.isEnabled(ctx)
         notifs = NotifMirror.isEnabled(ctx)
+        usageEnabled = PhoneUsage.isEnabled(ctx)
         Gallery.onPermissionChanged(ctx)
         NotifMirror.load(ctx)
         FavoritePreset.load(ctx)
@@ -163,7 +171,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
 
     var confirmForget by remember { mutableStateOf(false) }
     val missing = listOf(
-        s.listener, s.post, s.phone, s.contacts, s.photos, s.gallery, s.files, !s.restricted, s.copyService, s.battery, network.granted, cameraPerm.granted,
+        s.listener, s.post, s.phone, s.contacts, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, network.granted, cameraPerm.granted,
     ).count { !it }
 
     ToolScaffold(
@@ -208,6 +216,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 PermissionRow(stringResource(R.string.perm_files), stringResource(R.string.perm_files_body), R.drawable.rounded_folder_open, s.files) {
                     ctx.startActivity(FileServer.permissionIntent(ctx))
                 }
+                PermissionRow(stringResource(R.string.perm_usage), stringResource(R.string.perm_usage_body), R.drawable.rounded_schedule, s.usageAccess) {
+                    ctx.startActivity(PhoneUsage.permissionIntent(ctx))
+                }
                 PermissionRow(
                     stringResource(R.string.perm_camera),
                     stringResource(if (cameraPerm.permanentlyDenied) R.string.perm_camera_denied else R.string.perm_camera_body),
@@ -243,6 +254,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     data = it
                     PhoneData.setEnabled(ctx, it)
                 }, R.drawable.rounded_battery_full, summary = stringResource(R.string.settings_data_body))
+                SwitchRow(stringResource(R.string.usage_share), usageEnabled, {
+                    usageEnabled = it
+                    PhoneUsage.setEnabled(ctx, it)
+                }, R.drawable.rounded_schedule, summary = if (usageEnabled && !s.usageAccess) stringResource(R.string.settings_needs_usage) else stringResource(R.string.usage_share_body))
                 SwitchRow(stringResource(R.string.shots_send), shotsSend, {
                     shotsSend = it
                     ShotSync.setSends(ctx, it)

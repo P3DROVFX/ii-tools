@@ -42,6 +42,7 @@ import dev.ii.tools.gallery.Gallery
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.live.LiveHub
 import dev.ii.tools.notify.NotifMirror
+import dev.ii.tools.usage.PhoneUsage
 import dev.ii.tools.ui.theme.Expressive
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -93,6 +94,7 @@ fun ToolsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         if (clipSetup) add(Dest.CLIPBOARD)
         if (NotifMirror.isEnabled(ctx) && !status.listenerGranted) add(Dest.NOTIFS)
         if (Gallery.isEnabled(ctx) && !Gallery.canReadImages(ctx)) add(Dest.GALLERY)
+        if (PhoneUsage.isEnabled(ctx) && !PhoneUsage.hasPermission(ctx)) add(Dest.PHONE_DATA)
     }
     val all = control.size + sync.size + device.size
     ToolScaffold(

@@ -437,4 +437,9 @@
         <item quantity="one">%d app bloqueado no PC</item>
         <item quantity="other">%d apps bloqueados no PC</item>
     </plurals>
+    <string name="usage_share">Tempo de tela no PC</string>
+    <string name="usage_share_body">Envia uso de apps e sessões de tela para Uso de apps e Hora de dormir</string>
+    <string name="perm_usage">Acesso de uso</string>
+    <string name="perm_usage_body">Para ler quanto tempo os apps ficam abertos e quando a tela foi usada.</string>
+    <string name="settings_needs_usage">Precisa de acesso de uso</string>
 </resources>

@@ -28,6 +28,7 @@ import dev.ii.tools.gallery.Gallery
 import dev.ii.tools.media.PcMedia
 import dev.ii.tools.media.PhoneMedia
 import dev.ii.tools.pcactions.PcActions
+import dev.ii.tools.usage.PhoneUsage
 import dev.ii.tools.pclive.DndSync
 import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.phonedata.PhoneData
@@ -240,6 +241,7 @@ object LinkHub {
 
     /** The PC can resolve and send desktop app icons right now. */
     fun supportsAppIcons(): Boolean = socket != null && _shell.value?.caps?.contains("appIcons") == true
+    fun supportsUsage(): Boolean = socket != null && _shell.value?.caps?.contains("usage") == true
 
     fun sendJson(m: JSONObject) {
         socket?.send(m.toString())
@@ -286,6 +288,7 @@ object LinkHub {
         Look.caps().forEach { caps.put(it) }
         FileServer.caps(app).forEach { caps.put(it) }
         Gallery.caps(app).forEach { caps.put(it) }
+        PhoneUsage.caps(app).forEach { caps.put(it) }
         dev.ii.tools.camera.Webcam.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
@@ -540,6 +543,7 @@ object LinkHub {
         PcMedia.clear()
         FileServer.stop()
         Gallery.onLinkLost(app)
+        PhoneUsage.onLinkDisconnected()
         dev.ii.tools.camera.Webcam.onLinkLost()
     }
 
@@ -607,6 +611,7 @@ object LinkHub {
                 if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
                 if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
                 if (_shell.value?.caps?.contains("media") == true) PhoneMedia.sendAll()
+                PhoneUsage.onShellHello(app)
                 NotifMirror.onShellHello(app)
                 AppIcons.onLinkChanged()
                 Gallery.syncObserver(app)
@@ -643,6 +648,7 @@ object LinkHub {
                 "notifs" -> NotifMirror.sendAll()
                 "launcherIcons" -> m.optJSONArray("pkgs")?.let { k -> LauncherIcons.want(app, List(k.length()) { k.optString(it) }) }
                 "photos" -> m.optJSONArray("keys")?.let { k -> PhoneData.onPhotosAsked(List(k.length()) { k.optString(it) }) }
+                "phoneUsage" -> PhoneUsage.onGet(app, m.optString("since"))
             }
             "notifAct" -> NotifMirror.command(m)
             "notifFilter" -> NotifMirror.onFilterMessage(app, m)

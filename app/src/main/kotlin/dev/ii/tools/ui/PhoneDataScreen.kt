@@ -11,6 +11,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.ii.tools.R
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.phonedata.PhoneData
+import dev.ii.tools.usage.PhoneUsage
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
@@ -21,8 +22,15 @@ fun PhoneDataScreen(onBack: () -> Unit) {
     val status = rememberDeviceStatus()
     var enabled by remember { mutableStateOf(PhoneData.isEnabled(ctx)) }
     var contacts by remember { mutableStateOf(PhoneData.canReadContacts(ctx)) }
+    var usageEnabled by remember { mutableStateOf(PhoneUsage.isEnabled(ctx)) }
+    var usageAccess by remember { mutableStateOf(PhoneUsage.hasPermission(ctx)) }
     LifecycleResumeEffect(Unit) {
         contacts = PhoneData.canReadContacts(ctx)
+        val granted = PhoneUsage.hasPermission(ctx)
+        if (granted != usageAccess) {
+            usageAccess = granted
+            PhoneUsage.onPermissionChanged(ctx)
+        }
         onPauseOrDispose { }
     }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -33,7 +41,7 @@ fun PhoneDataScreen(onBack: () -> Unit) {
 
     ToolScaffold(title = stringResource(R.string.data_title), onBack = onBack) {
         item { Hint(stringResource(R.string.data_hint)) }
-        if (!contacts || !status.listenerGranted) {
+        if (!contacts || !status.listenerGranted || !usageAccess) {
             item { GroupHeader(stringResource(R.string.setup_title)) }
             item {
                 CardGroup {
@@ -43,6 +51,13 @@ fun PhoneDataScreen(onBack: () -> Unit) {
                         icon = R.drawable.rounded_contacts,
                         granted = contacts,
                         onGrant = { ask.launch(PhoneData.CONTACTS) },
+                    )
+                    PermissionRow(
+                        title = stringResource(R.string.perm_usage),
+                        body = stringResource(R.string.perm_usage_body),
+                        icon = R.drawable.rounded_schedule,
+                        granted = usageAccess,
+                        onGrant = { ctx.startActivity(PhoneUsage.permissionIntent(ctx)) },
                     )
                     PermissionRow(
                         title = stringResource(R.string.perm_listener),
@@ -65,6 +80,17 @@ fun PhoneDataScreen(onBack: () -> Unit) {
                     checked = enabled,
                     onCheckedChange = toggle,
                     icon = R.drawable.rounded_battery_full,
+                )
+                SwitchRow(
+                    title = stringResource(R.string.usage_share),
+                    checked = usageEnabled,
+                    onCheckedChange = { on ->
+                        usageEnabled = on
+                        PhoneUsage.setEnabled(ctx, on)
+                    },
+                    icon = R.drawable.rounded_schedule,
+                    summary = if (usageEnabled && !usageAccess) stringResource(R.string.settings_needs_usage)
+                    else stringResource(R.string.usage_share_body),
                 )
             }
         }
