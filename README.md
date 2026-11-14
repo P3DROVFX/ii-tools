@@ -139,7 +139,8 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Media handoff:** a web page playing on the PC (YouTube, Twitch, Vimeo…) continues on the
   phone at the same point: *Continue on phone* on the home's media card and in the media
   notification, and a notification when the PC locks while it plays. The PC's player is
-  paused when the page opens. *Handoff* has its own switch.
+  paused when the page opens. *Handoff* has its own switch. The other way, a phone app that gives
+  its track a web page (or a Spotify URI) gets *Continue on PC* in the shell's phone tab.
 - **PC wallpaper on the phone (off by default):** *Use the PC's wallpaper* sets the PC's
   wallpaper as the home and lock wallpaper (`SET_WALLPAPER`, a normal permission), centre-cropped
   from a 3840 px original, again whenever the PC's changes. Material You follows the picture.

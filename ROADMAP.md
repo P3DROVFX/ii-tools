@@ -599,10 +599,12 @@ padrão para o resto.
 
 ### 5.5 Handoff de mídia · **S**
 
-> **Status (2026-11-14): PC → celular implementado.** `pcMedia` leva `url`; botão "Continuar no
+> **Status (2026-11-14): implementado nos dois sentidos** (celular → PC: o app manda `url` quando o app de mídia dá
+> uma página web, o helper a publica como `xesam:url` e o card de mídia da aba Phone ganha "Continuar no PC", que abre no
+> mesmo ponto e pausa o celular; poucos apps expõem a URL, então o botão só aparece para eles).
+> PC → celular: `pcMedia` leva `url`; botão "Continuar no
 > celular" no card e na notificação de mídia, e `handoff` ao bloquear o PC tocando uma página web
-> (notificação). `t=` no YouTube/Twitch, `#t=` no Vimeo; pausa o player do PC ao abrir. O inverso
-> (celular → PC) fica de fora: o helper não publica `xesam:url` do celular e quase nenhum app o expõe.
+> (notificação). `t=` no YouTube/Twitch, `#t=` no Vimeo; pausa o player do PC ao abrir.
 
 Ao bloquear o PC ou pelo botão "Continuar no celular", a mídia do PC abre no celular no mesmo
 ponto (`xesam:url` do MPRIS com `t=` para YouTube e afins). O inverso a partir da mídia do

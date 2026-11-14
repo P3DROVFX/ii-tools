@@ -135,12 +135,31 @@ object PhoneMedia {
             .put("canNext", actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L)
             .put("canPrevious", actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L)
             .put("canSeek", actions and PlaybackState.ACTION_SEEK_TO != 0L)
+        webUrl(meta)?.let { m.put("url", it) }
         val trackKey = "$title\u0001$artist"
         if (lastTrack[pkg] != trackKey) {
             lastTrack[pkg] = trackKey
             art(meta)?.let { m.put("art", it) }
         }
         LinkHub.sendJson(m)
+    }
+
+    /**
+     * The track's web page for "Continue on PC", when the app gives one: an http(s) media
+     * URI, or a Spotify URI/ID turned into its open.spotify.com page. Most apps give none.
+     */
+    private fun webUrl(meta: MediaMetadata?): String? {
+        meta ?: return null
+        val candidates = listOf(
+            MediaMetadata.METADATA_KEY_MEDIA_URI,
+            MediaMetadata.METADATA_KEY_MEDIA_ID,
+        ).mapNotNull { meta.getString(it)?.trim()?.takeIf { v -> v.isNotEmpty() } }
+        for (v in candidates) {
+            if (v.startsWith("https://") || v.startsWith("http://")) return v
+            val spotify = Regex("^spotify:(track|episode):([A-Za-z0-9]{22})$").matchEntire(v)
+            if (spotify != null) return "https://open.spotify.com/${spotify.groupValues[1]}/${spotify.groupValues[2]}"
+        }
+        return null
     }
 
     /** Where playback is now, not when the state was last written. */
