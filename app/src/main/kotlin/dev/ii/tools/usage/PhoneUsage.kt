@@ -48,7 +48,7 @@ object PhoneUsage {
     private var receiver: BroadcastReceiver? = null
 
     fun isEnabled(c: Context): Boolean =
-        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ENABLED, false)
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ENABLED, true)
 
     fun setEnabled(c: Context, on: Boolean) {
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(ENABLED, on) }
