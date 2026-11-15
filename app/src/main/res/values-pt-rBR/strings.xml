@@ -69,6 +69,14 @@
     <string name="remote_workspaces">Áreas de trabalho</string>
     <string name="remote_modes">Modos</string>
     <string name="remote_presets">Presets</string>
+    <string name="remote_power">Energia</string>
+    <string name="remote_power_reboot">Reiniciar</string>
+    <string name="remote_power_off">Desligar</string>
+    <string name="remote_power_reboot_sent">Reiniciando…</string>
+    <string name="remote_power_off_sent">Desligando…</string>
+    <string name="remote_power_reboot_ask">Reiniciar o PC?</string>
+    <string name="remote_power_off_ask">Desligar o PC?</string>
+    <string name="remote_power_body">Os apps abertos fecham sem perguntar, e o que não foi salvo se perde.</string>
     <string name="remote_modes_off">Os modos estão desligados no PC.</string>
     <string name="link_needed">Conecte ao PC primeiro.</string>
     <string name="deck_title">Deck</string>

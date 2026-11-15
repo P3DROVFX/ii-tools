@@ -38,6 +38,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import dev.ii.tools.tiles.FavoritePreset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -112,6 +118,82 @@ fun RemoteScreen(onBack: () -> Unit) {
             item { GroupHeader(stringResource(R.string.remote_presets)) }
             item { PresetGroup(p) }
         }
+        // Last on the page, away from the toggles a thumb hits often.
+        if ("power" in info.caps) {
+            item { GroupHeader(stringResource(R.string.remote_power)) }
+            item { PowerRow() }
+        }
+    }
+}
+
+/**
+ * Restart and shut down the PC. Each asks first; the shell answers before it acts, so a
+ * sent request shows "Restarting…" / "Shutting down…" until the link drops.
+ */
+@Composable
+private fun PowerRow() {
+    val cs = MaterialTheme.colorScheme
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    var asking by remember { mutableStateOf<String?>(null) }
+    var sent by remember { mutableStateOf<String?>(null) }
+    var failed by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(failed) {
+        if (failed != null) {
+            delay(1_800)
+            failed = null
+        }
+    }
+    val failedNote = stringResource(R.string.action_failed)
+    Row(Modifier.height(150.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        listOf("reboot", "poweroff").forEach { kind ->
+            val off = kind == "poweroff"
+            val label = when {
+                failed == kind -> failedNote
+                sent == kind -> stringResource(if (off) R.string.remote_power_off_sent else R.string.remote_power_reboot_sent)
+                else -> stringResource(if (off) R.string.remote_power_off else R.string.remote_power_reboot)
+            }
+            val (bg, fg) = if (failed == kind) cs.errorContainer to cs.onErrorContainer else Layer.pane to cs.onSurface
+            val (shapeColor, glyph) = if (off) cs.error to cs.onError else cs.secondaryContainer to cs.onSecondaryContainer
+            ExpressiveCard(bg, fg, Modifier.weight(1f).fillMaxHeight(), onClick = {
+                if (sent != null) return@ExpressiveCard
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                asking = kind
+            }) {
+                Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                    StateShape(false, 60.dp, shapeColor, off = if (off) MaterialShapes.Cookie9Sided else MaterialShapes.Cookie7Sided) {
+                        Icon(painterResource(if (off) R.drawable.rounded_power_settings_new else R.drawable.rounded_restart_alt), null, tint = glyph, modifier = Modifier.size(28.dp))
+                    }
+                    Text(label, style = Expressive.title(17.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+    asking?.let { kind ->
+        val off = kind == "poweroff"
+        AlertDialog(
+            onDismissRequest = { asking = null },
+            icon = { Icon(painterResource(if (off) R.drawable.rounded_power_settings_new else R.drawable.rounded_restart_alt), null) },
+            title = { Text(stringResource(if (off) R.string.remote_power_off_ask else R.string.remote_power_reboot_ask)) },
+            text = { Text(stringResource(R.string.remote_power_body)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        asking = null
+                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                        scope.launch {
+                            if (LinkHub.run("power", kind) == null) sent = kind
+                            else {
+                                haptics.performHapticFeedback(HapticFeedbackType.Reject)
+                                failed = kind
+                            }
+                        }
+                    },
+                    colors = if (off) ButtonDefaults.buttonColors(containerColor = cs.error, contentColor = cs.onError) else ButtonDefaults.buttonColors(),
+                ) { Text(stringResource(if (off) R.string.remote_power_off else R.string.remote_power_reboot)) }
+            },
+            dismissButton = { TextButton(onClick = { asking = null }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 }
 

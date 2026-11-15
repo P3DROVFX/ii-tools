@@ -129,7 +129,8 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   changed it: a lock from a keybind lights the tile up too. Unlocking is refused on
   purpose; it stays with the PC's own authentication. Below the tiles: the workspaces
   (1–10 and any higher one in use, tonal when they hold windows), the shell's modes and
-  its presets. The shell announces which actions exist (`hello`), so switching an
+  its presets, then Restart and Shut down (cap `power`, each confirmed in a dialog; off
+  in the shell's settings). The shell announces which actions exist (`hello`), so switching an
   integration off on the PC hides it here.
 - **PC audio:** the default output's volume and the mic, which device plays and records,
   volume and mute per app, and EasyEffects (on/bypass and output preset). Live from the

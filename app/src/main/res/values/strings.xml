@@ -70,6 +70,14 @@
     <string name="remote_workspaces">Workspaces</string>
     <string name="remote_modes">Modes</string>
     <string name="remote_presets">Presets</string>
+    <string name="remote_power">Power</string>
+    <string name="remote_power_reboot">Restart</string>
+    <string name="remote_power_off">Shut down</string>
+    <string name="remote_power_reboot_sent">Restarting…</string>
+    <string name="remote_power_off_sent">Shutting down…</string>
+    <string name="remote_power_reboot_ask">Restart the PC?</string>
+    <string name="remote_power_off_ask">Shut down the PC?</string>
+    <string name="remote_power_body">Open apps close without asking, and anything unsaved is lost.</string>
     <string name="remote_modes_off">Modes are switched off on the PC.</string>
     <string name="link_needed">Connect to the PC first.</string>
     <string name="deck_title">Deck</string>
