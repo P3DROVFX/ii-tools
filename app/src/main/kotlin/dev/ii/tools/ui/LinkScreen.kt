@@ -66,6 +66,8 @@ import dev.ii.tools.notify.NotifMirror
 import dev.ii.tools.pclive.DndSync
 import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.phonedata.PhoneData
+import dev.ii.tools.screen.ScreenPrefs
+import dev.ii.tools.screen.SecondScreen
 import dev.ii.tools.shots.ShotSync
 import dev.ii.tools.tiles.FavoritePreset
 import dev.ii.tools.usage.PhoneUsage
@@ -100,7 +102,9 @@ private data class SettingsState(
 fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val ctx = LocalContext.current
     val status by LinkHub.status.collectAsStateWithLifecycle()
+    val shell by LinkHub.shell.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
+    val screenPrefs by SecondScreen.prefs(ctx).collectAsStateWithLifecycle()
     val relayed by LiveHub.relayed.collectAsStateWithLifecycle()
     val notifApps by NotifMirror.apps.collectAsStateWithLifecycle()
     val favorite by FavoritePreset.name.collectAsStateWithLifecycle()
@@ -345,6 +349,24 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     dnd = it
                     DndSync.setEnabled(ctx, it)
                 }, R.drawable.rounded_do_not_disturb_on, summary = stringResource(R.string.settings_dnd_body))
+            }
+        }
+
+        item { GroupHeader(stringResource(R.string.second_title)) }
+        item {
+            val sp = screenPrefs ?: ScreenPrefs()
+            val hasScreenWifi = shell?.caps?.contains("screenWifi") == true
+            CardGroup {
+                if (hasScreenWifi) {
+                    ToolBlock {
+                        ScreenConnectionChoice(sp.transport) {
+                            SecondScreen.setPrefs(ctx, sp.copy(transport = it))
+                        }
+                    }
+                }
+                ScreenAdaptiveSwitch(sp.adaptive) {
+                    SecondScreen.setPrefs(ctx, sp.copy(adaptive = it))
+                }
             }
         }
 

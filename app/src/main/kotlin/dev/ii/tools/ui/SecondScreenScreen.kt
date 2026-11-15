@@ -9,6 +9,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.pointer.positionChange
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -38,6 +40,7 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
@@ -90,15 +93,18 @@ import dev.ii.tools.SecondScreenViewActivity
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.screen.ScreenPrefs
+import dev.ii.tools.screen.ScreenSession
+import dev.ii.tools.screen.ScreenSocket
 import dev.ii.tools.screen.ScreenState
+import dev.ii.tools.screen.ScreenStats
 import dev.ii.tools.screen.ScreenStream
 import dev.ii.tools.screen.SecondScreen
 import dev.ii.tools.ui.theme.Expressive
 import kotlin.math.roundToInt
 
 /**
- * The phone as a monitor (ROADMAP 3.1): extend or mirror, over USB, and how the PC sends
- * it. Once the PC says the output is served, the picture opens full screen
+ * The phone as a monitor (ROADMAP 3.1): extend or mirror, over USB or Wi-Fi, and how the
+ * PC sends it. Once the PC says the output is served, the picture opens full screen
  * ([SecondScreenView]).
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -112,6 +118,7 @@ fun SecondScreenScreen(onBack: () -> Unit) {
     val prefs by SecondScreen.prefs(ctx).collectAsStateWithLifecycle()
     val online = status is LinkStatus.Online && shell != null
     val supported = shell?.caps?.contains("screen") == true
+    val hasWifi = shell?.caps?.contains("screenWifi") == true
     val ready = online && supported
 
     DisposableEffect(Unit) {
@@ -153,7 +160,7 @@ fun SecondScreenScreen(onBack: () -> Unit) {
                     !online -> stringResource(R.string.touchpad_offline)
                     !supported -> stringResource(R.string.second_off)
                     s is ScreenState.Starting -> stringResource(R.string.second_starting)
-                    s is ScreenState.Failed -> failure(s.code)
+                    s is ScreenState.Failed -> failure(s.code, hasWifi)
                     else -> stringResource(R.string.second_body)
                 },
             )
@@ -188,6 +195,12 @@ fun SecondScreenScreen(onBack: () -> Unit) {
         item { GroupHeader(stringResource(R.string.second_stream)) }
         item {
             CardGroup {
+                if (hasWifi) {
+                    ToolBlock {
+                        ScreenConnectionChoice(p.transport) { set(p.copy(transport = it)) }
+                    }
+                }
+                ScreenAdaptiveSwitch(p.adaptive) { set(p.copy(adaptive = it)) }
                 ToolBlock {
                     Choice(
                         stringResource(R.string.second_resolution),
@@ -222,7 +235,7 @@ fun SecondScreenScreen(onBack: () -> Unit) {
                         ) { set(p.copy(mirror = it)) }
                     }
                     Choice(
-                        stringResource(R.string.second_quality),
+                        stringResource(if (p.adaptive) R.string.second_max_bitrate else R.string.second_quality),
                         listOf(8 to "8 Mbps", 16 to "16 Mbps", 30 to "30 Mbps"),
                         p.bitrate,
                     ) { set(p.copy(bitrate = it)) }
@@ -230,14 +243,39 @@ fun SecondScreenScreen(onBack: () -> Unit) {
             }
         }
         item { Hint(stringResource(R.string.second_stream_hint)) }
-        item { Hint(stringResource(R.string.second_usb_hint)) }
+        item { Hint(stringResource(if (hasWifi) R.string.second_wifi_hint else R.string.second_usb_hint)) }
     }
+}
+
+@Composable
+internal fun ScreenConnectionChoice(transport: String, onPick: (String) -> Unit) {
+    Choice(
+        stringResource(R.string.second_connection),
+        listOf(
+            "auto" to stringResource(R.string.second_conn_auto),
+            "usb" to stringResource(R.string.second_conn_usb),
+            "wifi" to stringResource(R.string.second_conn_wifi),
+        ),
+        transport,
+        onPick,
+    )
+}
+
+@Composable
+internal fun ScreenAdaptiveSwitch(adaptive: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    SwitchRow(
+        title = stringResource(R.string.second_adaptive),
+        checked = adaptive,
+        onCheckedChange = onCheckedChange,
+        icon = R.drawable.rounded_tune,
+        summary = stringResource(R.string.second_adaptive_body),
+    )
 }
 
 /** A label over connected toggle buttons: one of [options]. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun <T> Choice(label: String, options: List<Pair<T, String>>, value: T, onPick: (T) -> Unit) {
+internal fun <T> Choice(label: String, options: List<Pair<T, String>>, value: T, onPick: (T) -> Unit) {
     val haptics = LocalHapticFeedback.current
     Column(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = Expressive.title(14.sp))
@@ -262,12 +300,13 @@ private fun <T> Choice(label: String, options: List<Pair<T, String>>, value: T, 
 }
 
 @Composable
-private fun failure(code: String): String = stringResource(
+private fun failure(code: String, hasWifi: Boolean): String = stringResource(
     when (code) {
         "disabled" -> R.string.second_off
-        "adb" -> R.string.second_err_adb
-        "usb" -> R.string.second_err_usb
+        "adb" -> if (hasWifi) R.string.second_err_adb_wifi else R.string.second_err_adb
+        "usb" -> if (hasWifi) R.string.second_err_usb_wifi else R.string.second_err_usb
         "unauthorized" -> R.string.second_err_unauthorized
+        "wireless" -> R.string.second_err_wireless
         "busy" -> R.string.second_err_busy
         "timeout" -> R.string.second_err_timeout
         "encoder", "encoder_exit" -> R.string.second_err_encoder
@@ -283,10 +322,14 @@ private fun failure(code: String): String = stringResource(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SecondScreenView(onDone: () -> Unit) {
+    val ctx = LocalContext.current
     val view = LocalView.current
     val cs = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
     val state by SecondScreen.state.collectAsStateWithLifecycle()
+    val stats by SecondScreen.stats.collectAsStateWithLifecycle()
+    val prefs by SecondScreen.prefs(ctx).collectAsStateWithLifecycle()
+    val p = prefs ?: ScreenPrefs()
     val ready = state as? ScreenState.Ready
 
     DisposableEffect(Unit) {
@@ -306,10 +349,11 @@ fun SecondScreenView(onDone: () -> Unit) {
     }
     val r = ready ?: return
 
-    val stream = remember { arrayOfNulls<ScreenStream>(1) }
+    val stream = remember { arrayOfNulls<ScreenSession>(1) }
     // Picture ids → the PC's finger ids (0–9), kept while the finger is down.
     val ids = remember { HashMap<PointerId, Int>() }
     var typing by remember { mutableStateOf(false) }
+    var qualityOpen by remember { mutableStateOf(false) }
     var area by remember { mutableStateOf(IntSize.Zero) }
     val mods = remember { mutableStateListOf<String>() }
     val focus = remember { FocusRequester() }
@@ -336,16 +380,35 @@ fun SecondScreenView(onDone: () -> Unit) {
                     SurfaceView(c).apply {
                         holder.addCallback(object : SurfaceHolder.Callback {
                             override fun surfaceCreated(h: SurfaceHolder) {
-                                stream[0]?.stop()
-                                stream[0] = ScreenStream(r.port, r.token, r.width, r.height, h.surface) { failed ->
-                                    if (failed) SecondScreen.failed("stream") else SecondScreen.stop()
-                                }.also { it.start() }
+                                stream[0]?.let {
+                                    SecondScreen.detachSession(it)
+                                    it.stop()
+                                }
+                                val session: ScreenSession = if (r.transport == "wifi") {
+                                    ScreenSocket(r.token, r.width, r.height, h.surface) { failed ->
+                                        if (failed) SecondScreen.failed("stream") else SecondScreen.stop()
+                                    }.also {
+                                        SecondScreen.attachSession(it)
+                                        it.start()
+                                    }
+                                } else {
+                                    ScreenStream(r.port, r.token, r.width, r.height, h.surface) { failed ->
+                                        if (failed) SecondScreen.failed("stream") else SecondScreen.stop()
+                                    }.also {
+                                        SecondScreen.attachSession(it)
+                                        it.start()
+                                    }
+                                }
+                                stream[0] = session
                             }
 
                             override fun surfaceChanged(h: SurfaceHolder, format: Int, width: Int, height: Int) {}
 
                             override fun surfaceDestroyed(h: SurfaceHolder) {
-                                stream[0]?.stop()
+                                stream[0]?.let {
+                                    SecondScreen.detachSession(it)
+                                    it.stop()
+                                }
                                 stream[0] = null
                             }
                         })
@@ -378,11 +441,61 @@ fun SecondScreenView(onDone: () -> Unit) {
         FloatingTools(
             area = area,
             typing = typing,
+            transport = r.transport,
+            bitrateMbps = p.bitrate,
+            stats = stats,
+            qualityOpen = qualityOpen,
+            onQuality = { qualityOpen = !qualityOpen },
+            onFold = { qualityOpen = false },
             onKeyboard = { typing = !typing },
             onDraw = { SecondScreen.draw() },
             onSwitch = if (r.mode == "mirror" && r.screens > 1) ({ SecondScreen.switchNext() }) else null,
             onStop = onDone,
         )
+
+        if (qualityOpen) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) { detectTapGestures { qualityOpen = false } },
+            )
+            Surface(
+                shape = RoundedCornerShape(Radius.card),
+                color = cs.surfaceContainerHigh,
+                contentColor = cs.onSurface,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .widthIn(max = 360.dp)
+                    .padding(16.dp)
+                    .pointerInput(Unit) { detectTapGestures { } },
+            ) {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            stringResource(R.string.second_live_quality),
+                            style = Expressive.wide(18.sp),
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { qualityOpen = false }) {
+                            Icon(painterResource(R.drawable.rounded_close), stringResource(R.string.cancel))
+                        }
+                    }
+                    Choice(
+                        stringResource(if (p.adaptive) R.string.second_max_bitrate else R.string.second_quality),
+                        listOf(8 to "8 Mbps", 16 to "16 Mbps", 30 to "30 Mbps"),
+                        p.bitrate,
+                    ) { SecondScreen.setQuality(it, p.adaptive) }
+                    CardGroup {
+                        ScreenAdaptiveSwitch(p.adaptive) {
+                            SecondScreen.setQuality(p.bitrate, it)
+                        }
+                    }
+                }
+            }
+        }
 
         // Which PC screen this is, for a moment after mirror switched to it.
         var shown by remember { mutableStateOf<String?>(null) }
@@ -447,7 +560,20 @@ private enum class Edge { LEFT, RIGHT, TOP, BOTTOM }
  * pill. Open, it is no thicker than the dot: the buttons fill its 48 dp exactly.
  */
 @Composable
-private fun FloatingTools(area: IntSize, typing: Boolean, onKeyboard: () -> Unit, onDraw: () -> Unit, onSwitch: (() -> Unit)?, onStop: () -> Unit) {
+private fun FloatingTools(
+    area: IntSize,
+    typing: Boolean,
+    transport: String,
+    bitrateMbps: Int,
+    stats: ScreenStats?,
+    qualityOpen: Boolean,
+    onQuality: () -> Unit,
+    onFold: () -> Unit,
+    onKeyboard: () -> Unit,
+    onDraw: () -> Unit,
+    onSwitch: (() -> Unit)?,
+    onStop: () -> Unit,
+) {
     val cs = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
@@ -521,58 +647,130 @@ private fun FloatingTools(area: IntSize, typing: Boolean, onKeyboard: () -> Unit
             } else {
                 haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
                 open = !open
+                if (!open) onFold()
             }
         }
     }
 
-    Surface(
-        shape = shape,
-        color = cs.surfaceContainerHigh.copy(alpha = if (open) 0.95f else 0.78f),
-        contentColor = cs.onSurface,
-        modifier = Modifier
-            .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
-            .onSizeChanged { size = it }
-            .animateContentSize(),
-    ) {
-        val handleSize = when {
-            dock == null || open -> DpSize(48.dp, 48.dp)
-            vertical -> DpSize(28.dp, 56.dp)
-            else -> DpSize(56.dp, 28.dp)
-        }
-        val handleBox = @Composable {
-            Box(handle.size(handleSize), contentAlignment = Alignment.Center) {
-                when {
-                    dock == null -> Icon(painterResource(if (open) R.drawable.rounded_drag_indicator else R.drawable.rounded_tune), stringResource(R.string.second_tools))
-                    else -> Icon(
-                        painterResource(R.drawable.rounded_chevron_right),
-                        stringResource(R.string.second_tools),
-                        Modifier.size(22.dp).rotate(if (open) inward + 180f else inward),
-                    )
+    val pill = @Composable {
+        Surface(
+            shape = shape,
+            color = cs.surfaceContainerHigh.copy(alpha = if (open) 0.95f else 0.78f),
+            contentColor = cs.onSurface,
+            modifier = Modifier.animateContentSize(),
+        ) {
+            val handleSize = when {
+                dock == null || open -> DpSize(48.dp, 48.dp)
+                vertical -> DpSize(28.dp, 56.dp)
+                else -> DpSize(56.dp, 28.dp)
+            }
+            val handleBox = @Composable {
+                Box(handle.size(handleSize), contentAlignment = Alignment.Center) {
+                    when {
+                        dock == null -> Icon(painterResource(if (open) R.drawable.rounded_drag_indicator else R.drawable.rounded_tune), stringResource(R.string.second_tools))
+                        else -> Icon(
+                            painterResource(R.drawable.rounded_chevron_right),
+                            stringResource(R.string.second_tools),
+                            Modifier.size(22.dp).rotate(if (open) inward + 180f else inward),
+                        )
+                    }
+                }
+            }
+            val tools = @Composable {
+                ToolButton(if (typing) R.drawable.rounded_keyboard_hide else R.drawable.rounded_keyboard, stringResource(R.string.touchpad_keyboard), typing, onKeyboard)
+                if (onSwitch != null) ToolButton(R.drawable.rounded_swap_horiz, stringResource(R.string.second_switch), false, onSwitch)
+                ToolButton(R.drawable.rounded_draw, stringResource(R.string.second_draw), false, onDraw)
+                FilledIconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.Reject)
+                        onStop()
+                    },
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = cs.errorContainer, contentColor = cs.onErrorContainer),
+                ) { Icon(painterResource(R.drawable.rounded_stop), stringResource(R.string.second_stop)) }
+            }
+            if (vertical) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    handleBox()
+                    if (open) tools()
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    handleBox()
+                    if (open) tools()
                 }
             }
         }
-        val tools = @Composable {
-            ToolButton(if (typing) R.drawable.rounded_keyboard_hide else R.drawable.rounded_keyboard, stringResource(R.string.touchpad_keyboard), typing, onKeyboard)
-            if (onSwitch != null) ToolButton(R.drawable.rounded_swap_horiz, stringResource(R.string.second_switch), false, onSwitch)
-            ToolButton(R.drawable.rounded_draw, stringResource(R.string.second_draw), false, onDraw)
-            FilledIconButton(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.Reject)
-                    onStop()
-                },
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = cs.errorContainer, contentColor = cs.onErrorContainer),
-            ) { Icon(painterResource(R.drawable.rounded_stop), stringResource(R.string.second_stop)) }
+    }
+
+    val chip = @Composable {
+        LiveChip(transport = transport, bitrateMbps = bitrateMbps, stats = stats, active = qualityOpen, onClick = onQuality)
+    }
+
+    val containerModifier = Modifier
+        .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+        .onSizeChanged { size = it }
+    if (vertical) {
+        Row(containerModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (dock == Edge.RIGHT) {
+                if (open) chip()
+                pill()
+            } else {
+                pill()
+                if (open) chip()
+            }
         }
-        if (vertical) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                handleBox()
-                if (open) tools()
+    } else {
+        Column(containerModifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (dock == Edge.BOTTOM) {
+                if (open) chip()
+                pill()
+            } else {
+                pill()
+                if (open) chip()
             }
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                handleBox()
-                if (open) tools()
-            }
+        }
+    }
+}
+
+@Composable
+private fun LiveChip(
+    transport: String,
+    bitrateMbps: Int,
+    stats: ScreenStats?,
+    active: Boolean,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val haptics = LocalHapticFeedback.current
+    val icon = if (transport == "wifi") R.drawable.rounded_wifi else R.drawable.rounded_usb
+    val rate = stats?.bitrateMbps ?: bitrateMbps.toFloat()
+    val rateText = if (kotlin.math.abs(rate - rate.roundToInt()) < 0.05f) {
+        "${rate.roundToInt()} Mbps"
+    } else {
+        "${"%.1f".format(rate)} Mbps"
+    }
+    val droppedText = stats?.dropped?.takeIf { it > 0 }?.let { stringResource(R.string.second_dropped, it) }
+    val label = listOfNotNull(
+        rateText,
+        stats?.rttMs?.let { "$it ms" },
+        droppedText,
+    ).joinToString(" · ")
+    Surface(
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+            onClick()
+        },
+        shape = CircleShape,
+        color = if (active) cs.primaryContainer else cs.surfaceContainerHigh.copy(alpha = 0.95f),
+        contentColor = if (active) cs.onPrimaryContainer else cs.onSurface,
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(painterResource(icon), null, Modifier.size(16.dp))
+            Text(label, style = Expressive.live(13.sp), maxLines = 1)
         }
     }
 }

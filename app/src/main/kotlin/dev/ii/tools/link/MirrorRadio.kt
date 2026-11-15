@@ -15,11 +15,9 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 
 /**
- * Keeps the phone's Wi-Fi radio awake during wireless scrcpy mirroring so power save
- * does not stall frame delivery or touch round-trips. Acquires both the low-latency lock
- * and high-perf fallback while active, trickles a 4-byte UDP keep-awake datagram to the
- * PC helper's discovery port every 50 ms, and tears everything down on mirror end, link
- * loss, opt-out, or after a hard 3-hour safety timeout.
+ * Keeps the phone's Wi-Fi radio awake during wireless mirroring or second-screen sessions
+ * so power save does not stall frame delivery or touch round-trips. Reference-counted by
+ * owner key ("scrcpy", "screen", …) so one ending never drops another's hold.
  */
 object MirrorRadio {
     private const val PREFS = "mirror_radio"
@@ -32,6 +30,7 @@ object MirrorRadio {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private val owners = mutableMapOf<String, Pair<String, Int>?>()
     private var lowLatencyLock: WifiManager.WifiLock? = null
     private var highPerfLock: WifiManager.WifiLock? = null
     private var trickleJob: Job? = null
@@ -51,14 +50,48 @@ object MirrorRadio {
     fun caps(ctx: Context): List<String> = if (isEnabled(ctx)) listOf("mirrorRadio") else emptyList()
 
     @Synchronized
+    fun hold(ctx: Context, owner: String, host: String?, port: Int) {
+        if (!isEnabled(ctx)) return
+        val target = if (!host.isNullOrBlank() && port in 1..65535) host to port else null
+        owners[owner] = target
+        syncLocked(ctx.applicationContext)
+    }
+
+    @Synchronized
+    fun release(owner: String) {
+        // The value may be null (no trickle target): test the key, or the locks would leak.
+        if (owners.containsKey(owner)) {
+            owners.remove(owner)
+            syncLocked(null)
+        }
+    }
+
     fun onMirror(ctx: Context, on: Boolean, host: String?, port: Int, shellHasCap: Boolean) {
         if (!on || !isEnabled(ctx) || !shellHasCap) {
+            release("scrcpy")
+            return
+        }
+        hold(ctx, "scrcpy", host, port)
+    }
+
+    fun onLinkLost() {
+        release("scrcpy")
+    }
+
+    @Synchronized
+    fun stop() {
+        owners.clear()
+        stopLocked()
+    }
+
+    private fun syncLocked(appCtx: Context?) {
+        if (owners.isEmpty()) {
             stopLocked()
             return
         }
-        acquireLocksLocked(ctx.applicationContext)
+        if (appCtx != null) acquireLocksLocked(appCtx)
 
-        val target = if (!host.isNullOrBlank() && port in 1..65535) host to port else null
+        val target = owners.values.firstNotNullOfOrNull { it }
         if (target != null && (trickleJob?.isActive != true || activeTarget != target)) {
             trickleJob?.cancel()
             activeTarget = target
@@ -74,16 +107,6 @@ object MirrorRadio {
             delay(MAX_HOLD_MS)
             stop()
         }
-    }
-
-    @Synchronized
-    fun onLinkLost() {
-        stopLocked()
-    }
-
-    @Synchronized
-    fun stop() {
-        stopLocked()
     }
 
     private fun stopLocked() {

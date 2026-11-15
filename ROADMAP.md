@@ -400,9 +400,16 @@ deck.
 > sessão); a barra flutuante tem teclado, desenhar na tela e parar; resolução, fps, escala,
 > lado e qualidade vêm do app.
 >
-> **Pendente — versão sem fio:** o mesmo stream pela rede, sem `adb reverse` (porta
-> negociada pelo link, token igual, TLS ou o próprio link para proteger o vídeo), com
-> bitrate adaptativo para o Wi-Fi.
+> **Versão sem fio (2026-11-15): implementada.** Socket lateral `/iilink/1/screen` na porta
+> TLS do link (mesmo pinning, token de uso único, sem adb), escolhido por Conexão
+> (Automática / USB / Wi-Fi; Automática usa USB quando há cabo). Fila de envio com idade
+> medida e `TCP_NOTSENT_LOWAT`, descarte até o próximo quadro-chave, bitrate adaptativo
+> (×0,7 / ×1,25), GOP de 2 s, reconexão em até 10 s, rádio Wi-Fi acordado (`MirrorRadio`
+> por dono). O app mostra taxa, latência e perdas ao vivo e muda a qualidade sem parar.
+> Toggle "Phone as a monitor over Wi-Fi" na página ii tools do shell.
+>
+> **Depois:** HEVC na rede (FLV do wf-recorder não leva HEVC; precisa de outro mux) e
+> lembrar o encoder que funcionou para reinícios mais rápidos.
 
 ### 3.2 Celular como autenticador · **L**
 

@@ -199,9 +199,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   Needs the phone paired with the PC over Bluetooth.
 - **Drawing pad:** draw on the phone, held sideways, and the ink appears in the shell's
   live draw on the focused screen, with its tools, colours and undo.
-- **Second screen:** the phone as a monitor for the PC over USB: extend (a new screen the
-  phone's size) or mirror the focused screen, with touch as the PC's touchscreen. Needs
-  adb on the PC and USB debugging on the phone.
+- **Second screen:** the phone as a monitor for the PC over USB or Wi-Fi: extend (a new
+  screen the phone's size) or mirror the focused screen, with touch as the PC's
+  touchscreen. Over Wi-Fi it rides ii link's encrypted connection, with adaptive bitrate
+  and a live chip showing the bitrate, latency and dropped frames; USB (adb on the PC,
+  USB debugging on the phone) is used when plugged in, for the lowest latency.
 - **Webcam:** the phone's camera as the PC's webcam (`/dev/videoN` via `ii_link`) over
   ii link, with lens, zoom, exposure, focus, torch and stabilisation controls, 4:3 or 16:9
   (720p or 1080p). Keeps streaming with the screen off, and the PC can request the
