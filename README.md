@@ -1,6 +1,32 @@
-# ii tools
+<div align="center">
 
-Android companion for the [ii](https://github.com/P3DROVFX/ii-vynx) Quickshell desktop,
+<img src=".github/assets/readme/logo-banner.png" alt="ii-tools" />
+
+<br><br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/readme/subtitle-dark.png" />
+  <source media="(prefers-color-scheme: light)" srcset=".github/assets/readme/subtitle-light.png" />
+  <img src=".github/assets/readme/subtitle-dark.png" width="636" alt="The Android companion for the ii shell" />
+</picture>
+
+<br><br>
+
+[**Download**](https://github.com/P3DROVFX/ii-tools/releases/latest) &nbsp;·&nbsp; [Install](#install) &nbsp;·&nbsp; [Permissions & privacy](#permissions--privacy) &nbsp;·&nbsp; [Roadmap](#roadmap) &nbsp;·&nbsp; [The shell](https://github.com/P3DROVFX/ii-vynx)
+
+<br>
+
+<p align="center">
+  <img src=".github/assets/Home_Screenshot_1.0.01.jpg" width="32%" alt="Home: the PC card with its lock, what plays on it and its volume" />
+  <img src=".github/assets/Home_Screenshot_1.0.02.jpg" width="32%" alt="Tools: touchpad, deck, draw, present, second screen and the shell's controls" />
+  <img src=".github/assets/Home_Screenshot_1.0.03.jpg" width="32%" alt="Camera and microphone for the PC, and the PC's load" />
+</p>
+
+</div>
+
+<br>
+
+**Android companion** for the [ii](https://github.com/P3DROVFX/ii-vynx) Quickshell desktop,
 in place of KDE Connect: it talks to the shell over its own encrypted link (**ii link**)
 and needs nothing else on the phone or the PC. The plan is in [ROADMAP.md](ROADMAP.md).
 
@@ -11,6 +37,74 @@ lock, its state), what plays on it, its volume with output and input as split bu
 its quick toggles, its load, and a card to stream the phone as the PC's microphone. Every tool is in *Tools*, every permission and switch in
 *Settings* (where pairing lives too); each screen is its own activity (`Dest` →
 `MainActivity`).
+
+
+## Install
+
+**You need:** an Android 12+ phone (`minSdk 31`), and a PC running the
+[ii-p3drovfx](https://github.com/P3DROVFX/ii-vynx) shell (`dev` branch) with its *Settings → ii tools* page,
+on the same network as the phone (or both on Tailscale). Google Play services are only
+used by the QR scanner button; without them, scan the code with the camera app.
+
+1. **Download** `ii-tools-1.0.0.apk` from the [latest release](https://github.com/P3DROVFX/ii-tools/releases/latest)
+   and open it on the phone (allow installing from your browser or file manager when asked).
+   Every release is signed with the same key, so updates install over the old version.
+   Its certificate's SHA-256 is
+   `9A:1C:02:4A:41:31:DD:66:7F:6C:72:FD:95:99:47:BF:AA:25:1D:C9:7F:1F:E5:3C:7C:F1:8E:CC:94:B3:74:F1`
+   (`apksigner verify --print-certs ii-tools-1.0.0.apk`).
+2. **Turn the link on at the PC:** *Settings → ii tools*, switch the link on, then
+   *Pair a phone*. A QR code appears. The link listens on TCP port `47210` by default,
+   a high port that most firewalls leave open; if yours doesn't, allow it.
+3. **Pair:** open ii tools on the phone and press *Scan QR code* on the home (or scan the code
+   with the camera app: it opens the same `iilink://pair?…` link in ii tools). The PC's
+   certificate is pinned on the first connection.
+4. **Grant what you want to use.** *Settings* in the app lists every permission as a
+   step, and each tool asks for its own when you open it. The ones worth doing now:
+   - **Notification access**, for the phone's notifications on the PC and the
+     live-notification relay. On Android 13+ a sideloaded app first needs *App info → ⋮ → Allow
+     restricted settings*.
+   - **Battery optimisation off**, so Doze doesn't cut the link while the phone sleeps.
+   - **Nearby devices / local network** (Android 17), so the phone can reach the PC.
+
+Without a PC in reach the app still opens, shows the PC's last state and offers *Wake*
+(Wake-on-LAN) and *Retry*.
+
+## Permissions & privacy
+
+Everything the app sends goes **only to the PC you paired**, over a TLS WebSocket with the
+PC's certificate pinned. There is no account, no server, no analytics and no ads;
+nothing runs before you pair. Each permission backs one feature, and the app works
+without the ones you refuse; that feature just stays off.
+
+| Permission | What it's for |
+| --- | --- |
+| Notification access (listener) | The phone's notifications on the PC, and the live-update relay |
+| Accessibility service | Notices a copy to send the clipboard to the PC; used for nothing else |
+| `RECORD_AUDIO`, `CAMERA` | The phone as the PC's microphone and webcam, only while streaming (foreground service) |
+| `READ_MEDIA_*` | Screenshots and the phone's gallery for the PC |
+| `READ_CONTACTS` | Contacts with photos for the shell's people widgets |
+| `READ_PHONE_STATE`, `ANSWER_PHONE_CALLS`, `CALL_PHONE` | Call state on the PC, answer or end a call, dial from the PC |
+| `MANAGE_EXTERNAL_STORAGE` | The PC browses the phone's files over SFTP |
+| `PACKAGE_USAGE_STATS`, `QUERY_ALL_PACKAGES` | The phone's screen time in the shell's usage app; names and icons of apps in live notifications |
+| `ACCESS_LOCAL_NETWORK`, `INTERNET`, `ACCESS_NETWORK_STATE` | The link to the PC; leaving and arriving home as Routines triggers |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `WAKE_LOCK` | Keeping the link up in Doze; holding Wi-Fi awake while a stream runs |
+| `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS` | Its own notifications and Android 16 Live Updates |
+| `SET_WALLPAPER` | Only when *Use the PC's wallpaper* is on |
+
+## Roadmap
+
+What's planned next, in no particular order:
+
+- **Wireless mirroring.** The phone's screen mirrored and extended over Wi-Fi, without a
+  cable or `adb reverse`, with an adaptive bitrate.
+- **Wireless microphone.** Polishing the phone as the PC's microphone over the link,
+  with Opus as an option for weak networks.
+- **Home screen cards reordering.** Drag the home's cards to put them in your own order.
+- **Widgets.** Android home screen widgets for the PC's state and controls.
+- **Bluetooth peripherals' battery.** The battery of what's connected to the phone (smartwatch, earbuds
+  and their case) in `phoneStatus`, so the shell can show it next to the phone's own.
+
+The long version is in [ROADMAP.md](ROADMAP.md).
 
 ## Integrations
 
@@ -25,8 +119,8 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   certificate is pinned by its SHA-256; the PC keeps only a hash of this phone's token.
 - **Lifetime:** the link stays open in the background (*Stay connected*, on by default),
   so the PC can reach the phone at any time; it needs the app let off battery
-  optimisation (a guided step), or Doze cuts it. No foreground service: the process lives
-  through the notification listener. A ping a minute; away from the PC it retries every
+  optimisation (a guided step), or Doze cuts it. No foreground service for the link: the process lives
+  through the notification listener (the microphone and webcam use one, only while they stream). A ping a minute; away from the PC it retries every
   few minutes, and at once when the network changes. Turned off, the link is open only
   while the app is in front (plus 30 s) or for a burst of notifications. If the PC's
   address changed, the app finds it again with a UDP broadcast on the link's port.
@@ -226,6 +320,11 @@ Needs the Android SDK (`sdk.dir` in `local.properties` or `$ANDROID_HOME`) and a
 
     ./gradlew assembleDebug
     adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+A signed release comes from `./gradlew assembleRelease`, with the key in `keystore.properties`
+(`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; gitignored) or in the
+`II_KEYSTORE_FILE`, `II_KEYSTORE_PASSWORD`, `II_KEY_ALIAS` and `II_KEY_PASSWORD` environment
+variables. Without a key it is signed with the debug one, so anyone can build it.
     adb shell cmd notification allow_listener dev.ii.tools/dev.ii.tools.live.LiveListener
     adb shell pm grant dev.ii.tools android.permission.ACCESS_LOCAL_NETWORK
 
@@ -252,8 +351,25 @@ notice, with a line saying what changed. Reused so far:
 - `files/FileServer.kt`: from KDE Connect's `SimpleSftpServer` and `SftpPlugin`.
 - `files/NativeStorageFileSystemFactory.kt`: KDE Connect's, unchanged.
 
-The app bundles [Google Sans Flex](https://fonts.google.com/specimen/Google+Sans+Flex)
-(`res/font/google_sans_flex.ttf`), © Google LLC, under the SIL Open Font License 1.1. The
-bundled file keeps its weight, width, roundness and slant axes; grade and optical size
-are pinned (fontTools `instancer`) to save 3 MB.
+## Credits
 
+ii tools stands on other people's work:
+
+| Project | Used for | License |
+| --- | --- | --- |
+| [KDE Connect](https://invent.kde.org/network/kdeconnect-android) | The idea, and the SFTP file server (`files/`) | GPL-2.0-only OR GPL-3.0-only |
+| [Sefirah](https://github.com/shrimqy/Sefirah-Android) | The media session code (`media/`) | GPL-3.0 |
+| [OkHttp](https://square.github.io/okhttp/) | The WebSocket and certificate pinning | Apache-2.0 |
+| [Apache MINA SSHD](https://mina.apache.org/sshd-project/) | The SFTP server the PC browses the phone with | Apache-2.0 |
+| [Jetpack Compose and Material 3](https://developer.android.com/jetpack/compose) | The UI, in Material 3 Expressive | Apache-2.0 |
+| [Material Symbols](https://github.com/google/material-design-icons) | Every icon (`rounded_*`) | Apache-2.0 |
+| [Google Sans Flex](https://fonts.google.com/specimen/Google+Sans+Flex) | The typeface (`res/font`), © Google LLC | SIL OFL 1.1 |
+| [Google code scanner](https://developers.google.com/ml-kit/vision/barcode-scanning/code-scanner) | The pairing QR scanner, through Google Play services (no camera permission) | Google APIs Terms |
+
+The bundled Google Sans Flex keeps its weight, width, roundness and slant axes; grade and
+optical size are pinned (fontTools `instancer`) to save 3 MB. The README banner is drawn by
+`tools/make-readme-assets.py` from a port of the ii shell's topography shader.
+
+The ii shell, the other half of this, is [ii-p3drovfx](https://github.com/P3DROVFX/ii-vynx),
+a fork of [ii-vynx](https://github.com/vaguesyntax/ii-vynx) and
+[illogical-impulse](https://github.com/end-4/dots-hyprland).
