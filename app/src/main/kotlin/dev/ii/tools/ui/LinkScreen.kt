@@ -50,6 +50,8 @@ import dev.ii.tools.clip.ClipWatchService
 import dev.ii.tools.files.FileServer
 import dev.ii.tools.gallery.Gallery
 import dev.ii.tools.link.LinkHub
+import dev.ii.tools.link.FailReason
+import dev.ii.tools.link.LinkFailure
 import dev.ii.tools.link.LinkProblem
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.link.MirrorRadio
@@ -367,6 +369,11 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 ScreenAdaptiveSwitch(sp.adaptive) {
                     SecondScreen.setPrefs(ctx, sp.copy(adaptive = it))
                 }
+                ToolBlock {
+                    ScreenOrientationChoice(sp.orient) {
+                        SecondScreen.setPrefs(ctx, sp.copy(orient = it))
+                    }
+                }
             }
         }
 
@@ -432,7 +439,7 @@ private fun PcCard(pc: PairedPc, status: LinkStatus, onForget: () -> Unit) {
                             woke == true -> stringResource(R.string.wake_sent)
                             woke == false -> stringResource(R.string.wake_failed)
                             status is LinkStatus.Online -> stringResource(R.string.status_online) + " · " + status.host
-                            status is LinkStatus.Offline -> problemText(status.problem)
+                            status is LinkStatus.Offline -> problemText(status.problem, status.failure)
                             else -> statusLabel(status)
                         },
                         style = Expressive.live(14.sp),
@@ -489,7 +496,7 @@ internal fun StatusRow(pc: PairedPc, status: LinkStatus) {
         title = statusLabel(status),
         summary = when (status) {
             is LinkStatus.Online -> status.host
-            is LinkStatus.Offline -> problemText(status.problem)
+            is LinkStatus.Offline -> problemText(status.problem, status.failure)
             LinkStatus.Connecting -> pc.hosts.firstOrNull().orEmpty()
             else -> stringResource(R.string.link_hero_paired)
         },
@@ -524,14 +531,26 @@ fun statusLabel(status: LinkStatus): String = stringResource(
 )
 
 @Composable
-internal fun problemText(problem: LinkProblem): String = stringResource(
-    when (problem) {
-        LinkProblem.UNREACHABLE -> R.string.problem_unreachable
-        LinkProblem.REJECTED -> R.string.problem_rejected
-        LinkProblem.PAIRING_FAILED -> R.string.problem_pairing
-        LinkProblem.NO_PERMISSION -> R.string.problem_permission
-    },
-)
+internal fun problemText(problem: LinkProblem, failure: LinkFailure? = null): String {
+    if (problem == LinkProblem.UNREACHABLE && failure != null) {
+        val hosts = failure.hosts.joinToString(", ")
+        return when (failure.reason) {
+            FailReason.TIMEOUT -> stringResource(R.string.problem_timeout, hosts, failure.port)
+            FailReason.REFUSED -> stringResource(R.string.problem_refused, hosts, failure.port)
+            FailReason.NO_ROUTE -> stringResource(R.string.problem_no_route, hosts)
+            FailReason.CERTIFICATE -> stringResource(R.string.problem_certificate, hosts)
+            FailReason.PROTOCOL -> stringResource(R.string.problem_protocol, hosts)
+        }
+    }
+    return stringResource(
+        when (problem) {
+            LinkProblem.UNREACHABLE -> R.string.problem_unreachable
+            LinkProblem.REJECTED -> R.string.problem_rejected
+            LinkProblem.PAIRING_FAILED -> R.string.problem_pairing
+            LinkProblem.NO_PERMISSION -> R.string.problem_permission
+        },
+    )
+}
 
 /**
  * The top of every screen that needs the PC: nothing while connected, else the link's

@@ -408,6 +408,11 @@ deck.
 > por dono). O app mostra taxa, latência e perdas ao vivo e muda a qualidade sem parar.
 > Toggle "Phone as a monitor over Wi-Fi" na página ii tools do shell.
 >
+> **Ferramentas da sessão (2026-11-15):** toolbar ancorada na alça (um `Layout` só, sem
+> saltos), trackpad, zoom no mirror, workspaces e shell tablet no mirror, lançador na tela da
+> sessão, teclas extras acima do teclado, áudio do PC no celular (Opus pela sessão Wi-Fi,
+> sink virtual "Phone") e extend em retrato.
+>
 > **Depois:** HEVC na rede (FLV do wf-recorder não leva HEVC; precisa de outro mux) e
 > lembrar o encoder que funcionou para reinícios mais rápidos.
 
@@ -469,6 +474,17 @@ Celular como touchpad (gestos de vários dedos mapeados para o Hyprland) e tecla
 Substitui o mousepad e o remotekeyboard do KDE Connect.
 
 ---
+
+### Link estável
+
+> **Feito (2026-11-15):** serviço em primeiro plano `connectedDevice` enquanto "Manter
+> conectado" está ligado. Antes o processo ficava em adj 250 (só o leitor de notificações) e
+> o lmkd do S23 o matava várias vezes por minuto; após uma morte por memória o Android chegou
+> a agendar o reinício para 5 min depois.
+>
+> **Pendente:** o helper morre a cada recarga do Quickshell (qualquer QML salvo), derrubando o
+> celular por ~6 s. Solução: helper em processo próprio falando com o shell por socket Unix,
+> saindo sozinho quando o shell some de vez.
 
 ## Fase 4 — Nicho
 

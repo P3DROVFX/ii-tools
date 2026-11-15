@@ -64,7 +64,7 @@ sealed interface LinkStatus {
     data object Pairing : LinkStatus
     data object Connecting : LinkStatus
     data class Online(val host: String) : LinkStatus
-    data class Offline(val problem: LinkProblem) : LinkStatus
+    data class Offline(val problem: LinkProblem, val failure: LinkFailure? = null) : LinkStatus
 }
 
 enum class LinkProblem {
@@ -77,6 +77,27 @@ enum class LinkProblem {
     /** Android 17+: nearby devices / local network access not granted. */
     NO_PERMISSION,
 }
+
+/**
+ * Why no address answered, from what the sockets actually saw, so the phone can say more
+ * than "can't reach the PC". Ordered from the most telling: a PC that answered at all
+ * says more than one that stayed silent.
+ */
+enum class FailReason {
+    /** It answered with another certificate: not the paired PC, or its link was reset. */
+    CERTIFICATE,
+    /** TLS worked but it did not speak ii link (or not this version). */
+    PROTOCOL,
+    /** The host is there but nothing listens on the port: the link is off. */
+    REFUSED,
+    /** No answer at all: a firewall dropping the port, or a router keeping clients apart. */
+    TIMEOUT,
+    /** The phone has no way there: another network, Tailscale off. */
+    NO_ROUTE,
+}
+
+/** The reason that tells the most, and every address that was tried. */
+data class LinkFailure(val reason: FailReason, val hosts: List<String>, val port: Int)
 
 /** [toggle] actions have an on/off state the shell keeps the phone told about. */
 data class ShellAction(val id: String, val name: String, val icon: String, val toggle: Boolean)
@@ -217,6 +238,7 @@ object LinkHub {
         // Any start of the process (the notification listener binding at boot included)
         // brings the link up when the user wants it kept.
         if (_pc.value != null && staysConnected()) hold(ALWAYS)
+        LinkService.sync(app)
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -225,6 +247,8 @@ object LinkHub {
         foreground = true
         stopJob?.cancel()
         ensureSession()
+        // A start refused while in the background (the listener's restart) succeeds now.
+        LinkService.sync(app)
     }
 
     fun onBackground() {
@@ -398,6 +422,7 @@ object LinkHub {
         _pc.value = null
         clearShell()
         _status.value = LinkStatus.Unpaired
+        LinkService.sync(app)
     }
 
     /** A pairing link that arrived before the network permission did. */
@@ -423,8 +448,10 @@ object LinkHub {
             .put("secret", uri.secret)
             .put("name", deviceName())
             .put("model", Build.MODEL)
+        val tried = mutableListOf<Session>()
         for (host in uri.hosts) {
             val s = open(client, host, uri.port)
+            tried += s
             s.ws.send(hello.toString())
             val reply = withTimeoutOrNull(6_000) { s.first.await() }
             s.ws.close(1000, null)
@@ -441,6 +468,7 @@ object LinkHub {
                     LinkPrefs.save(app, pc)
                     _pc.value = pc
                     if (staysConnected()) holds.add(ALWAYS)
+                    LinkService.sync(app)
                     runSession()
                     return
                 }
@@ -450,7 +478,7 @@ object LinkHub {
                 }
             }
         }
-        _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE)
+        _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE, failure(tried, uri.hosts, uri.port))
     }
 
     // ── Session ───────────────────────────────────────────────────────────
@@ -484,7 +512,7 @@ object LinkHub {
                         continue
                     }
                     failures++
-                    _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE)
+                    _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE, lastFailure)
                     // Only notifications wanted it, from the background: the PC is not
                     // around, so stop here instead of retrying for every notification.
                     if (!foreground && holds.isNotEmpty() && holds.all { it == "notifs" }) {
@@ -518,6 +546,7 @@ object LinkHub {
     fun setStaysConnected(on: Boolean) {
         app.getSharedPreferences(STAY_PREFS, Context.MODE_PRIVATE).edit().putBoolean(STAY, on).apply()
         if (on && _pc.value != null) hold(ALWAYS) else release(ALWAYS)
+        LinkService.sync(app)
     }
 
     /** Doze cuts a background app's sockets unless it is let off battery optimisation. */
@@ -536,8 +565,10 @@ object LinkHub {
     private suspend fun connectOnce(pc: PairedPc): Outcome {
         val client = clientFor(pc.fingerprint)
         val auth = JSONObject().put("t", "auth").put("id", pc.id).put("token", pc.token).toString()
+        val tried = mutableListOf<Session>()
         for (host in pc.hosts) {
             val s = open(client, host, pc.port)
+            tried += s
             s.ws.send(auth)
             val reply = withTimeoutOrNull(5_000) { s.first.await() }
             when (reply?.optString("t")) {
@@ -574,6 +605,7 @@ object LinkHub {
                 else -> s.ws.cancel()
             }
         }
+        lastFailure = failure(tried, pc.hosts, pc.port)
         return Outcome.UNREACHABLE
     }
 
@@ -873,10 +905,48 @@ object LinkHub {
     // ── Transport ─────────────────────────────────────────────────────────
 
     private class Session(
-        val ws: WebSocket,
         val first: CompletableDeferred<JSONObject?>,
         val closed: CompletableDeferred<Unit>,
-    )
+    ) {
+        /** Set right after creation; the listener already holds the session by then. */
+        lateinit var ws: WebSocket
+
+        /** What OkHttp failed with, if it did; and whether the WebSocket ever opened. */
+        @Volatile var error: Throwable? = null
+        @Volatile var httpCode = 0
+        @Volatile var opened = false
+
+        fun reason(): FailReason {
+            if (httpCode != 0) return FailReason.PROTOCOL
+            var c = error ?: return if (opened) FailReason.PROTOCOL else FailReason.TIMEOUT
+            val top = c
+            while (true) {
+                when (c) {
+                    is java.security.cert.CertificateException, is javax.net.ssl.SSLPeerUnverifiedException -> return FailReason.CERTIFICATE
+                    is java.net.NoRouteToHostException, is java.net.UnknownHostException -> return FailReason.NO_ROUTE
+                    is java.net.SocketTimeoutException -> return FailReason.TIMEOUT
+                    is java.net.ConnectException -> {
+                        // OkHttp wraps the errno ("…ECONNREFUSED (Connection refused)") a level down.
+                        val m = generateSequence<Throwable>(c) { it.cause }.joinToString(" ") { it.message.orEmpty() }
+                        return when {
+                            "ECONNREFUSED" in m || "refused" in m -> FailReason.REFUSED
+                            "ENETUNREACH" in m || "EHOSTUNREACH" in m || "unreachable" in m -> FailReason.NO_ROUTE
+                            else -> FailReason.TIMEOUT
+                        }
+                    }
+                }
+                c = c.cause ?: break
+            }
+            // A TLS failure that is not the pin (a cipher, a closed handshake): it answered.
+            return if (top is javax.net.ssl.SSLException || opened) FailReason.PROTOCOL else FailReason.TIMEOUT
+        }
+    }
+
+    private fun failure(sessions: List<Session>, hosts: List<String>, port: Int): LinkFailure =
+        LinkFailure(sessions.map { it.reason() }.minOrNull() ?: FailReason.TIMEOUT, hosts, port)
+
+    /** Why the last connection attempt found no PC, for [LinkStatus.Offline]. */
+    @Volatile private var lastFailure: LinkFailure? = null
 
     /**
      * A second WebSocket to the PC the link is on, at [path] (the webcam's video): same
@@ -898,7 +968,12 @@ object LinkHub {
     private fun open(client: OkHttpClient, host: String, port: Int): Session {
         val first = CompletableDeferred<JSONObject?>()
         val closed = CompletableDeferred<Unit>()
+        val attempt = Session(first, closed)
         val listener = object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                attempt.opened = true
+            }
+
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val m = runCatching { JSONObject(text) }.getOrNull() ?: return
                 if (!first.isCompleted) first.complete(m) else handle(m)
@@ -918,13 +993,16 @@ object LinkHub {
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                attempt.error = t
+                if (response != null && response.code != 101) attempt.httpCode = response.code
                 first.complete(null)
                 closed.complete(Unit)
             }
         }
         val host6 = if (':' in host) "[$host]" else host
         val request = Request.Builder().url("https://$host6:$port$PATH").build()
-        return Session(client.newWebSocket(request, listener), first, closed)
+        attempt.ws = client.newWebSocket(request, listener)
+        return attempt
     }
 
     private fun clientFor(fingerprint: String): OkHttpClient {

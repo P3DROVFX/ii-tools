@@ -977,7 +977,7 @@ private fun AwayHero(pc: PairedPc, status: LinkStatus) {
                 when {
                     woke == true -> stringResource(R.string.wake_sent)
                     woke == false -> stringResource(R.string.wake_failed)
-                    status is LinkStatus.Offline -> problemText(status.problem)
+                    status is LinkStatus.Offline -> problemText(status.problem, status.failure)
                     else -> stringResource(R.string.status_connecting)
                 },
                 style = Expressive.live(16.sp),

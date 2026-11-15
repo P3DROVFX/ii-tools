@@ -325,7 +325,7 @@
         <item quantity="many">%1$d permissões para dar</item>
     </plurals>
     <string name="settings_connection">Conexão</string>
-    <string name="settings_stay_body">Mantém o link aberto em segundo plano</string>
+    <string name="settings_stay_body">Mantém o link aberto em segundo plano, com uma notificação silenciosa para o Android não fechar o app</string>
     <string name="settings_battery_body">Para a economia de bateria não cortar o link com o celular em repouso</string>
     <string name="settings_permissions">Permissões</string>
     <string name="settings_listener_body">Notificações, live relay, ligações, screenshots, atividade do PC</string>
@@ -491,6 +491,9 @@
     <string name="second_side_right">Direita</string>
     <string name="second_side_above">Acima</string>
     <string name="second_side_below">Abaixo</string>
+    <string name="second_orient">Orientação</string>
+    <string name="second_orient_landscape">Paisagem</string>
+    <string name="second_orient_portrait">Retrato</string>
     <string name="second_quality">Qualidade</string>
     <string name="second_stream_hint">Resolução, quadros, escala e lado moldam a tela estendida; o espelho mantém os do PC. As mudanças valem no próximo início.</string>
     <string name="second_tools">Ferramentas</string>
@@ -498,6 +501,23 @@
     <string name="second_mirror_which">Tela a espelhar</string>
     <string name="second_mirror_focused">Em foco</string>
     <string name="second_switch">Espelhar a próxima tela</string>
+    <string name="second_input_touch">Modo toque</string>
+    <string name="second_input_trackpad">Modo trackpad</string>
+    <string name="second_workspaces">Áreas de trabalho</string>
+    <string name="second_ws_prev">Área anterior</string>
+    <string name="second_ws_next">Próxima área</string>
+    <string name="second_launcher">Launcher</string>
+    <string name="second_more">Mais ferramentas</string>
+    <string name="second_tile_draw">Desenhar</string>
+    <string name="second_tile_switch">Trocar tela</string>
+    <string name="second_tile_tablet">Modo tablet</string>
+    <string name="second_tile_keys">Teclas extras</string>
+    <string name="second_tile_audio">Áudio no celular</string>
+    <string name="second_tile_quality">Qualidade</string>
+    <string name="second_tile_rotate">Girar</string>
+    <string name="second_zoom_reset">Zerar zoom</string>
+    <string name="second_keys_close">Fechar teclas extras</string>
+    <string name="second_keys_ime">Mostrar ou ocultar teclado</string>
     <string name="gallery_title">Galeria do celular</string>
     <string name="gallery_hint">O PC vê suas fotos e vídeos só para leitura; nada é apagado ou alterado por ele. Os vídeos abrem pelos Arquivos do celular (SFTP).</string>
     <string name="gallery_share">Deixar o PC ver a galeria</string>
@@ -673,4 +693,14 @@
     <string name="media_mode_seek">Posição da reprodução</string>
     <string name="home_clip_all">Abrir clipboard</string>
     <string name="media_mode_sync">Sincronizar a letra</string>
+    <string name="link_service_channel">Conexão com o PC</string>
+    <string name="link_service_online">Conectado a %1$s</string>
+    <string name="link_service_waiting">Aguardando %1$s</string>
+    <string name="link_service_stop">Parar de manter conectado</string>
+    <string name="link_service_hide">Mantém o ii tools rodando. Você pode esconder esta notificação: toque e segure nela e desative.</string>
+    <string name="problem_timeout">O PC em %1$s não respondeu. Um firewall no PC pode estar bloqueando a porta %2$d (o ii tools nas configurações do shell avisa) ou o roteador isola os aparelhos do Wi-Fi.</string>
+    <string name="problem_refused">O PC em %1$s recusou a conexão na porta %2$d. O link está ligado no ii tools das configurações do shell?</string>
+    <string name="problem_no_route">Este celular não tem caminho até %1$s. Ele está no mesmo Wi-Fi ou na mesma tailnet do PC?</string>
+    <string name="problem_certificate">O PC em %1$s respondeu com outro certificado: não é o PC pareado, ou o link dele foi redefinido. Pareie de novo.</string>
+    <string name="problem_protocol">O PC em %1$s respondeu, mas não como ii link. Atualize o shell e o app.</string>
 </resources>

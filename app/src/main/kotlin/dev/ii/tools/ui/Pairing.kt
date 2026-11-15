@@ -130,7 +130,7 @@ fun PairContent(status: LinkStatus, scanner: PairScanner, network: NetworkPermis
         }
         val problem = when {
             scanner.invalid -> stringResource(R.string.pair_invalid)
-            status is LinkStatus.Offline -> problemText(status.problem)
+            status is LinkStatus.Offline -> problemText(status.problem, status.failure)
             else -> null
         }
         AnimatedVisibility(problem != null) {

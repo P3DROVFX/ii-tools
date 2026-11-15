@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,12 +20,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -60,11 +63,13 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.touchpad.Touchpad
+import dev.ii.tools.ui.theme.Expressive
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
@@ -281,17 +286,36 @@ private fun PadButton(label: String, which: String, enabled: Boolean, modifier: 
 /** Keys an on-screen keyboard lacks, and sticky modifiers for the next key. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun KeysRow(mods: List<String>, onKey: (String) -> Unit, onMod: (String) -> Unit) {
+internal fun KeysRow(
+    mods: List<String>,
+    onKey: (String) -> Unit,
+    onMod: (String) -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    compact: Boolean = false,
+) {
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        val btnMod = if (compact) Modifier.height(34.dp) else Modifier
+        val pad = if (compact) PaddingValues(horizontal = 10.dp, vertical = 0.dp) else ButtonDefaults.ContentPadding
+        val labelStyle = if (compact) Expressive.title(12.sp) else LocalTextStyle.current
         listOf("ctrl" to "Ctrl", "alt" to "Alt", "super" to "Super", "shift" to "Shift").forEach { (id, label) ->
-            ToggleButton(checked = id in mods, onCheckedChange = { onMod(id) }) { Text(label) }
+            ToggleButton(
+                checked = id in mods,
+                onCheckedChange = { onMod(id) },
+                modifier = btnMod,
+                contentPadding = pad,
+            ) { Text(label, style = labelStyle) }
         }
         listOf("Escape" to "Esc", "Tab" to "Tab", "Left" to "←", "Down" to "↓", "Up" to "↑", "Right" to "→", "Delete" to "Del", "Home" to "Home", "End" to "End")
             .forEach { (key, label) ->
-                FilledTonalButton(onClick = { onKey(key) }) { Text(label) }
+                FilledTonalButton(
+                    onClick = { onKey(key) },
+                    modifier = btnMod,
+                    contentPadding = pad,
+                ) { Text(label, style = labelStyle) }
             }
     }
 }

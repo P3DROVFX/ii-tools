@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- The link's foreground service; CHANGE_NETWORK_STATE is its type's prerequisite. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <!-- The webcam holds Wi-Fi in low-latency mode while it streams over the network. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
@@ -222,8 +225,9 @@
 
         <activity
             android:name=".SecondScreenViewActivity"
-            android:screenOrientation="sensorLandscape"
+            android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize"
             android:excludeFromRecents="true"
             android:exported="false" />
 
@@ -289,6 +293,12 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/deck_widget_info" />
         </receiver>
+
+        <!-- Keeps the app alive while "Stay connected" is on. -->
+        <service
+            android:name=".link.LinkService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
 
         <!-- Copied text to the PC with no app open (optional, enabled by the user). -->
         <service

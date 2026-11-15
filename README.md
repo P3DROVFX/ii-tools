@@ -53,8 +53,10 @@ used by the QR scanner button; without them, scan the code with the camera app.
    `9A:1C:02:4A:41:31:DD:66:7F:6C:72:FD:95:99:47:BF:AA:25:1D:C9:7F:1F:E5:3C:7C:F1:8E:CC:94:B3:74:F1`
    (`apksigner verify --print-certs ii-tools-1.0.0.apk`).
 2. **Turn the link on at the PC:** *Settings → ii tools*, switch the link on, then
-   *Pair a phone*. A QR code appears. The link listens on TCP port `47210` by default,
-   a high port that most firewalls leave open; if yours doesn't, allow it.
+   *Pair a phone*. A QR code appears. The link listens on port `47210` by default (TCP,
+   and UDP to find the PC again when its address changes). A firewall that denies
+   incoming traffic (ufw's default, many firewalld zones) blocks it: the ii tools page
+   warns and copies the command to allow it, e.g. `sudo ufw allow 47210/tcp && sudo ufw allow 47210/udp`.
 3. **Pair:** open ii tools on the phone and press *Scan QR code* on the home (or scan the code
    with the camera app: it opens the same `iilink://pair?…` link in ii tools). The PC's
    certificate is pinned on the first connection.

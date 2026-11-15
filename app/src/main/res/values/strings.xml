@@ -325,7 +325,7 @@
         <item quantity="other">%1$d permissions to allow</item>
     </plurals>
     <string name="settings_connection">Connection</string>
-    <string name="settings_stay_body">Keeps the link open in the background</string>
+    <string name="settings_stay_body">Keeps the link open in the background, with a silent notification so Android does not close the app</string>
     <string name="settings_battery_body">So battery saving does not cut the link while the phone sleeps</string>
     <string name="settings_permissions">Permissions</string>
     <string name="settings_listener_body">Notifications, live relay, calls, screenshots, PC activity</string>
@@ -488,6 +488,9 @@
     <string name="second_side_right">Right</string>
     <string name="second_side_above">Above</string>
     <string name="second_side_below">Below</string>
+    <string name="second_orient">Orientation</string>
+    <string name="second_orient_landscape">Landscape</string>
+    <string name="second_orient_portrait">Portrait</string>
     <string name="second_quality">Quality</string>
     <string name="second_stream_hint">Resolution, frames, scale and side shape the extended screen; mirror keeps the PC\'s own. Changes apply on the next start.</string>
     <string name="second_tools">Tools</string>
@@ -495,6 +498,23 @@
     <string name="second_mirror_which">Screen to mirror</string>
     <string name="second_mirror_focused">Focused</string>
     <string name="second_switch">Mirror the next screen</string>
+    <string name="second_input_touch">Touch mode</string>
+    <string name="second_input_trackpad">Trackpad mode</string>
+    <string name="second_workspaces">Workspaces</string>
+    <string name="second_ws_prev">Previous workspace</string>
+    <string name="second_ws_next">Next workspace</string>
+    <string name="second_launcher">Launcher</string>
+    <string name="second_more">More tools</string>
+    <string name="second_tile_draw">Draw</string>
+    <string name="second_tile_switch">Switch screen</string>
+    <string name="second_tile_tablet">Tablet shell</string>
+    <string name="second_tile_keys">Extra keys</string>
+    <string name="second_tile_audio">Audio on phone</string>
+    <string name="second_tile_quality">Quality</string>
+    <string name="second_tile_rotate">Rotate</string>
+    <string name="second_zoom_reset">Reset zoom</string>
+    <string name="second_keys_close">Close extra keys</string>
+    <string name="second_keys_ime">Toggle keyboard</string>
     <string name="gallery_title">Phone gallery</string>
     <string name="gallery_hint">The PC sees your photos and videos read only; nothing is ever deleted or changed from it. Videos open through Phone files (SFTP).</string>
     <string name="gallery_share">Let the PC browse gallery</string>
@@ -670,4 +690,14 @@
     <string name="media_mode_seek">Playback position</string>
     <string name="home_clip_all">Open clipboard</string>
     <string name="media_mode_sync">Sync lyrics</string>
+    <string name="link_service_channel">Connection to the PC</string>
+    <string name="link_service_online">Connected to %1$s</string>
+    <string name="link_service_waiting">Waiting for %1$s</string>
+    <string name="link_service_stop">Stop staying connected</string>
+    <string name="link_service_hide">Keeps ii tools running. You can hide this notification: long-press it and turn it off.</string>
+    <string name="problem_timeout">No answer from the PC at %1$s. A firewall on the PC may be blocking port %2$d (ii tools in the shell\'s settings warns about it), or the router keeps Wi-Fi devices apart.</string>
+    <string name="problem_refused">The PC at %1$s turned the connection down on port %2$d. Is the link on in the shell\'s ii tools settings?</string>
+    <string name="problem_no_route">This phone has no way to %1$s. Is it on the same Wi-Fi or tailnet as the PC?</string>
+    <string name="problem_certificate">The PC at %1$s answered with another certificate: it isn\'t the paired PC, or its link was reset. Pair again.</string>
+    <string name="problem_protocol">The PC at %1$s answered, but not as ii link. Update the shell and the app.</string>
 </resources>

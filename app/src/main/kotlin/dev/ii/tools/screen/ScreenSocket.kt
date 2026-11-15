@@ -60,6 +60,7 @@ class ScreenSocket(
     @Volatile private var droppedAt = 0L
     @Volatile private var lastRttMs: Int? = null
     @Volatile private var lastStats: ScreenStats? = null
+    @Volatile private var audio: ScreenAudio? = null
     private var reconnectJob: Job? = null
 
     // Off the codec's callback thread: releasing a MediaCodec from its own callback can hang.
@@ -92,6 +93,15 @@ class ScreenSocket(
             val kind = arr[0].toInt() and 0xFF
             var pts = 0L
             for (i in 1..8) pts = (pts shl 8) or (arr[i].toLong() and 0xFF)
+            // The PC's sound (screen.rs `Audio`): its own player, never queued behind video.
+            if (kind == 8) {
+                (audio ?: ScreenAudio().also { audio = it }).config(arr.copyOfRange(9, arr.size))
+                return
+            }
+            if (kind == 9) {
+                audio?.packet(pts, arr.copyOfRange(9, arr.size))
+                return
+            }
             if (kind == 0) {
                 // Codec config is never dropped.
                 frameQueue.offer(Frame(kind, pts, arr))
@@ -224,6 +234,12 @@ class ScreenSocket(
         }
     }
 
+    /** The PC stopped sending its sound: let the phone's audio output go. */
+    fun audioOff() {
+        audio?.stop()
+        audio = null
+    }
+
     fun sendQuality(bitrateBps: Long, adaptive: Boolean) {
         if (!open) return
         ws?.send(
@@ -266,6 +282,7 @@ class ScreenSocket(
         frameQueue.clear()
         decoderThread.interrupt()
         decoder.stop()
+        audioOff()
         SecondScreen.updateStats(null)
     }
 }

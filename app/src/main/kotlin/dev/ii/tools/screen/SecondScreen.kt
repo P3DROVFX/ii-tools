@@ -26,6 +26,13 @@ data class ScreenPrefs(
     val mirror: String = "",
     val transport: String = "auto",
     val adaptive: Boolean = true,
+    /** Last session input mode: "touch" or "pad". */
+    val input: String = "touch",
+    /** Extended output orientation: "landscape" or "portrait". */
+    val orient: String = "landscape",
+    /** Docked toolbar edge ("LEFT", "RIGHT", "TOP", "BOTTOM") and handle fraction 0–1. */
+    val barEdge: String = "RIGHT",
+    val barAt: Float = 0.3f,
 )
 
 /** Live stream telemetry while a Wi-Fi second-screen session is active. */
@@ -42,6 +49,9 @@ data class ScreenStats(
 /** One of the PC's screens, for mirror's choice. */
 data class PcMonitor(val name: String, val label: String, val width: Int, val height: Int, val focused: Boolean)
 
+/** One workspace on the mirrored output. */
+data class ScreenWorkspace(val id: Int, val name: String, val active: Boolean, val windows: Int)
+
 /** Where the phone as a monitor is (PROTOCOL.md, "Second screen"). */
 sealed interface ScreenState {
     data object Idle : ScreenState
@@ -57,6 +67,7 @@ sealed interface ScreenState {
         val output: String = "",
         val screens: Int = 1,
         val transport: String = "usb",
+        val orient: String = "landscape",
     ) : ScreenState
     /** [code]: disabled, adb, usb, unauthorized, wireless, busy, encoder, timeout, output, bind, encoder_exit, stream. */
     data class Failed(val code: String) : ScreenState
@@ -83,6 +94,15 @@ object SecondScreen {
     private val _monitors = MutableStateFlow<List<PcMonitor>>(emptyList())
     val monitors: StateFlow<List<PcMonitor>> = _monitors.asStateFlow()
 
+    private val _workspaces = MutableStateFlow<List<ScreenWorkspace>>(emptyList())
+    val workspaces: StateFlow<List<ScreenWorkspace>> = _workspaces.asStateFlow()
+
+    private val _family = MutableStateFlow("ii")
+    val family: StateFlow<String> = _family.asStateFlow()
+
+    private val _audio = MutableStateFlow(false)
+    val audio: StateFlow<Boolean> = _audio.asStateFlow()
+
     /** Asks the PC for its screens (answered with `monitors`). */
     fun requestMonitors() {
         LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "monitors"))
@@ -91,6 +111,41 @@ object SecondScreen {
     /** Mirror the PC's next screen, without stopping. */
     fun switchNext() {
         LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "switch").put("output", "next"))
+    }
+
+    /** Warp the PC cursor to the centre of the session's output. */
+    fun pointer() {
+        LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "pointer"))
+    }
+
+    /** Focus workspace [id] on the session's output. */
+    fun workspace(id: Int) {
+        LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "workspace").put("to", id))
+    }
+
+    /** Step workspaces ("next" or "prev") on the session's output. */
+    fun workspaceStep(to: String) {
+        LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "workspace").put("to", to))
+    }
+
+    /** Switch the shell's panel family ("tablet" or "ii"). */
+    fun setFamily(to: String) {
+        LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "family").put("to", to))
+    }
+
+    /** Open the launcher on the session's output. */
+    fun launcher() {
+        LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "launcher"))
+    }
+
+    /** Request routing PC audio to the phone (or back) during a Wi-Fi session. */
+    fun setAudio(on: Boolean) {
+        LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "audio").put("on", on))
+    }
+
+    /** Switch the extended output's orientation ("landscape" or "portrait") during a live session. */
+    fun setOrient(to: String) {
+        LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "orient").put("to", to))
     }
 
     private const val PREFS = "second_screen"
@@ -103,6 +158,16 @@ object SecondScreen {
             val transport = p.getString("transport", "auto").let {
                 if (it == "usb" || it == "wifi" || it == "auto") it else "auto"
             }
+            val input = p.getString("input", "touch").let {
+                if (it == "pad" || it == "touch") it else "touch"
+            }
+            val orient = p.getString("orient", "landscape").let {
+                if (it == "portrait" || it == "landscape") it else "landscape"
+            }
+            val barEdge = p.getString("barEdge", "RIGHT").let {
+                if (it == "LEFT" || it == "RIGHT" || it == "TOP" || it == "BOTTOM") it else "RIGHT"
+            }
+            val barAt = p.getFloat("barAt", 0.3f).coerceIn(0f, 1f)
             _prefs.value = ScreenPrefs(
                 res = p.getFloat("res", 1f),
                 fps = p.getInt("fps", 60),
@@ -112,6 +177,10 @@ object SecondScreen {
                 mirror = p.getString("mirror", "") ?: "",
                 transport = transport,
                 adaptive = p.getBoolean("adaptive", true),
+                input = input,
+                orient = orient,
+                barEdge = barEdge,
+                barAt = barAt,
             )
         }
         return _prefs.asStateFlow()
@@ -123,7 +192,9 @@ object SecondScreen {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putFloat("res", v.res).putInt("fps", v.fps).putFloat("scale", v.scale)
             .putString("side", v.side).putInt("bitrate", v.bitrate).putString("mirror", v.mirror)
-            .putString("transport", v.transport).putBoolean("adaptive", v.adaptive).apply()
+            .putString("transport", v.transport).putBoolean("adaptive", v.adaptive)
+            .putString("input", v.input).putString("orient", v.orient)
+            .putString("barEdge", v.barEdge).putFloat("barAt", v.barAt).apply()
     }
 
     /** Updates live bitrate/adaptive over the side socket (when on Wi-Fi) and persists prefs. */
@@ -166,13 +237,17 @@ object SecondScreen {
                 .put("w", maxOf(b.width(), b.height())).put("h", minOf(b.width(), b.height()))
                 .put("res", p.res.toDouble()).put("fps", p.fps).put("scale", p.scale.toDouble())
                 .put("side", p.side).put("bitrate", p.bitrate).put("output", p.mirror)
-                .put("transport", transport).put("adaptive", p.adaptive),
+                .put("transport", transport).put("adaptive", p.adaptive)
+                .apply { if (mode == "extend") put("orient", p.orient) },
         )
     }
 
     fun stop() {
         MirrorRadio.release("screen")
         _stats.value = null
+        _audio.value = false
+        _workspaces.value = emptyList()
+        _family.value = "ii"
         activeSession = null
         if (_state.value is ScreenState.Idle) return
         LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "stop"))
@@ -189,6 +264,9 @@ object SecondScreen {
         m.optString("err").ifEmpty { null }?.let {
             MirrorRadio.release("screen")
             _stats.value = null
+            _audio.value = false
+            _workspaces.value = emptyList()
+            _family.value = "ii"
             _state.value = ScreenState.Failed(it)
             return
         }
@@ -199,20 +277,35 @@ object SecondScreen {
             }
             return
         }
+        m.optJSONArray("workspaces")?.let { a ->
+            _workspaces.value = List(a.length()) { i ->
+                val o = a.getJSONObject(i)
+                ScreenWorkspace(o.optInt("id"), o.optString("name"), o.optBoolean("active"), o.optInt("windows"))
+            }
+        }
+        m.optString("family").ifEmpty { null }?.let { _family.value = it }
+        if (m.has("audio")) {
+            _audio.value = m.optBoolean("audio", false)
+            if (!_audio.value) (activeSession as? ScreenSocket)?.audioOff()
+        }
         val cur = _state.value
         when (m.optString("state")) {
             "starting" -> if (cur !is ScreenState.Ready) _state.value = ScreenState.Starting(m.optString("mode", "extend"))
             "ready" -> {
                 val transport = m.optString("transport", "usb").ifEmpty { "usb" }
+                val w = m.optInt("w", 1920)
+                val h = m.optInt("h", 1080)
+                val orient = m.optString("orient", "").ifEmpty { if (h > w) "portrait" else "landscape" }
                 _state.value = ScreenState.Ready(
                     mode = m.optString("mode", "extend"),
                     port = m.optInt("port", 0),
                     token = m.optString("token"),
-                    width = m.optInt("w", 1920),
-                    height = m.optInt("h", 1080),
+                    width = w,
+                    height = h,
                     output = m.optString("output"),
                     screens = m.optInt("screens", 1),
                     transport = transport,
+                    orient = orient,
                 )
                 if (transport == "wifi") {
                     appCtx?.let {
@@ -230,10 +323,14 @@ object SecondScreen {
                 width = m.optInt("w", cur.width),
                 height = m.optInt("h", cur.height),
                 output = m.optString("output", cur.output),
+                orient = m.optString("orient", "").ifEmpty { cur.orient },
             )
             "stopped" -> {
                 MirrorRadio.release("screen")
                 _stats.value = null
+                _audio.value = false
+                _workspaces.value = emptyList()
+                _family.value = "ii"
                 if (cur !is ScreenState.Failed) _state.value = ScreenState.Idle
             }
         }

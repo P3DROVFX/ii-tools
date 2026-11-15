@@ -410,8 +410,19 @@ class SecondScreenActivity : ScreenActivity() {
     override fun Screen() = dev.ii.tools.ui.SecondScreenScreen(onBack = ::finish)
 }
 
-/** The PC's output itself: full screen, sideways; leaving it ends the session. */
+/** The PC's output itself: full screen, oriented to the picture; leaving it ends the session. */
 class SecondScreenViewActivity : ScreenActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        (dev.ii.tools.screen.SecondScreen.state.value as? dev.ii.tools.screen.ScreenState.Ready)?.let { r ->
+            requestedOrientation = if (r.height > r.width) {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            }
+        }
+    }
+
     @Composable
     override fun Screen() = dev.ii.tools.ui.SecondScreenView(onDone = ::finish)
 
