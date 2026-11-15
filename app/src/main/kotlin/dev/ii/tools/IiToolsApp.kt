@@ -10,6 +10,8 @@ class IiToolsApp : Application() {
     override fun onCreate() {
         super.onCreate()
         LinkHub.init(this)
+        // Send to PC in the share sheet's top row; one binder call, off the main thread.
+        Thread { dev.ii.tools.routines.ShortcutKit.publish(this) }.start()
         dev.ii.tools.camera.Webcam.init(this)
         dev.ii.tools.mic.Mic.init(this)
         // The link follows the app as a whole, not one screen: moving between activities

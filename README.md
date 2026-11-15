@@ -170,6 +170,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   locks and trickles a 4-byte UDP keep-awake datagram (`iim\n`) every 50 ms to keep the
   radio out of power save until the last session ends, the link drops, or a 3 h safety
   timeout fires. Nothing runs outside a wireless session.
+- **Send to PC, up front:** *Send to PC* is a Direct Share target, so it sits in the top row of
+  every app's share sheet; from there a file or picture goes straight to Downloads with no
+  question asked (links and text still ask where). The PC's popup then offers Copy, Open,
+  Folder and dragging the file out into any app.
 - **Icons:** any Material Symbol the shell names is drawn by the PC's helper from its own
   font, once, and cached on the phone; app keys fetch and cache their 96×96 PNG theme icons
   from the shell on demand (falling back to the app's initial letter); the app bundles only

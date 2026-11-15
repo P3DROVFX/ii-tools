@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.link.LinkHub
+import dev.ii.tools.link.LinkStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -79,7 +80,7 @@ private data class Target(val id: String, @StringRes val label: Int, @DrawableRe
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ShareScreen(shared: Shared?, onBack: () -> Unit, onDone: () -> Unit) {
+fun ShareScreen(shared: Shared?, onBack: () -> Unit, onDone: () -> Unit, direct: Boolean = false) {
     val ctx = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -157,6 +158,12 @@ fun ShareScreen(shared: Shared?, onBack: () -> Unit, onDone: () -> Unit) {
                 }
             }
         }
+    }
+
+    // Picked from the share sheet's top row: a file needs no choice of where.
+    LaunchedEffect(direct, status, shell) {
+        if (direct && shared?.file != null && status is LinkStatus.Online && shell?.caps?.contains("share") == true)
+            send("downloads")
     }
 
     ToolScaffold(title = stringResource(R.string.share_title), onBack = onBack) {

@@ -271,7 +271,13 @@ class NotifsActivity : ScreenActivity() {
 /** "Send to PC" in the share sheet. */
 class ShareActivity : ScreenActivity() {
     @Composable
-    override fun Screen() = ShareScreen(shared = Shared.from(intent), onBack = ::finish, onDone = ::finish)
+    override fun Screen() = ShareScreen(
+        shared = Shared.from(intent),
+        // From the share sheet's top row: a file goes straight to Downloads, no questions.
+        direct = intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID) == dev.ii.tools.routines.ShortcutKit.SHARE_ID,
+        onBack = ::finish,
+        onDone = ::finish,
+    )
 }
 
 class ClipboardActivity : ScreenActivity() {

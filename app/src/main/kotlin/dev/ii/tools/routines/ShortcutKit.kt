@@ -32,6 +32,10 @@ object ShortcutKit {
     const val EXTRA_RULE = "rule"
     const val EXTRA_TOKEN = "k"
 
+    /** The Direct Share target (res/xml/shortcuts.xml): the share sheet's top row. */
+    const val SHARE_ID = "share_pc"
+    private const val SHARE_CATEGORY = "dev.ii.tools.category.SHARE_PC"
+
     /** Whether other apps' shortcuts (made by the builder) may run PC actions. */
     fun externalAllowed(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(EXTERNAL, true)
 
@@ -61,9 +65,16 @@ object ShortcutKit {
     /** The shortcuts Android knows for this app: one per manual rule, up to what fits. */
     fun publish(c: Context) {
         val sm = c.getSystemService(ShortcutManager::class.java) ?: return
-        val room = (sm.maxShortcutCountPerActivity - sm.manifestShortcuts.size).coerceAtLeast(0)
+        val room = (sm.maxShortcutCountPerActivity - sm.manifestShortcuts.size - 1).coerceAtLeast(0)
         val manual = RuleStore.load(c).filter { it.trigger.kind == "manual" && it.name.isNotBlank() }.take(room)
-        val list = manual.map { r ->
+        val share = ShortcutInfo.Builder(c, SHARE_ID)
+            .setShortLabel(c.getString(R.string.share_label))
+            .setIcon(Icon.createWithResource(c, R.drawable.rounded_computer))
+            .setIntent(Intent(Intent.ACTION_MAIN).setClassName(c, "dev.ii.tools.MainActivity"))
+            .setCategories(setOf(SHARE_CATEGORY))
+            .setLongLived(true)
+            .build()
+        val list = listOf(share) + manual.map { r ->
             ShortcutInfo.Builder(c, "rule_${r.id}")
                 .setShortLabel(r.name.take(24))
                 .setLongLabel(r.name)

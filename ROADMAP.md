@@ -660,16 +660,17 @@ com H.264.
   um `WifiLock` de baixa latência e manda um tráfego mínimo para o rádio não cochilar entre os
   quadros. Só durante a sessão.
 
-### 5.16 Arrastar do celular para o PC · **M**
+### 5.16 Enviar ao PC no topo do menu de compartilhar · **S**
 
-Durante o espelhamento, uma faixa invisível na borda do celular voltada para o PC recebe arrastes
-de qualquer app (Arquivos, Fotos, imagens do Chrome) e acende com "Soltar no PC". Soltar ali envia
-o arquivo pelo link, como no compartilhar (2.2), e a imagem também vai para o clipboard do PC.
-
-No PC, nada de miniatura presa ao cursor: o **popup de transferência** que já existe ganha
-**Copiar**, **Abrir pasta** e **arrastar direto do popup** (a miniatura do popup inicia um drag
-Wayland com o arquivo, para soltar em qualquer app, na prateleira ou no chat da IA). Arquivo grande
-ainda chegando: o popup mostra o progresso e o drag fica disponível ao terminar.
+> **Status (2026-11-14): implementado, falta o teste no aparelho.** A ideia original (arrastar de
+> qualquer app para uma barra na borda do celular) foi tentada e **descartada**: o Android só
+> entrega um arraste a janelas de outros apps quando o app de origem o inicia como global, e o Fotos
+> não o faz; a faixa existia e nenhum arraste chegava a ela. No lugar, *Enviar ao PC* é um alvo
+> direto (Direct Share: atalho dinâmico com categoria + `share-target` em `shortcuts.xml`) na
+> primeira fileira do menu de compartilhar de qualquer app; vindo dali, um arquivo ou imagem vai
+> direto para Downloads, sem escolher o destino. Links e textos continuam com a escolha.
+> No PC, o popup de transferência ganhou miniatura arrastável (a `FileDragArea` do dock), Copiar
+> e Pasta.
 
 ---
 
@@ -682,4 +683,4 @@ ainda chegando: o popup mostra o progresso e o drag fica disponível ao terminar
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · arrastar do celular para o PC |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar |
