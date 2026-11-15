@@ -1,7 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Release signing comes from keystore.properties in the repo root (gitignored) or, in CI,
+// from II_KEYSTORE_FILE / II_KEYSTORE_PASSWORD / II_KEY_ALIAS / II_KEY_PASSWORD. Without
+// either, release builds fall back to the debug key so contributors can still build.
+val signingProps = Properties().apply {
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
+}
+fun signing(prop: String, env: String): String? = signingProps.getProperty(prop) ?: System.getenv(env)
 
 android {
     namespace = "dev.ii.tools"
@@ -11,8 +21,17 @@ android {
         applicationId = "dev.ii.tools"
         minSdk = 31 // Material You dynamic colour
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 10000 // major * 10000 + minor * 100 + patch
+        versionName = "1.0.0"
+    }
+
+    val releaseSigning = signing("storeFile", "II_KEYSTORE_FILE")?.let { file ->
+        signingConfigs.create("release") {
+            storeFile = file(file)
+            storePassword = signing("storePassword", "II_KEYSTORE_PASSWORD")
+            keyAlias = signing("keyAlias", "II_KEY_ALIAS")
+            keyPassword = signing("keyPassword", "II_KEY_PASSWORD")
+        }
     }
 
     buildTypes {
@@ -20,8 +39,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Until a release key exists, release builds are signed like debug ones.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = releaseSigning ?: signingConfigs.getByName("debug")
         }
     }
 
