@@ -111,6 +111,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   ii link, with lens, zoom, exposure, focus, torch and stabilisation controls, 4:3 or 16:9
   (720p or 1080p). Keeps streaming with the screen off, and the PC can request the
   camera with the phone confirming from a notification.
+- **Microphone:** the phone as the PC's microphone over ii link (a PipeWire source
+  `ii-tools-mic`, raw 48 kHz mono PCM), from the Mic tool or on the PC's request through a
+  notification. Keeps recording with the screen off. The PC's Phone tab and EasyEffects use it
+  like any microphone; scrcpy and DroidCam stay as a fallback there.
 - **Presenter:** a slide clicker for any presentation app on the PC: next and previous
   (the volume keys too), start, black screen and end, a laser dot on the focused screen
   and a talk timer.

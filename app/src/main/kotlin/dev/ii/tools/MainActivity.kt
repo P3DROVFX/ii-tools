@@ -71,6 +71,7 @@ private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
     Dest.PRESENTER -> PresenterActivity::class.java
     Dest.PERF -> PerfActivity::class.java
     Dest.CAMERA -> CameraActivity::class.java
+    Dest.MIC -> MicActivity::class.java
     Dest.SECOND_SCREEN -> SecondScreenActivity::class.java
     Dest.LIVE -> LiveActivity::class.java
     Dest.NOTIFS -> NotifsActivity::class.java
@@ -370,6 +371,28 @@ class CameraActivity : ScreenActivity() {
 
     @Composable
     override fun Screen() = CameraScreen(onBack = ::finish)
+}
+
+/** The microphone. The "start" notification opens it to go live. */
+class MicActivity : ScreenActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        takeStart(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        takeStart(intent)
+    }
+
+    private fun takeStart(intent: Intent?) {
+        if (intent?.getBooleanExtra(dev.ii.tools.mic.Mic.EXTRA_START, false) != true) return
+        intent.removeExtra(dev.ii.tools.mic.Mic.EXTRA_START)
+        dev.ii.tools.mic.Mic.pendingStart = true
+    }
+
+    @Composable
+    override fun Screen() = dev.ii.tools.ui.MicScreen(onBack = ::finish)
 }
 
 /** The phone as a monitor: extend or mirror, over USB. */

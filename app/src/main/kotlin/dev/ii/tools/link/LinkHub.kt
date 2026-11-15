@@ -334,6 +334,7 @@ object LinkHub {
         Gallery.caps(app).forEach { caps.put(it) }
         PhoneUsage.caps(app).forEach { caps.put(it) }
         dev.ii.tools.camera.Webcam.caps(app).forEach { caps.put(it) }
+        dev.ii.tools.mic.Mic.caps(app).forEach { caps.put(it) }
         MirrorRadio.caps(app).forEach { caps.put(it) }
         socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
     }
@@ -593,6 +594,7 @@ object LinkHub {
         ClipHistory.onLinkLost()
         PhoneUsage.onLinkDisconnected()
         dev.ii.tools.camera.Webcam.onLinkLost()
+        dev.ii.tools.mic.Mic.onLinkLost()
         MirrorRadio.onLinkLost()
     }
 
@@ -734,6 +736,7 @@ object LinkHub {
             "present" -> dev.ii.tools.present.Presenter.onMessage(m)
             "screen" -> dev.ii.tools.screen.SecondScreen.onMessage(m)
             "camera" -> dev.ii.tools.camera.Webcam.onMessage(app, m)
+            "mic" -> dev.ii.tools.mic.Mic.onMessage(app, m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "mirror" -> MirrorRadio.onMirror(
                 app,

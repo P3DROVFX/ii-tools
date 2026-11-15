@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- The webcam: the camera, kept in a camera foreground service while streaming. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <!-- The webcam holds Wi-Fi in low-latency mode while it streams over the network. -->
@@ -206,6 +208,12 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:exported="false" />
 
+        <!-- The microphone. singleTop: the "start" notification reaches an open screen. -->
+        <activity
+            android:name=".MicActivity"
+            android:launchMode="singleTop"
+            android:exported="false" />
+
         <activity
             android:name=".SecondScreenViewActivity"
             android:screenOrientation="sensorLandscape"
@@ -281,6 +289,11 @@
             android:name=".camera.WebcamService"
             android:exported="false"
             android:foregroundServiceType="camera" />
+
+        <service
+            android:name=".mic.MicService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <service
             android:name=".clip.ClipWatchService"

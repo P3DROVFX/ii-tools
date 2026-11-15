@@ -629,6 +629,13 @@ sessão (`positionAt(now)`), enviada uma única vez por troca de música (zero p
 
 ### 5.14 Microfone próprio no ii link · **M**
 
+> **Status (2026-11-14): implementado**, em PCM bruto (48 kHz mono s16le, 768 kbit/s) e não em
+> Opus: nenhum codificador a mais no caminho, e o link aguenta. Socket lateral
+> `/iilink/1/mic` com token (como a câmera), fonte PipeWire `ii-tools-mic` por `pw-cat`, serviço
+> `microphone` com wake lock e Wi-Fi low-latency, tela Mic e pedido do PC por notificação.
+> `PhoneMicService` usa o ii link primeiro quando o celular oferece `mic`; scrcpy/DroidCam
+> continuam como fallback. Opus fica como opção se algum dia a banda importar.
+
 O celular como microfone do PC pelo próprio link, aposentando o `droidcam-cli` no
 `PhoneMicService.qml` (assim como a 4.6 aposentou o DroidCam na câmera).
 

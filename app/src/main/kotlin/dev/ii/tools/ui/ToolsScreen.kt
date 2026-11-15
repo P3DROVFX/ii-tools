@@ -74,6 +74,7 @@ private val sync = listOf(
 
 private val device = listOf(
     Tool(Dest.CAMERA, R.drawable.rounded_videocam, R.string.webcam_title),
+    Tool(Dest.MIC, R.drawable.rounded_mic, R.string.mic_title),
     Tool(Dest.SECOND_SCREEN, R.drawable.rounded_screen_share, R.string.second_title),
 )
 

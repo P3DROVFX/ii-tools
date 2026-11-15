@@ -596,4 +596,27 @@
     <string name="stream_ring">Ringtone</string>
     <string name="stream_alarm">Alarm</string>
     <string name="stream_call">Calls</string>
+    <!-- Microphone (5.14) -->
+    <string name="mic_title">Microphone</string>
+    <string name="mic_hint">Use the phone as the PC\'s microphone. It goes on with the screen off or another app open.</string>
+    <string name="mic_channel">Microphone requests</string>
+    <string name="mic_ask_title">%1$s wants your microphone</string>
+    <string name="mic_ask_text">Tap to use the phone as its microphone</string>
+    <string name="mic_live_channel">Microphone</string>
+    <string name="mic_live_title">Microphone on %1$s</string>
+    <string name="mic_live_text">The microphone is streaming to the PC</string>
+    <string name="mic_not_live">Not streaming</string>
+    <string name="mic_asking">Waiting for you to start</string>
+    <string name="mic_stats">%1$d kbps</string>
+    <string name="mic_reconnecting">Reconnecting… the PC hears silence meanwhile</string>
+    <string name="mic_mute">Mute</string>
+    <string name="mic_mute_body">Send silence instead of the microphone.</string>
+    <string name="mic_pc_off">The PC doesn’t offer the microphone: turn it on in Settings → ii tools, or update ii on the PC.</string>
+    <string name="perm_mic">Microphone</string>
+    <string name="perm_mic_body">Lets the phone record sound for the PC.</string>
+    <string name="mic_err_permission">Microphone permission is needed.</string>
+    <string name="mic_err_mic">Couldn’t open the microphone. Another app may be using it.</string>
+    <string name="mic_err_device">The PC couldn’t create its microphone. The Phone tab on the PC says why.</string>
+    <string name="mic_err_busy">Another phone is already the PC’s microphone.</string>
+    <string name="mic_err_unknown">The microphone stopped.</string>
 </resources>

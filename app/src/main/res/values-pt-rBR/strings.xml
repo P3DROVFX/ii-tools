@@ -599,4 +599,27 @@
     <string name="stream_ring">Toque</string>
     <string name="stream_alarm">Alarme</string>
     <string name="stream_call">Chamadas</string>
+    <!-- Microphone (5.14) -->
+    <string name="mic_title">Microfone</string>
+    <string name="mic_hint">Use o celular como microfone do PC. Continua com a tela apagada ou outro app aberto.</string>
+    <string name="mic_channel">Pedidos de microfone</string>
+    <string name="mic_ask_title">%1$s quer o seu microfone</string>
+    <string name="mic_ask_text">Toque para usar o celular como microfone dele</string>
+    <string name="mic_live_channel">Microfone</string>
+    <string name="mic_live_title">Microfone em %1$s</string>
+    <string name="mic_live_text">O microfone está sendo enviado ao PC</string>
+    <string name="mic_not_live">Sem transmitir</string>
+    <string name="mic_asking">Esperando você iniciar</string>
+    <string name="mic_stats">%1$d kbps</string>
+    <string name="mic_reconnecting">Reconectando… o PC ouve silêncio enquanto isso</string>
+    <string name="mic_mute">Silenciar</string>
+    <string name="mic_mute_body">Envia silêncio em vez do microfone.</string>
+    <string name="mic_pc_off">O PC não oferece o microfone: ative em Configurações → ii tools ou atualize o ii no PC.</string>
+    <string name="perm_mic">Microfone</string>
+    <string name="perm_mic_body">Deixa o celular gravar o som para o PC.</string>
+    <string name="mic_err_permission">A permissão do microfone é necessária.</string>
+    <string name="mic_err_mic">Não deu para abrir o microfone. Outro app pode estar usando.</string>
+    <string name="mic_err_device">O PC não conseguiu criar o microfone dele. A aba Phone no PC diz o motivo.</string>
+    <string name="mic_err_busy">Outro celular já é o microfone do PC.</string>
+    <string name="mic_err_unknown">O microfone parou.</string>
 </resources>
