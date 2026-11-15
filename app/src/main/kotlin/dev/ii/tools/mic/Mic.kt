@@ -11,6 +11,10 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.AudioEffect
+import android.media.audiofx.AutomaticGainControl
+import android.media.audiofx.NoiseSuppressor
 import android.os.SystemClock
 import dev.ii.tools.MicActivity
 import dev.ii.tools.R
@@ -88,6 +92,8 @@ object Mic {
     @Volatile private var capture: Capture? = null
     @Volatile private var token: String? = null
     @Volatile private var droppedAt = 0L
+    /** The phone's sound processing, as the PC set it (the PC's Phone tab): noise, echo, gain. */
+    @Volatile private var fx = booleanArrayOf(false, false, false)
     /** The screen is up: the user is right there to answer the PC's request. */
     @Volatile var screenOpen = false
     /** Opened from the "start" notification: start as soon as the screen is up. */
@@ -205,6 +211,10 @@ object Mic {
         scope.launch {
             when (m.optString("a")) {
                 "request" -> onRequest()
+                "set" -> {
+                    fx = booleanArrayOf(m.optBoolean("ns"), m.optBoolean("aec"), m.optBoolean("agc"))
+                    capture?.effects(fx)
+                }
                 "stop" -> {
                     dismissAsk()
                     val phase = _status.value.phase
@@ -342,6 +352,7 @@ object Mic {
             },
         )
         c.muted = _muted.value
+        c.fx = fx
         capture = c
         c.start()
     }
@@ -429,7 +440,25 @@ object Mic {
         val onFail: () -> Unit,
     ) : Thread("ii-mic") {
         @Volatile var muted = false
+        @Volatile var fx = booleanArrayOf(false, false, false)
         @Volatile private var running = true
+        private var effects: List<AudioEffect?> = emptyList()
+        @Volatile private var session = 0
+
+        /** Noise suppressor, echo canceller and gain control on the recording's session, when this phone has them. */
+        fun effects(on: BooleanArray) {
+            fx = on
+            val id = session
+            if (id == 0) return
+            if (effects.isEmpty()) {
+                effects = listOf(
+                    if (NoiseSuppressor.isAvailable()) runCatching { NoiseSuppressor.create(id) }.getOrNull() else null,
+                    if (AcousticEchoCanceler.isAvailable()) runCatching { AcousticEchoCanceler.create(id) }.getOrNull() else null,
+                    if (AutomaticGainControl.isAvailable()) runCatching { AutomaticGainControl.create(id) }.getOrNull() else null,
+                )
+            }
+            effects.forEachIndexed { i, e -> runCatching { e?.enabled = on[i] } }
+        }
 
         fun finish() {
             running = false
@@ -458,6 +487,8 @@ object Mic {
                 return
             }
             try {
+                session = rec.audioSessionId
+                effects(fx)
                 rec.startRecording()
                 if (rec.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
                     if (running) onFail()
@@ -485,6 +516,9 @@ object Mic {
                     }
                 }
             } finally {
+                effects.forEach { runCatching { it?.release() } }
+                effects = emptyList()
+                session = 0
                 runCatching { rec.stop() }
                 rec.release()
             }
