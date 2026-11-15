@@ -12,7 +12,7 @@
 
 <br><br>
 
-[**Download**](https://github.com/P3DROVFX/ii-tools/releases/latest) &nbsp;·&nbsp; [Install](#install) &nbsp;·&nbsp; [Permissions & privacy](#permissions--privacy) &nbsp;·&nbsp; [Roadmap](#roadmap) &nbsp;·&nbsp; [The shell](https://github.com/P3DROVFX/ii-vynx)
+[**Download**](https://github.com/P3DROVFX/ii-tools/releases/latest) &nbsp;·&nbsp; [Install](#install) &nbsp;·&nbsp; [Permissions & privacy](#permissions--privacy) &nbsp;·&nbsp; [Roadmap](#roadmap) &nbsp;·&nbsp; [The shell](https://github.com/P3DROVFX/ii-p3drovfx)
 
 <br>
 
@@ -26,7 +26,7 @@
 
 <br>
 
-**Android companion** for the [ii](https://github.com/P3DROVFX/ii-vynx) Quickshell desktop,
+**Android companion** for the [ii](https://github.com/P3DROVFX/ii-p3drovfx) Quickshell desktop,
 in place of KDE Connect: it talks to the shell over its own encrypted link (**ii link**)
 and needs nothing else on the phone or the PC. The plan is in [ROADMAP.md](ROADMAP.md).
 
@@ -42,7 +42,7 @@ its quick toggles, its load, and a card to stream the phone as the PC's micropho
 ## Install
 
 **You need:** an Android 12+ phone (`minSdk 31`), and a PC running the
-[ii-p3drovfx](https://github.com/P3DROVFX/ii-vynx) shell (`dev` branch) with its *Settings → ii tools* page,
+[ii-p3drovfx](https://github.com/P3DROVFX/ii-p3drovfx) shell (`dev` branch) with its *Settings → ii tools* page,
 on the same network as the phone (or both on Tailscale). Google Play services are only
 used by the QR scanner button; without them, scan the code with the camera app.
 
@@ -370,6 +370,6 @@ The bundled Google Sans Flex keeps its weight, width, roundness and slant axes; 
 optical size are pinned (fontTools `instancer`) to save 3 MB. The README banner is drawn by
 `tools/make-readme-assets.py` from a port of the ii shell's topography shader.
 
-The ii shell, the other half of this, is [ii-p3drovfx](https://github.com/P3DROVFX/ii-vynx),
+The ii shell, the other half of this, is [ii-p3drovfx](https://github.com/P3DROVFX/ii-p3drovfx),
 a fork of [ii-vynx](https://github.com/vaguesyntax/ii-vynx) and
 [illogical-impulse](https://github.com/end-4/dots-hyprland).
