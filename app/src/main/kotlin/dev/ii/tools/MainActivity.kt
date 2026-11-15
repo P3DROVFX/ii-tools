@@ -31,6 +31,7 @@ import dev.ii.tools.ui.Dest
 import dev.ii.tools.ui.SecondScreenScreen
 import dev.ii.tools.ui.SettingsScreen
 import dev.ii.tools.ui.ToolsScreen
+import dev.ii.tools.ui.UpdateScreen
 import dev.ii.tools.ui.LiveScreen
 import dev.ii.tools.ui.MediaModeScreen
 import dev.ii.tools.ui.NotifsScreen
@@ -85,12 +86,14 @@ private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
     Dest.CALLS -> CallsActivity::class.java
     Dest.ROUTINES -> RoutinesActivity::class.java
     Dest.MEDIA_MODE -> MediaModeActivity::class.java
+    Dest.UPDATE -> UpdateActivity::class.java
 }
 
 /** The home: a dashboard of the PC, or pairing when there is none. */
 class MainActivity : ScreenActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         LiveListener.ensureChannel(this)
+        dev.ii.tools.update.AppUpdate.ensureChannel(this)
         super.onCreate(savedInstanceState)
     }
 
@@ -358,6 +361,17 @@ class PerfActivity : ScreenActivity() {
 class ToolsActivity : ScreenActivity() {
     @Composable
     override fun Screen() = ToolsScreen(onBack = ::finish, onOpen = ::open)
+}
+
+/** In-app update notice, release notes and direct APK download. */
+class UpdateActivity : ScreenActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        dev.ii.tools.update.AppUpdate.cancelNotification(this)
+    }
+
+    @Composable
+    override fun Screen() = UpdateScreen(onBack = ::finish)
 }
 
 /** The webcam, held sideways like the camera it drives. The "start" notification opens it to go live. */

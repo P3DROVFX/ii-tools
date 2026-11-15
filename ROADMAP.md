@@ -47,8 +47,8 @@ O shell e o app têm de continuar leves. Uma integração que o usuário não us
 
 ### Fluxo de trabalho
 
-- **Shell:** toda mudança vai primeiro para a branch **`feat/ii-tools`** do repo `ii-vynx`;
-  merge em `dev` só quando a fase estiver testada.
+- **Shell:** toda mudança vai direto para a branch **`dev`** do repo `ii-vynx` (a antiga
+  `feat/ii-tools` foi aposentada).
 - **App:** branch `master` deste repo.
 - Cada feature documenta as duas metades: README aqui, `DOC.md` no shell.
 
@@ -413,6 +413,12 @@ deck.
 > sessão, teclas extras acima do teclado, áudio do PC no celular (Opus pela sessão Wi-Fi,
 > sink virtual "Phone") e extend em retrato.
 >
+> **Áudio do PC no celular (2026-11-15):** não tocava porque o helper `ii_link` instalado
+> era anterior ao código de áudio do `screen.rs` (o shell só marca o helper como
+> desatualizado em *Settings → ii tools*); recompilado, funciona. A janela flutuante do
+> scrcpy agora acompanha a rotação do celular (o `video_size` vem da própria saída do
+> scrcpy) em vez de ficar com o formato retrato e barras pretas.
+>
 > **Depois:** HEVC na rede (FLV do wf-recorder não leva HEVC; precisa de outro mux) e
 > lembrar o encoder que funcionou para reinícios mais rápidos.
 
@@ -697,6 +703,31 @@ com H.264.
 > No PC, o popup de transferência ganhou miniatura arrastável (a `FileDragArea` do dock), Copiar
 > e Pasta.
 
+### 5.17 Bateria dos periféricos Bluetooth · **S**
+
+> **Status (2026-11-15): implementado.** Com `BLUETOOTH_CONNECT`, o `status` leva
+> `peripherals` (`id` = hash do MAC, `name`, `kind`, `level`) dos aparelhos conectados que
+> informam bateria; o shell mostra ao lado da bateria do celular (aba Phone, *Settings → ii
+> tools*, *Devices*). Receiver de ACL e `BATTERY_LEVEL_CHANGED` só com o link de pé,
+> agrupado em 400 ms e no máximo a cada 30 s. Limite do Android: só o nível geral
+> (`getBatteryLevel`, por reflexão, liberado); cada fone e o estojo exigem
+> `BLUETOOTH_PRIVILEGED`, e relógios Wear OS em geral não informam bateria por Bluetooth.
+
+### 5.18 Avisos de atualização no app · **S**
+
+> **Status (2026-11-15): implementado.** API pública de releases do GitHub com ETag, no
+> máximo a cada 12 h, só ao abrir o app ou quando o link sobe (sem WorkManager). Card na
+> home, linha no Settings, uma notificação silenciosa por versão, tela com o changelog de
+> todas as versões novas (Markdown da release) e *Baixar*, que abre o link direto do APK.
+
+### 5.19 Teclas de volume controlam o PC · **XS**
+
+> **Status (2026-11-15): implementado.** Como o plugin de volume do KDE Connect: uma
+> `MediaSession` remota (`VolumeProvider` absoluto, 0–100, 5% por toque) recebe as teclas
+> enquanto o link está de pé e o celular não toca nada (`isMusicActive`, modo de áudio
+> normal); com a mídia do PC tocando, o provider vai para a sessão do `PcMedia`. Desligado
+> por padrão; switch no Áudio e no Settings.
+
 ---
 
 ## Resumo
@@ -708,4 +739,4 @@ com H.264.
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC |

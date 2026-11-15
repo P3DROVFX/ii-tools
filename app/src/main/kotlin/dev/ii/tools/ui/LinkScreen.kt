@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
+import dev.ii.tools.audio.VolumeKeys
 import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipHistory
 import dev.ii.tools.clip.ClipSync
@@ -74,6 +75,7 @@ import dev.ii.tools.shots.ShotSync
 import dev.ii.tools.tiles.FavoritePreset
 import dev.ii.tools.usage.PhoneUsage
 import dev.ii.tools.ui.theme.Expressive
+import dev.ii.tools.update.AppUpdate
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -84,6 +86,7 @@ private data class SettingsState(
     val post: Boolean,
     val phone: Boolean,
     val contacts: Boolean,
+    val bluetooth: Boolean,
     val photos: Boolean,
     val gallery: Boolean,
     val galleryImages: Boolean,
@@ -110,6 +113,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val relayed by LiveHub.relayed.collectAsStateWithLifecycle()
     val notifApps by NotifMirror.apps.collectAsStateWithLifecycle()
     val favorite by FavoritePreset.name.collectAsStateWithLifecycle()
+    val volumeKeys by VolumeKeys.enabled.collectAsStateWithLifecycle()
+    val update by AppUpdate.state.collectAsStateWithLifecycle()
     val scanner = rememberPairScanner()
     val network = rememberNetworkPermission()
     val cameraPerm = rememberCameraPermission()
@@ -120,6 +125,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
             post = d.postGranted,
             phone = CallWatcher.hasPermissions(ctx),
             contacts = PhoneData.canReadContacts(ctx),
+            bluetooth = PhoneData.canReadBluetooth(ctx),
             photos = ShotSync.canWatch(ctx),
             gallery = Gallery.hasPermission(ctx),
             galleryImages = Gallery.canReadImages(ctx),
@@ -178,6 +184,10 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         s = read()
         LinkHub.announceCaps()
     }
+    val askBluetooth = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        s = read()
+        PhoneData.onBluetoothPermissionChanged(ctx)
+    }
     val askPhotos = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         s = read()
         if (ok) ShotSync.setSends(ctx, shotsSend)
@@ -191,7 +201,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
 
     var confirmForget by remember { mutableStateOf(false) }
     val missing = listOf(
-        s.listener, s.post, s.phone, s.contacts, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, network.granted, cameraPerm.granted,
+        s.listener, s.post, s.phone, s.contacts, s.bluetooth, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, network.granted, cameraPerm.granted,
     ).count { !it }
 
     ToolScaffold(
@@ -235,6 +245,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 }
                 PermissionRow(stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_body), R.drawable.rounded_call, s.phone) { askPhone.launch(CallWatcher.PERMISSIONS) }
                 PermissionRow(stringResource(R.string.perm_contacts), stringResource(R.string.perm_contacts_body), R.drawable.rounded_contacts, s.contacts) { askContacts.launch(PhoneData.CONTACTS) }
+                PermissionRow(stringResource(R.string.perm_bluetooth), stringResource(R.string.perm_bluetooth_body), R.drawable.rounded_bluetooth, s.bluetooth) { askBluetooth.launch(PhoneData.BLUETOOTH) }
                 PermissionRow(stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_body), R.drawable.rounded_photo_library, s.photos) { askPhotos.launch(ShotSync.PERMISSION) }
                 PermissionRow(stringResource(R.string.perm_gallery), stringResource(R.string.perm_gallery_body), R.drawable.rounded_photo_library, s.gallery) { askGallery.launch(Gallery.PERMISSIONS) }
                 PermissionRow(stringResource(R.string.perm_files), stringResource(R.string.perm_files_body), R.drawable.rounded_folder_open, s.files) {
@@ -270,6 +281,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     phoneMedia = it
                     PhoneMedia.setEnabled(ctx, it)
                 }, R.drawable.rounded_music_note)
+                SwitchRow(stringResource(R.string.audio_volume_keys), volumeKeys, {
+                    VolumeKeys.setEnabled(ctx, it)
+                }, R.drawable.rounded_volume_up, summary = stringResource(R.string.audio_volume_keys_body))
                 SwitchRow(stringResource(R.string.calls_report), calls, {
                     calls = it
                     CallWatcher.setEnabled(ctx, it)
@@ -405,6 +419,58 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     title = stringResource(R.string.tools_title),
                     icon = R.drawable.rounded_apps,
                     onClick = { onOpen(Dest.TOOLS) },
+                )
+            }
+        }
+
+        item { GroupHeader(stringResource(R.string.update_title)) }
+        item {
+            val latest = update.latest
+            val lastChecked = formatLastChecked(ctx, update.lastCheckMs)
+            val statusSummary = when {
+                update.error != null -> updateErrorText(ctx, update)
+                latest != null -> stringResource(R.string.update_settings_available_body, update.currentVersion, lastChecked)
+                else -> stringResource(R.string.update_settings_current_body, update.currentVersion, lastChecked)
+            }
+            CardGroup {
+                ToolRow(
+                    title = when {
+                        update.checking -> stringResource(R.string.update_checking)
+                        latest != null -> stringResource(R.string.update_available_row, latest.version.toString())
+                        else -> stringResource(R.string.update_up_to_date)
+                    },
+                    summary = statusSummary,
+                    icon = R.drawable.rounded_system_update,
+                    tint = when {
+                        update.error != null -> Tint.ERROR
+                        latest != null -> Tint.PRIMARY
+                        else -> Tint.SECONDARY
+                    },
+                    onClick = { onOpen(Dest.UPDATE) },
+                    trailing = {
+                        when {
+                            update.checking -> LoadingIndicator(Modifier.size(32.dp))
+                            latest != null -> FilledTonalButton(
+                                onClick = { onOpen(Dest.UPDATE) },
+                                shapes = ButtonDefaults.shapes(),
+                            ) {
+                                Text(stringResource(R.string.update_view_short))
+                            }
+                            else -> FilledTonalButton(
+                                onClick = { AppUpdate.checkNow(ctx) },
+                                shapes = ButtonDefaults.shapes(),
+                            ) {
+                                Text(stringResource(R.string.update_check_short))
+                            }
+                        }
+                    },
+                )
+                SwitchRow(
+                    title = stringResource(R.string.update_auto_check),
+                    checked = update.autoCheck,
+                    onCheckedChange = { AppUpdate.setAutoCheck(ctx, it) },
+                    icon = R.drawable.rounded_refresh,
+                    summary = stringResource(R.string.update_auto_check_body),
                 )
             }
         }

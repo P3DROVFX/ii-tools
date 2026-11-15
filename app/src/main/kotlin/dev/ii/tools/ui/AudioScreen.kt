@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
+import dev.ii.tools.audio.VolumeKeys
 import dev.ii.tools.link.AudioNode
 import dev.ii.tools.link.EasyEffectsState
 import dev.ii.tools.link.LinkHub
@@ -49,10 +51,12 @@ import androidx.compose.runtime.setValue
 /** The PC's audio: the volume big, which device plays and records, the mic, each app, EasyEffects. */
 @Composable
 fun AudioScreen(onBack: () -> Unit) {
+    val ctx = LocalContext.current
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     val shell by LinkHub.shell.collectAsStateWithLifecycle()
     val audio by LinkHub.audio.collectAsStateWithLifecycle()
+    val volumeKeys by VolumeKeys.enabled.collectAsStateWithLifecycle()
     val a = audio
     val subtitle = listOfNotNull(
         a?.output?.name,
@@ -68,6 +72,18 @@ fun AudioScreen(onBack: () -> Unit) {
         if (a == null) return@ToolScaffold
 
         a.output?.let { out -> item { OutputHero(out) } }
+
+        item {
+            CardGroup {
+                SwitchRow(
+                    title = stringResource(R.string.audio_volume_keys),
+                    checked = volumeKeys,
+                    onCheckedChange = { VolumeKeys.setEnabled(ctx, it) },
+                    icon = R.drawable.rounded_volume_up,
+                    summary = stringResource(R.string.audio_volume_keys_body),
+                )
+            }
+        }
 
         item { GroupHeader(stringResource(R.string.audio_output)) }
         item { DeviceList(a.outputs, a.out, R.drawable.rounded_speaker, idle = Layer.pane) }

@@ -202,10 +202,14 @@
     <string name="clip_step_service">Ativar o serviço de cópia</string>
     <string name="clip_step_service_body">Abre o ii tools em Acessibilidade: ative \"ii tools · texto copiado para o PC\".</string>
     <string name="data_title">Dados do celular</string>
-    <string name="data_hint">Seu próximo alarme, bateria e rede, e seus contatos com foto, para o relógio, a aba Phone e o card de ligação do PC. Sem ADB nem KDE Connect.</string>
+    <string name="data_hint">Seu próximo alarme, bateria, dispositivos Bluetooth e rede, e seus contatos com foto, para o relógio, a aba Phone e o card de ligação do PC. Sem ADB nem KDE Connect.</string>
     <string name="data_share">Compartilhar com o PC</string>
     <string name="perm_contacts">Contatos</string>
     <string name="perm_contacts_body">Para mostrar seus contatos e as fotos deles no PC.</string>
+    <string name="perm_bluetooth">Dispositivos Bluetooth</string>
+    <string name="perm_bluetooth_body">Para mostrar a bateria dos fones, relógios e headsets conectados no PC.</string>
+    <string name="data_peripherals">Dispositivos conectados</string>
+    <string name="data_battery_pct">%1$d%%</string>
     <string name="pclive_channel">Atividade do PC</string>
     <string name="pclive_paused">Pausado · %1$s</string>
     <string name="pclink_title">Atividade do PC</string>
@@ -334,7 +338,7 @@
     <string name="settings_copy_service">Serviço de cópia</string>
     <string name="settings_to_pc">Enviado ao PC</string>
     <string name="settings_from_pc">Vindo do PC</string>
-    <string name="settings_data_body">Bateria, próximo alarme, rede e contatos</string>
+    <string name="settings_data_body">Bateria, dispositivos Bluetooth, próximo alarme, rede e contatos</string>
     <string name="settings_dnd_body">Nos dois sentidos</string>
     <string name="settings_needs_listener">Precisa do acesso às notificações</string>
     <string name="settings_needs_phone">Precisa da permissão Telefone</string>
@@ -455,6 +459,8 @@
     <string name="audio_ee_processing">Processando · %1$s</string>
     <string name="audio_playing_on">Tocando em</string>
     <string name="audio_muted">Mudo</string>
+    <string name="audio_volume_keys">Teclas de volume controlam o PC</string>
+    <string name="audio_volume_keys_body">Quando o celular não estiver tocando mídia, os botões de volume mudam o volume do PC</string>
     <string name="home_wallpaper">Papel de parede do PC</string>
     <string name="second_card_body">Estenda ou espelhe o PC aqui pelo USB, com o toque como tela touch dele.</string>
     <string name="second_body">Conecte o celular ao PC. Estender cria uma tela do tamanho do celular; Espelhar mostra a tela em foco do PC.</string>
@@ -703,4 +709,53 @@
     <string name="problem_no_route">Este celular não tem caminho até %1$s. Ele está no mesmo Wi-Fi ou na mesma tailnet do PC?</string>
     <string name="problem_certificate">O PC em %1$s respondeu com outro certificado: não é o PC pareado, ou o link dele foi redefinido. Pareie de novo.</string>
     <string name="problem_protocol">O PC em %1$s respondeu, mas não como ii link. Atualize o shell e o app.</string>
+    <!-- Atualizações do app -->
+    <string name="update_title">Atualizações do app</string>
+    <string name="update_available">Atualização disponível</string>
+    <string name="update_available_row">Atualização disponível: v%1$s</string>
+    <string name="update_up_to_date">Tudo atualizado</string>
+    <string name="update_checking">Verificando atualizações…</string>
+    <string name="update_check_now">Verificar atualizações</string>
+    <string name="update_check_short">Verificar</string>
+    <string name="update_view_short">Ver</string>
+    <string name="update_subtitle_available">%1$s → %2$s</string>
+    <string name="update_subtitle_current">Versão atual %1$s</string>
+    <string name="update_version_transition">Instalada %1$s → Nova %2$s</string>
+    <string name="update_whats_new">Novidades</string>
+    <string name="update_latest_badge">Mais recente</string>
+    <string name="update_no_notes">Nenhuma nota de lançamento informada.</string>
+    <string name="update_download">Baixar APK</string>
+    <string name="update_download_short">Baixar</string>
+    <string name="update_view_github">Ver no GitHub</string>
+    <string name="update_view_changes">Novidades</string>
+    <string name="update_card_title">ii tools %1$s</string>
+    <string name="update_dismiss">Dispensar</string>
+    <string name="update_settings_header">Verificação automática</string>
+    <string name="update_auto_check">Verificar atualizações automaticamente</string>
+    <string name="update_auto_check_body">Consulta o GitHub no máximo uma vez a cada 12 horas ao abrir o app</string>
+    <string name="update_settings_available_body">Instalada %1$s · %2$s</string>
+    <string name="update_settings_current_body">Versão %1$s · %2$s</string>
+    <string name="update_last_never">Nunca verificado</string>
+    <string name="update_last_just_now">Verificado agora mesmo</string>
+    <plurals name="update_last_minutes">
+        <item quantity="one">Verificado há %1$d minuto</item>
+        <item quantity="many">Verificado há %1$d minutos</item>
+        <item quantity="other">Verificado há %1$d minutos</item>
+    </plurals>
+    <plurals name="update_last_hours">
+        <item quantity="one">Verificado há %1$d hora</item>
+        <item quantity="many">Verificado há %1$d horas</item>
+        <item quantity="other">Verificado há %1$d horas</item>
+    </plurals>
+    <string name="update_last_date">Verificado em %1$s</string>
+    <string name="update_error_title">Não deu para verificar atualizações</string>
+    <string name="update_err_rate_limit">Limite do GitHub atingido. Tente novamente mais tarde.</string>
+    <string name="update_err_http">O GitHub respondeu com HTTP %1$d.</string>
+    <string name="update_err_parse">Não deu para ler os dados do lançamento no GitHub.</string>
+    <string name="update_err_network">Não deu para acessar o GitHub. Verifique sua conexão.</string>
+    <string name="update_open_failed">Nenhum navegador disponível para abrir este link.</string>
+    <string name="update_channel">Atualizações do app</string>
+    <string name="update_channel_desc">Aviso silencioso quando uma nova versão do ii tools sai no GitHub.</string>
+    <string name="update_notif_title">ii tools %1$s disponível</string>
+    <string name="update_notif_body">Toque para ver as novidades e baixar a atualização.</string>
 </resources>

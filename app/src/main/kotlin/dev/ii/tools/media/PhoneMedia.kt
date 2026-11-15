@@ -83,7 +83,10 @@ object PhoneMedia {
             sessions[pkg]?.let { old -> callbacks[pkg]?.let(old::unregisterCallback) }
             val cb = object : MediaController.Callback() {
                 override fun onMetadataChanged(metadata: MediaMetadata?) = send(pkg)
-                override fun onPlaybackStateChanged(state: PlaybackState?) = send(pkg)
+                override fun onPlaybackStateChanged(state: PlaybackState?) {
+                    send(pkg)
+                    dev.ii.tools.audio.VolumeKeys.onLocalPlaybackChanged()
+                }
                 override fun onSessionDestroyed() = forget(pkg)
             }
             controller.registerCallback(cb, main)
@@ -92,12 +95,19 @@ object PhoneMedia {
             lastTrack.remove(pkg)
             send(pkg)
         }
+        dev.ii.tools.audio.VolumeKeys.onLocalPlaybackChanged()
+    }
+
+    fun isPlayingLocally(): Boolean = sessions.values.any {
+        val state = it.playbackState?.state
+        state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
     }
 
     private fun forget(pkg: String) {
         sessions.remove(pkg)?.let { c -> callbacks.remove(pkg)?.let(c::unregisterCallback) }
         lastTrack.remove(pkg)
         if (LinkHub.isConnected()) LinkHub.sendJson(JSONObject().put("t", "mediaGone").put("source", pkg))
+        dev.ii.tools.audio.VolumeKeys.onLocalPlaybackChanged()
     }
 
     /** Every session again: the link just came up (and the PC takes media). */

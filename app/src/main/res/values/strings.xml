@@ -203,10 +203,14 @@
     <string name="clip_step_service">Turn on the copy service</string>
     <string name="clip_step_service_body">Opens ii tools in Accessibility: turn on \"ii tools · copied text to PC\".</string>
     <string name="data_title">Phone data</string>
-    <string name="data_hint">Your next alarm, battery and network, and your contacts with photos, for the PC\'s clock, Phone tab and call card. No ADB or KDE Connect needed.</string>
+    <string name="data_hint">Your next alarm, battery, Bluetooth devices and network, and your contacts with photos, for the PC\'s clock, Phone tab and call card. No ADB or KDE Connect needed.</string>
     <string name="data_share">Share with the PC</string>
     <string name="perm_contacts">Contacts</string>
     <string name="perm_contacts_body">To show your contacts and their photos on the PC.</string>
+    <string name="perm_bluetooth">Bluetooth devices</string>
+    <string name="perm_bluetooth_body">To show the battery of connected earbuds, watches and headsets on the PC.</string>
+    <string name="data_peripherals">Connected devices</string>
+    <string name="data_battery_pct">%1$d%%</string>
     <string name="pclive_channel">PC live updates</string>
     <string name="pclive_paused">Paused · %1$s</string>
     <string name="pclink_title">PC activity</string>
@@ -334,7 +338,7 @@
     <string name="settings_copy_service">Copy service</string>
     <string name="settings_to_pc">Sent to the PC</string>
     <string name="settings_from_pc">From the PC</string>
-    <string name="settings_data_body">Battery, next alarm, network and contacts</string>
+    <string name="settings_data_body">Battery, Bluetooth devices, next alarm, network and contacts</string>
     <string name="settings_dnd_body">Both ways</string>
     <string name="settings_needs_listener">Needs notification access</string>
     <string name="settings_needs_phone">Needs the Phone permission</string>
@@ -452,6 +456,8 @@
     <string name="audio_ee_processing">Processing · %1$s</string>
     <string name="audio_playing_on">Playing on</string>
     <string name="audio_muted">Muted</string>
+    <string name="audio_volume_keys">Volume keys control the PC</string>
+    <string name="audio_volume_keys_body">When the phone is not playing media, its volume buttons change the PC\'s volume</string>
     <string name="home_wallpaper">The PC’s wallpaper</string>
     <string name="second_card_body">Extend or mirror the PC here over USB, with touch as its touchscreen.</string>
     <string name="second_body">Plug the phone into the PC. Extend adds a screen the phone\'s size; Mirror shows the PC\'s focused screen.</string>
@@ -700,4 +706,51 @@
     <string name="problem_no_route">This phone has no way to %1$s. Is it on the same Wi-Fi or tailnet as the PC?</string>
     <string name="problem_certificate">The PC at %1$s answered with another certificate: it isn\'t the paired PC, or its link was reset. Pair again.</string>
     <string name="problem_protocol">The PC at %1$s answered, but not as ii link. Update the shell and the app.</string>
+    <!-- App updates -->
+    <string name="update_title">App updates</string>
+    <string name="update_available">Update available</string>
+    <string name="update_available_row">Update available: v%1$s</string>
+    <string name="update_up_to_date">Up to date</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_check_now">Check for updates</string>
+    <string name="update_check_short">Check</string>
+    <string name="update_view_short">View</string>
+    <string name="update_subtitle_available">%1$s → %2$s</string>
+    <string name="update_subtitle_current">Current version %1$s</string>
+    <string name="update_version_transition">Installed %1$s → New %2$s</string>
+    <string name="update_whats_new">What\'s new</string>
+    <string name="update_latest_badge">Latest</string>
+    <string name="update_no_notes">No release notes provided.</string>
+    <string name="update_download">Download APK</string>
+    <string name="update_download_short">Download</string>
+    <string name="update_view_github">View on GitHub</string>
+    <string name="update_view_changes">What\'s new</string>
+    <string name="update_card_title">ii tools %1$s</string>
+    <string name="update_dismiss">Dismiss</string>
+    <string name="update_settings_header">Automatic checks</string>
+    <string name="update_auto_check">Check for updates automatically</string>
+    <string name="update_auto_check_body">Checks GitHub at most once every 12 hours when you open the app</string>
+    <string name="update_settings_available_body">Installed %1$s · %2$s</string>
+    <string name="update_settings_current_body">Version %1$s · %2$s</string>
+    <string name="update_last_never">Never checked</string>
+    <string name="update_last_just_now">Checked just now</string>
+    <plurals name="update_last_minutes">
+        <item quantity="one">Checked %1$d minute ago</item>
+        <item quantity="other">Checked %1$d minutes ago</item>
+    </plurals>
+    <plurals name="update_last_hours">
+        <item quantity="one">Checked %1$d hour ago</item>
+        <item quantity="other">Checked %1$d hours ago</item>
+    </plurals>
+    <string name="update_last_date">Checked %1$s</string>
+    <string name="update_error_title">Couldn\'t check for updates</string>
+    <string name="update_err_rate_limit">GitHub rate limit reached. Try again later.</string>
+    <string name="update_err_http">GitHub returned HTTP %1$d.</string>
+    <string name="update_err_parse">Couldn\'t read the release information from GitHub.</string>
+    <string name="update_err_network">Couldn\'t reach GitHub. Check your internet connection.</string>
+    <string name="update_open_failed">No browser app available to open this link.</string>
+    <string name="update_channel">App updates</string>
+    <string name="update_channel_desc">Silent notice when a new version of ii tools is released on GitHub.</string>
+    <string name="update_notif_title">ii tools %1$s is available</string>
+    <string name="update_notif_body">Tap to see what\'s new and download the update.</string>
 </resources>

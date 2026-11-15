@@ -75,7 +75,9 @@ Without a PC in reach the app still opens, shows the PC's last state and offers 
 
 Everything the app sends goes **only to the PC you paired**, over a TLS WebSocket with the
 PC's certificate pinned. There is no account, no server, no analytics and no ads;
-nothing runs before you pair. Each permission backs one feature, and the app works
+nothing runs before you pair. The one exception is the update check: it asks GitHub's
+public API for this repository's releases, sending nothing but `ii-tools/<version>` as
+its user agent, and it can be turned off in Settings. Each permission backs one feature, and the app works
 without the ones you refuse; that feature just stays off.
 
 | Permission | What it's for |
@@ -92,6 +94,7 @@ without the ones you refuse; that feature just stays off.
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `WAKE_LOCK` | Keeping the link up in Doze; holding Wi-Fi awake while a stream runs |
 | `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS` | Its own notifications and Android 16 Live Updates |
 | `SET_WALLPAPER` | Only when *Use the PC's wallpaper* is on |
+| `BLUETOOTH_CONNECT` | The battery of the phone's connected Bluetooth devices, for the PC |
 
 ## Roadmap
 
@@ -103,8 +106,6 @@ What's planned next, in no particular order:
   with Opus as an option for weak networks.
 - **Home screen cards reordering.** Drag the home's cards to put them in your own order.
 - **Widgets.** Android home screen widgets for the PC's state and controls.
-- **Bluetooth peripherals' battery.** The battery of what's connected to the phone (smartwatch, earbuds
-  and their case) in `phoneStatus`, so the shell can show it next to the phone's own.
 
 The long version is in [ROADMAP.md](ROADMAP.md).
 
@@ -138,6 +139,12 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   volume and mute per app, and EasyEffects (on/bypass and output preset). Live from the
   shell's PipeWire state; a slider follows the finger while held and sends at most ~20
   values a second.
+- **Volume keys for the PC (off by default):** *Volume keys control the PC* (Audio and
+  Settings) hands the phone's volume buttons and Android's volume panel to the PC's
+  default output while the link is up and the phone itself plays nothing. A silent,
+  remote-playback media session (no player in the shade, no notification) holds the keys;
+  as soon as the phone plays sound, or a call starts, it lets go and the keys are the
+  phone's again. 5% a press; the panel's slider sets it directly.
 - **Deck:** the phone as a stream deck. Keys come from the shell's catalog (screenshots,
   recording, media, windows, look, Discord, your own commands from *Settings → ii tools*),
   modes, presets, workspaces, apps (with their PC theme icon when cached) and one-level folders.
@@ -181,6 +188,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   health, network, and contacts with photos (for the Phone tab and the call card), from
   the phone itself instead of ADB and KDE Connect. Contacts go only when they change,
   photos only those the PC lacks; the PC keeps them for when the phone is away.
+  With *Bluetooth* allowed, the battery of what's connected to the phone (earbuds, a
+  watch, a headset, a mouse) rides along in `status`, shown next to the phone's own in
+  the Phone tab and *Settings → ii tools*. Android only lets an app read a device's
+  overall level, so separate buds and the case aren't available, and a device that
+  doesn't report its battery over Bluetooth (most Wear OS watches) isn't listed.
 - **Do Not Disturb:** the shell's own (and modes chosen on the PC) silence the phone; the
   phone's turns on the shell's, or a mode. Only changes are sent, so turning it off by
   hand on either side sticks.
@@ -271,6 +283,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   locks and trickles a 4-byte UDP keep-awake datagram (`iim\n`) every 50 ms to keep the
   radio out of power save until the last session ends, the link drops, or a 3 h safety
   timeout fires. Nothing runs outside a wireless session.
+- **Updates:** the app checks GitHub's releases at most every 12 hours, only when it is
+  opened or the link comes up (no background job). A newer version shows a card on the
+  home, a row in Settings and one silent notification per version; its screen has the
+  changelog of every release since yours and *Download*, which opens the APK's GitHub link
+  in the browser. *Check for updates automatically* turns it off; *Check now* asks at once.
 - **Send to PC, up front:** *Send to PC* is a Direct Share target, so it sits in the top row of
   every app's share sheet; from there a file or picture goes straight to Downloads with no
   question asked (links and text still ask where). The PC's popup then offers Copy, Open,

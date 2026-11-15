@@ -87,6 +87,7 @@ import dev.ii.tools.mic.MicPhase
 import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.pclive.PcLiveItem
 import dev.ii.tools.ui.theme.Expressive
+import dev.ii.tools.update.AppUpdate
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import androidx.compose.runtime.DisposableEffect
@@ -100,10 +101,12 @@ import androidx.compose.runtime.setValue
  */
 @Composable
 fun HomeScreen(onOpen: (Dest) -> Unit) {
+    val ctx = LocalContext.current
     val clipHistory = clipHistoryAvailable()
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     val shell by LinkHub.shell.collectAsStateWithLifecycle()
+    val update by AppUpdate.state.collectAsStateWithLifecycle()
     val scanner = rememberPairScanner()
     val network = rememberNetworkPermission()
     val online = status is LinkStatus.Online && shell != null
@@ -121,6 +124,16 @@ fun HomeScreen(onOpen: (Dest) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "bar") { HomeBar(paired = pc != null, onOpen = onOpen) }
+            val latestUpdate = update.latest
+            if (update.visibleOnHome && latestUpdate != null) {
+                item(key = "update_${latestUpdate.tagName}") {
+                    HomeUpdateCard(
+                        release = latestUpdate,
+                        onOpenUpdate = { onOpen(Dest.UPDATE) },
+                        onDismiss = { AppUpdate.dismiss(ctx, latestUpdate.tagName) },
+                    )
+                }
+            }
             val current = pc
             when {
                 current == null -> item(key = "pair") { PairContent(status, scanner, network) }

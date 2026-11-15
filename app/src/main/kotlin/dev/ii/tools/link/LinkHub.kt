@@ -627,6 +627,7 @@ object LinkHub {
         Gallery.onLinkLost(app)
         ClipHistory.onLinkLost()
         PhoneUsage.onLinkDisconnected()
+        PhoneData.onLinkDisconnected()
         dev.ii.tools.camera.Webcam.onLinkLost()
         dev.ii.tools.mic.Mic.onLinkLost()
         MirrorRadio.onLinkLost()
@@ -695,7 +696,7 @@ object LinkHub {
                     caps = buildSet { if (caps != null) for (i in 0 until caps.length()) add(caps.optString(i)) },
                     actions = list,
                 )
-                if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
+                if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.onLinkConnected(app)
                 if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
                 if (_shell.value?.caps?.contains("media") == true) PhoneMedia.sendAll()
                 dev.ii.tools.routines.ModeCatalog.request()

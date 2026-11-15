@@ -16,7 +16,9 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.graphics.drawable.Icon
+import android.media.AudioAttributes
 import android.media.MediaMetadata
+import android.media.VolumeProvider
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Handler
@@ -24,6 +26,7 @@ import android.os.Looper
 import android.os.SystemClock
 import dev.ii.tools.MainActivity
 import dev.ii.tools.R
+import dev.ii.tools.audio.VolumeKeys
 import dev.ii.tools.link.LinkHub
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,8 +74,10 @@ object PcMedia {
     private const val ART_KEEP = 4
 
     private val main = Handler(Looper.getMainLooper())
+    private val localAudioAttrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build()
     private var app: Context? = null
     private var session: MediaSession? = null
+    private var remoteProvider: VolumeProvider? = null
     /** The player as last pushed, `position` read at [shownAt] (elapsed realtime). */
     private var current: JSONObject? = null
     private var shownAt = 0L
@@ -137,13 +142,34 @@ object PcMedia {
             current = null
             _player.value = null
             PcLyrics.onPlayerCleared()
+            remoteProvider = null
             session?.let {
                 it.isActive = false
                 it.release()
             }
             session = null
             app?.getSystemService(NotificationManager::class.java)?.cancel(NOTIF_ID)
+            VolumeKeys.onPcMediaChanged()
         }
+    }
+
+    internal fun isSessionPlaying(): Boolean =
+        session?.isActive == true && current?.optBoolean("playing") == true
+
+    internal fun hasRemoteProvider(): Boolean = remoteProvider != null
+
+    internal fun attachVolumeProvider(provider: VolumeProvider) {
+        val s = session ?: return
+        if (remoteProvider === provider) return
+        remoteProvider = provider
+        s.setPlaybackToRemote(provider)
+    }
+
+    internal fun detachVolumeProvider() {
+        val s = session
+        if (remoteProvider == null) return
+        remoteProvider = null
+        s?.setPlaybackToLocal(localAudioAttrs)
     }
 
     /** A button on the phone (session callback or the notification's actions). */
@@ -237,6 +263,7 @@ object PcMedia {
                 .build(),
         )
         s.isActive = true
+        VolumeKeys.onPcMediaChanged()
 
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(

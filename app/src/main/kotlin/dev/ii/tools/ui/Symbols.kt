@@ -51,6 +51,8 @@ fun bundledSymbol(symbol: String): Int? = when (symbol) {
     "photo_library" -> R.drawable.rounded_photo_library
     "memory" -> R.drawable.rounded_memory
     "headphones" -> R.drawable.rounded_headphones
+    "watch" -> R.drawable.rounded_watch
+    "earbuds" -> R.drawable.rounded_earbuds
     "notifications" -> R.drawable.rounded_notifications
     "arrow_back" -> R.drawable.rounded_arrow_back
     else -> null
