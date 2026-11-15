@@ -21,6 +21,7 @@ import dev.ii.tools.ui.AudioScreen
 import dev.ii.tools.ui.CallsScreen
 import dev.ii.tools.ui.ClipboardScreen
 import dev.ii.tools.ui.RoutinesScreen
+import dev.ii.tools.ui.RuleEditorScreen
 import dev.ii.tools.ui.DeckScreen
 import dev.ii.tools.ui.GalleryScreen
 import dev.ii.tools.ui.HomeScreen
@@ -205,6 +206,50 @@ class WallpaperActivity : ScreenActivity() {
         onBack = ::finish,
         onDone = ::finish,
     )
+}
+
+/** One rule's editor; the rule's id comes in `rule`. */
+class RuleEditorActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = RuleEditorScreen(intent.getStringExtra("rule").orEmpty(), onBack = ::finish)
+}
+
+/**
+ * The shortcut builder: any action of the PC, with its value. Started by the system's
+ * "create shortcut" (Modes and Routines, a launcher), it hands the shortcut back; started by the
+ * app (`pin`), it offers to put it on the home screen.
+ */
+class CreateShortcutActivity : ScreenActivity() {
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+    @Composable
+    override fun Screen() {
+        var chosen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<dev.ii.tools.routines.Step?>(null) }
+        val title = chosen?.let { dev.ii.tools.ui.stepTitle(it) }
+        androidx.compose.runtime.LaunchedEffect(chosen, title) {
+            val step = chosen ?: return@LaunchedEffect
+            val label = title ?: return@LaunchedEffect
+            val ctx = this@CreateShortcutActivity
+            if (intent.getBooleanExtra("pin", false)) {
+                dev.ii.tools.routines.ShortcutKit.pin(ctx, "step_" + step.toJson().toString().hashCode(), label,
+                    dev.ii.tools.ui.stepIcon(ctx, step), dev.ii.tools.routines.ShortcutKit.runIntent(ctx, step))
+                finish()
+            } else {
+                val launch = Intent(ctx, dev.ii.tools.routines.ExternalActivity::class.java)
+                    .setAction(Intent.ACTION_VIEW)
+                    .putExtra(dev.ii.tools.routines.ShortcutKit.EXTRA_SPEC, step.toJson().toString())
+                    .putExtra(dev.ii.tools.routines.ShortcutKit.EXTRA_TOKEN, dev.ii.tools.routines.ShortcutKit.token(ctx))
+                setResult(RESULT_OK, Intent()
+                    .putExtra(Intent.EXTRA_SHORTCUT_INTENT, launch)
+                    .putExtra(Intent.EXTRA_SHORTCUT_NAME, label)
+                    .putExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE, Intent.ShortcutIconResource.fromContext(ctx, dev.ii.tools.ui.stepIcon(ctx, step))))
+                finish()
+            }
+        }
+        dev.ii.tools.ui.ToolScaffold(title = getString(R.string.shortcut_builder), onBack = { setResult(RESULT_CANCELED); finish() }) {
+            item { dev.ii.tools.ui.Hint(getString(R.string.shortcut_builder_body)) }
+        }
+        dev.ii.tools.ui.StepEditorSheet(onDone = { chosen = it }, onDismiss = { setResult(RESULT_CANCELED); finish() }, allowEnd = false)
+    }
 }
 
 class RoutinesActivity : ScreenActivity() {

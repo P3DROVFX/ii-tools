@@ -9,6 +9,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
+import android.net.Network
+import android.media.AudioManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.provider.ContactsContract
@@ -70,20 +72,56 @@ object PhoneData {
                         if (LinkHub.isConnected()) sendStatus() else LinkHub.notifBurst()
                     }
                     Intent.ACTION_BATTERY_CHANGED -> onBattery()
+                    AudioManager.RINGER_MODE_CHANGED_ACTION -> if (LinkHub.isConnected()) sendStatus()
                 }
             }
         }
         val filter = IntentFilter().apply {
             addAction(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)
             addAction(Intent.ACTION_BATTERY_CHANGED)
+            addAction(AudioManager.RINGER_MODE_CHANGED_ACTION)
         }
         c.registerReceiver(r, filter, Context.RECEIVER_NOT_EXPORTED)
         receiver = r
+        // The network the phone is on changes what a routine on the PC can condition on.
+        c.getSystemService(ConnectivityManager::class.java)?.let { cm ->
+            netCallback?.let { runCatching { cm.unregisterNetworkCallback(it) } }
+            val cb = object : ConnectivityManager.NetworkCallback() {
+                override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                    val type = network(caps)
+                    if (type != lastNet) {
+                        lastNet = type
+                        if (LinkHub.isConnected()) sendStatus()
+                    }
+                }
+                override fun onLost(network: Network) {
+                    if (lastNet != "none") {
+                        lastNet = "none"
+                        if (LinkHub.isConnected()) sendStatus()
+                    }
+                }
+            }
+            cm.registerDefaultNetworkCallback(cb)
+            netCallback = cb
+        }
+    }
+
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
+    private var lastNet = ""
+
+    private fun network(caps: NetworkCapabilities?) = when {
+        caps == null -> "none"
+        caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+        caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+        caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+        else -> "other"
     }
 
     fun stop() {
         receiver?.let { r -> ctx?.let { runCatching { it.unregisterReceiver(r) } } }
         receiver = null
+        netCallback?.let { cb -> ctx?.getSystemService(ConnectivityManager::class.java)?.let { runCatching { it.unregisterNetworkCallback(cb) } } }
+        netCallback = null
     }
 
     /** Battery news only while the link is up, and not more than every 30 s unless plugging changed. */
@@ -106,6 +144,11 @@ object PhoneData {
             val b = battery()
             m.put("battery", b ?: JSONObject.NULL)
             m.put("net", network(c))
+            m.put("ringer", when (c.getSystemService(AudioManager::class.java)?.ringerMode) {
+                AudioManager.RINGER_MODE_SILENT -> "silent"
+                AudioManager.RINGER_MODE_VIBRATE -> "vibrate"
+                else -> "normal"
+            })
             m.put("alarm", alarm(c) ?: JSONObject.NULL)
             if (b != null) {
                 lastBatteryKey = "${b.optInt("level")}/${b.optBoolean("charging")}"
@@ -151,13 +194,7 @@ object PhoneData {
     private fun network(c: Context): JSONObject {
         val cm = c.getSystemService(ConnectivityManager::class.java)
         val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
-        val type = when {
-            caps == null -> "none"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
-            else -> "other"
-        }
+        val type = network(caps)
         // 0–4 bars, from the mobile radio (no permission needed for the level).
         val signal = runCatching { c.getSystemService(TelephonyManager::class.java)?.signalStrength?.level }.getOrNull() ?: -1
         return JSONObject().put("type", type).put("signal", signal)

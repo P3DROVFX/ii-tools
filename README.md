@@ -147,16 +147,20 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Screen time and clipboard history:** the phone's screen time (usage access) appears in the
   PC's usage app (*PC / Phone / All*) and bedtime record, on by default once usage access is
   allowed; the PC's clipboard history can be browsed on the phone to pull an old copy.
-- **Routines:** ready-made routines of the phone that act on the PC, over the same link and
-  with the app closed (the triggers are registered from the notification listener's process):
-  *Leaving home* (the Wi-Fi where the PC was reachable stays gone for a minute → lock it, over
-  whatever route is left), *Bedtime* (charger in during a window, 22:00–05:00 by default → pause
-  media, lock with the always-on display), *Arriving home* (back on that Wi-Fi → Wake-on-LAN) and
-  *In a call* (the PC's volume goes down, then back). "Home" is the network the link was online on
-  (gateway and subnet), learned: reading a Wi-Fi's name would need the location permission. Four
-  launcher shortcuts (lock, bedtime, pause media, wake; long-press the icon, or pin them) run the
-  same actions through a hidden, non-exported activity, so Modes and Routines can open them as app
-  shortcuts. All off by default.
+- **Routines:** the phone's triggers acting on the PC, and the PC's actions for the phone's own routines.
+  *Rules in the app* are editable: a trigger (the charger, a call, Do Not Disturb, the home Wi-Fi, the
+  battery, or only when run by hand), an optional time window, steps, and steps for when it ends (unplugged,
+  call over…). A step is any action of the shell's own Modes & Routines (its catalog is sent to the app, so
+  brightness, workspace, media mode, night light, power profile, a mode or routine of the shell… and new
+  ones appear with no app update), a shell action, a preset, Wake-on-LAN, something on this phone
+  (Do Not Disturb, ringer, volume, flashlight, brightness, rotation, media, a notification, speech, a
+  buzz) or a wait. Ready-made rules: leaving home, bedtime, arriving home, in a call, phone silenced.
+  "Home" is the network the link was online on, learned. *For the phone's own routines* (Samsung Modes and
+  Routines, Tasker, a launcher): app shortcuts (one per rule run by hand, plus lock, bedtime, pause, wake),
+  and a builder, listed by Android as "create shortcut", that makes a shortcut for any PC action with its
+  value; shortcuts from the builder carry a key of the install so no other app can run PC actions. The
+  other way, the shell's Modes & Routines gains the phone as a condition (reachable, battery above or below,
+  charging, Do Not Disturb, in a call, ringer, network) and as an action (Phone control).
 - **Low-latency Wi-Fi while mirroring:** when the shell starts a wireless scrcpy session
   (`mirror` over ii link), the phone acquires Android's low-latency and high-perf Wi-Fi
   locks and trickles a 4-byte UDP keep-awake datagram (`iim\n`) every 50 ms to keep the

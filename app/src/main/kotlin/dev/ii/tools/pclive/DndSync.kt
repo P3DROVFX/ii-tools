@@ -41,6 +41,7 @@ object DndSync {
 
     /** From the listener. */
     fun onFilterChanged(filter: Int) {
+        dev.ii.tools.routines.Routines.onDnd(on(filter))
         val l = listener ?: return
         if (!isEnabled(l)) return
         if (expected != null && on(expected!!) == on(filter)) {

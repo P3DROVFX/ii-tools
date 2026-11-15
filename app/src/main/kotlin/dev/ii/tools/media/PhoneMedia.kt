@@ -191,6 +191,23 @@ object PhoneMedia {
 
     // ── From the PC ───────────────────────────────────────────────────────
 
+    /** A command for whatever is playing (or the last session): the PC's routines have no source to name. */
+    fun control(cmd: String) {
+        main.post {
+            val controller = sessions.values.firstOrNull { it.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING }
+                ?: sessions.values.firstOrNull() ?: return@post
+            val t = controller.transportControls
+            runCatching {
+                when (cmd) {
+                    "play" -> t.play()
+                    "pause" -> t.pause()
+                    "next" -> t.skipToNext()
+                    "previous" -> t.skipToPrevious()
+                }
+            }
+        }
+    }
+
     fun command(m: JSONObject) {
         val c = ctx ?: return
         if (!isEnabled(c)) return

@@ -71,6 +71,32 @@
             android:taskAffinity=""
             android:theme="@style/Theme.IiTools.Invisible" />
 
+        <!-- The same for shortcuts the builder made, which other apps (Modes and Routines)
+             launch as plain intents: exported, so it checks this install's token. -->
+        <activity
+            android:name=".routines.ExternalActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.IiTools.Invisible" />
+
+        <!-- "Create shortcut": any action of the PC, with its value. -->
+        <activity
+            android:name=".CreateShortcutActivity"
+            android:exported="true"
+            android:label="@string/shortcut_builder_label"
+            android:icon="@drawable/rounded_routine">
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".RuleEditorActivity"
+            android:exported="false" />
+
         <activity
             android:name=".RoutinesActivity"
             android:exported="false" />

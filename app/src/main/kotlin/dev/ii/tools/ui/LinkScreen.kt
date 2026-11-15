@@ -54,8 +54,8 @@ import dev.ii.tools.link.LinkProblem
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.link.MirrorRadio
 import dev.ii.tools.link.WallSync
-import dev.ii.tools.routines.Routine
-import dev.ii.tools.routines.Routines
+import dev.ii.tools.routines.PhoneControl
+import dev.ii.tools.routines.ShortcutKit
 import dev.ii.tools.link.PairedPc
 import dev.ii.tools.link.Wake
 import dev.ii.tools.live.LiveHub
@@ -298,18 +298,16 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         item { GroupHeader(stringResource(R.string.routines_title)) }
         item {
             CardGroup {
-                listOf(
-                    Triple(Routine.LEAVE, R.string.routine_leave, R.drawable.rounded_directions_walk),
-                    Triple(Routine.BEDTIME, R.string.routine_bedtime, R.drawable.rounded_bedtime),
-                    Triple(Routine.ARRIVE, R.string.routine_arrive, R.drawable.rounded_home),
-                    Triple(Routine.CALL, R.string.routine_call, R.drawable.rounded_call),
-                ).forEach { (r, title, icon) ->
-                    var on by remember { mutableStateOf(Routines.isEnabled(ctx, r)) }
-                    SwitchRow(stringResource(title), on, {
-                        on = it
-                        Routines.setEnabled(ctx, r, it)
-                    }, icon)
-                }
+                var control by remember { mutableStateOf(PhoneControl.isEnabled(ctx)) }
+                SwitchRow(stringResource(R.string.routines_control), control, {
+                    control = it
+                    PhoneControl.setEnabled(ctx, it)
+                }, R.drawable.rounded_smartphone)
+                var external by remember { mutableStateOf(ShortcutKit.externalAllowed(ctx)) }
+                SwitchRow(stringResource(R.string.routines_external), external, {
+                    external = it
+                    ShortcutKit.setExternalAllowed(ctx, it)
+                }, R.drawable.rounded_lock)
             }
         }
         item { GroupHeader(stringResource(R.string.settings_from_pc)) }

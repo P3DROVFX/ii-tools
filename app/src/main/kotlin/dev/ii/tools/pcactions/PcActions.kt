@@ -44,6 +44,7 @@ object PcActions {
     fun handle(ctx: Context, m: JSONObject) {
         when (m.optString("a")) {
             "ring" -> main.post { ring(ctx) }
+            "ctl" -> dev.ii.tools.routines.PhoneControl.handle(ctx, m)
             "ping" -> notify(ctx, ctx.getString(R.string.act_ping, pcName()), m.optString("text").ifEmpty { null }, null)
             "url" -> {
                 val url = m.optString("url").takeIf { it.startsWith("http://") || it.startsWith("https://") } ?: return
@@ -72,7 +73,7 @@ object PcActions {
         )
     }
 
-    private fun notify(ctx: Context, title: String, text: String?, tap: Intent?) {
+    fun notify(ctx: Context, title: String, text: String?, tap: Intent?) {
         channel(ctx)
         val b = Notification.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.rounded_desktop_windows)

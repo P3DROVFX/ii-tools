@@ -326,6 +326,7 @@ object LinkHub {
         PhoneMedia.caps(app).forEach { caps.put(it) }
         PcMedia.caps(app).forEach { caps.put(it) }
         dev.ii.tools.media.Handoff.caps(app).forEach { caps.put(it) }
+        dev.ii.tools.routines.PhoneControl.caps(app).forEach { caps.put(it) }
         caps.put("launcherIcons")
         Look.caps().forEach { caps.put(it) }
         WallSync.caps(app).forEach { caps.put(it) }
@@ -661,6 +662,7 @@ object LinkHub {
                 if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.sendStatus()
                 if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
                 if (_shell.value?.caps?.contains("media") == true) PhoneMedia.sendAll()
+                dev.ii.tools.routines.ModeCatalog.request()
                 PhoneUsage.onShellHello(app)
                 NotifMirror.onShellHello(app)
                 AppIcons.onLinkChanged()
@@ -724,6 +726,7 @@ object LinkHub {
             "mediaCmd" -> PhoneMedia.command(m)
             "pcMedia" -> PcMedia.update(app, m)
             "handoff" -> dev.ii.tools.media.Handoff.onPc(app, m)
+            "modeActions" -> dev.ii.tools.routines.ModeCatalog.onMessage(app, m)
             "files" -> FileServer.command(app, m)
             "gallery" -> Gallery.onMessage(app, m)
             "pad" -> dev.ii.tools.touchpad.Touchpad.onReply(m)

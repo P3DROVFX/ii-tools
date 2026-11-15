@@ -588,87 +588,19 @@ o resultado cai no clipboard, em Downloads (PDF) ou como anexo da IA.
 
 ### 5.4 Deck por app em foco · **S**
 
-> **Status (2026-11-14): implementado, falta o teste visual.** Em vez de páginas, uma pasta do deck
-> ganha uma lista de classes de janela (perfil); com o deck aberto e uma pasta assim, o celular assina
-> `focus` (cap `deckFocus`) e abre a pasta sozinho enquanto o app está em foco, voltando à página
-> principal depois (só se foi o deck que abriu). O editor da pasta lista as janelas abertas no PC.
-
-Páginas do deck ligadas a uma classe de janela (perfis do Stream Deck): o deck troca de página
-sozinho conforme o app em foco no Hyprland (`activewindow` do `HyprlandData`), com uma página
-padrão para o resto.
-
-### 5.5 Handoff de mídia · **S**
-
-> **Status (2026-11-14): implementado nos dois sentidos** (celular → PC: o app manda `url` quando o app de mídia dá
-> uma página web, o helper a publica como `xesam:url` e o card de mídia da aba Phone ganha "Continuar no PC", que abre no
-> mesmo ponto e pausa o celular; poucos apps expõem a URL, então o botão só aparece para eles).
-> PC → celular: `pcMedia` leva `url`; botão "Continuar no
-> celular" no card e na notificação de mídia, e `handoff` ao bloquear o PC tocando uma página web
-> (notificação). `t=` no YouTube/Twitch, `#t=` no Vimeo; pausa o player do PC ao abrir.
-
-Ao bloquear o PC ou pelo botão "Continuar no celular", a mídia do PC abre no celular no mesmo
-ponto (`xesam:url` do MPRIS com `t=` para YouTube e afins). O inverso a partir da mídia do
-celular (3.5 passo 3a).
-
-### 5.6 Tempo de tela unificado · **M**
-
-> **Status (2026-11-14): implementado.** Chips PC / Phone / All no app de uso e último uso do
-> celular no registro de dormir. Correção: ficava invisível atrás de três travas desligadas (shell,
-> app e acesso de uso); agora ligado por padrão (age só com o celular pareado e o acesso de uso
-> concedido) e o app Usage mostra uma dica enquanto o celular não compartilha. Os limites do
-> `ScreenTimeLimits` continuam só do PC.
-
-O uso do celular (`UsageStatsManager`) entra no app de uso do PC e no `BedtimeService`
-("parou o PC às 23h, celular até 1h"). Opcional: os limites do `ScreenTimeLimits` valem nos dois.
-
-### 5.7 Avisos de bateria · **XS**
-
-Celular chegou a 80%/100% ou está baixo enquanto você usa o PC → aviso no shell. Bateria do
-notebook baixa com você longe → aviso no celular. Dados já existem em `phoneStatus` e `Battery`.
-
-### 5.8 Mesmo wallpaper nos dois · **XS**
-
-> **Status (2026-11-14): implementado, falta o teste no aparelho.** Switch "Usar o wallpaper do PC"
-> no app (desligado por padrão; troca o papel de parede e o de bloqueio). O shell gera um JPEG de até
-> 3840 px por imagem e envia ao celular que anunciou `wallSync`; o celular recorta no centro. As cores
-> do Material You vêm da mesma imagem, mas o Android e o shell escolhem o destaque cada um.
-
-Toggle: o wallpaper do PC vira o do celular (`WallpaperManager`, permissão comum), e o Material
-You dos dois fica com as mesmas cores.
-
-### 5.9 Localização do celular para o PC · **S**
-
-Uma leitura aproximada por conexão: clima (`Weather`), horário do `Hyprsunset` e fuso
-automático em viagem (`WorldClockService`). Desligado por padrão.
-
-### 5.10 Histórico do clipboard no celular · **S**
-
-> **Status (2026-11-14): implementado** (cap `clipHistory`, navegar, miniaturas de imagem, puxar uma
-> cópia para o celular e copiar para o PC); falta o teste visual.
-
-Navegar pelo `Cliphist` no app e puxar uma cópia antiga (texto ou imagem) para o celular.
-
-### 5.11 Brilho do monitor e luz noturna no Controle remoto · **XS**
-
-> **Status (2026-11-14): implementado, falta o teste visual.** Tópico `display` (cap `display`, assinado só com a tela
-> Controle aberta): brilho do monitor em foco (`Brightness`, backlight ou DDC/CI), luz noturna ligada/desligada e a
-> temperatura (1200–6500 K). Comandos `brightness`, `night`, `nightTemp`. Cartão "Tela" na `RemoteScreen`.
-
-Extensão da `RemoteScreen` (1.1) para quando você está na cama ou no sofá: slider de brilho físico
-do monitor conectado ao `Brightness.qml` (backlight e DDC/CI em monitores externos) e toggle +
-temperatura da luz noturna conectado ao `Hyprsunset.qml`. Estado no tópico `display` assinado só
-com a tela Controle aberta.
-
-### 5.12 Rotinas do celular que alteram o shell (Modes & Routines + presets no app) · **M**
-
-> **Status (2026-11-14): implementado, falta o teste visual e no dia a dia.** `routines/Routines.kt` (gatilhos
-> registrados pelo processo do listener: `NetworkCallback` de Wi-Fi, carregador, estado da ligação) com quatro
-> presets: Saindo de casa (Wi-Fi da casa some por 1 min → `lock`), Hora de dormir (carregador na janela →
-> pausar mídia + `lockAod`), Chegando em casa (volta ao Wi-Fi → Wake-on-LAN) e Em ligação (baixa o volume do PC e
-> devolve). "Casa" é a rede (gateway + máscara) onde o link esteve online, sem permissão de localização. Quatro
-> atalhos estáticos (`RunActivity` invisível, não exportada) para o Modos e rotinas do Samsung. Testado: a ação
-> pausar mídia pelo atalho. Não testado: bloquear, Wake-on-LAN e os gatilhos de rede/carregador/ligação. Modes e
-> presets do shell como ação ficam para uma versão com rotinas livres.
+> **Status (2026-11-14): implementado, falta o teste visual e no dia a dia.** (a) Modos e rotinas do Samsung: atalhos
+> de app (um por regra "manual", mais fixos) e o construtor "Criar atalho" (`CreateShortcutActivity`, o
+> `CREATE_SHORTCUT` que o Routines da Samsung lista, confirmado no APK dele junto com `LauncherApps.getShortcuts`),
+> que monta atalho de qualquer ação do PC com o valor; a atividade exportada exige o token da instalação.
+> (b) Regras editáveis no app (`routines/Rules.kt`, `Routines.kt`): gatilhos carregador, ligação, Não perturbe,
+> Wi-Fi de casa, bateria ou manual, janela de horário, passos e passos de fim; templates saindo/chegando em casa,
+> hora de dormir, em ligação, celular silenciado. Os passos usam o catálogo do próprio Modes do shell
+> (`get modeActions`, `cmd modeAction`, ~32 ações, sem as que dariam shell ao celular), ações do shell, presets,
+> Wake-on-LAN, ações do celular (`PhoneControl`: DND, campainha, volume, lanterna, brilho, rotação, mídia,
+> notificação, fala, vibração) e espera. (c) O Modes & Routines do shell ganhou o celular como condição
+> (`phone`: alcançável, bateria acima/abaixo, carregando, DND, ligação, campainha, rede) e como ação
+> (`phoneControl`). Testado: catálogo chegando ao app, `modeAction` (pausar mídia) por atalho com token certo e
+> errado. Não testado: as telas, `phoneControl` do shell para o celular, lock/WoL e os gatilhos.
 
 Mais do que acionar modes do shell manualmente pelo app: permitir que **rotinas do celular**
 disparem ações e estados diretamente no shell (`lock.activate`, `oledSaver.toggle`, pausar mídia,
