@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -121,8 +122,11 @@ fun RemoteScreen(onBack: () -> Unit) {
  * a moment instead of flipping.
  */
 @Composable
-private fun ActionBento(actions: List<ShellAction>, active: Set<String>) {
+private fun ActionBento(shellActions: List<ShellAction>, active: Set<String>) {
     val runner = rememberActionRunner()
+    // The app has its own Media Mode (the home's Player MP3): this one is the shell's.
+    val shellMedia = stringResource(R.string.action_shell_media_mode)
+    val actions = shellActions.map { if (it.id == "mediaMode") it.copy(name = shellMedia) else it }
     val lock = actions.firstOrNull { it.id == "lock" }
     val rest = actions.filter { it != lock }
     val beside = if (lock != null) rest.take(2) else emptyList()
@@ -166,8 +170,13 @@ private fun ActionTile(action: ShellAction, on: Boolean, note: String?, style: T
         val label = note ?: action.name
         when (style) {
             TileStyle.TALL -> Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                StateShape(on, 132.dp, shapeColor, Modifier.align(Alignment.CenterHorizontally).padding(top = 24.dp), on = onShape) {
-                    Icon(symbolPainter(action.icon), null, tint = glyph, modifier = Modifier.size(56.dp))
+                // A circle that gives way to a narrow tile (a large display size) on both axes:
+                // a fixed size was cut to the width alone and stretched into an ellipse.
+                BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 24.dp), contentAlignment = Alignment.Center) {
+                    val d = minOf(132.dp, maxWidth)
+                    StateShape(on, d, shapeColor, on = onShape) {
+                        Icon(symbolPainter(action.icon), null, tint = glyph, modifier = Modifier.size(d * 0.42f))
+                    }
                 }
                 Column {
                     Text(label, style = Expressive.xwide(26.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -185,7 +194,7 @@ private fun ActionTile(action: ShellAction, on: Boolean, note: String?, style: T
                     Icon(symbolPainter(action.icon), null, tint = glyph, modifier = Modifier.size(30.dp))
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = Expressive.wide(22.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(label, style = Expressive.wide(22.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(stringResource(if (on) R.string.status_on else R.string.status_off), style = Expressive.live(14.sp))
                 }
             }
@@ -383,11 +392,11 @@ private fun rememberLiveValue(remote: Float, send: (Float) -> Unit): Triple<Floa
  * off, and how warm). The PC's push is the truth; a drag shows at once.
  */
 @Composable
-private fun DisplayCard(d: PcDisplay) {
+internal fun DisplayCard(d: PcDisplay, header: Boolean = true) {
     val cs = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-        GroupHeader(stringResource(R.string.remote_display))
+        if (header) GroupHeader(stringResource(R.string.remote_display))
         if (d.brightness >= 0f) {
             val (value, change, finish) = rememberLiveValue(d.brightness) { v ->
                 LinkHub.send("brightness", v.toDouble())

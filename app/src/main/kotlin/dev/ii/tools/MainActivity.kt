@@ -17,6 +17,7 @@ import dev.ii.tools.deck.DeckStore
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.PairingUri
 import dev.ii.tools.live.LiveListener
+import dev.ii.tools.media.PcLyrics
 import dev.ii.tools.ui.AudioScreen
 import dev.ii.tools.ui.CallsScreen
 import dev.ii.tools.ui.ClipboardScreen
@@ -31,6 +32,7 @@ import dev.ii.tools.ui.SecondScreenScreen
 import dev.ii.tools.ui.SettingsScreen
 import dev.ii.tools.ui.ToolsScreen
 import dev.ii.tools.ui.LiveScreen
+import dev.ii.tools.ui.MediaModeScreen
 import dev.ii.tools.ui.NotifsScreen
 import dev.ii.tools.ui.PcLinkScreen
 import dev.ii.tools.ui.PerfScreen
@@ -82,6 +84,7 @@ private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
     Dest.PC_LINK -> PcLinkActivity::class.java
     Dest.CALLS -> CallsActivity::class.java
     Dest.ROUTINES -> RoutinesActivity::class.java
+    Dest.MEDIA_MODE -> MediaModeActivity::class.java
 }
 
 /** The home: a dashboard of the PC, or pairing when there is none. */
@@ -417,4 +420,41 @@ class SecondScreenViewActivity : ScreenActivity() {
         super.onStop()
         if (!isChangingConfigurations) finish()
     }
+}
+
+/** Full-screen landscape Media Mode with synced lyrics from the PC. */
+class MediaModeActivity : ScreenActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        applyImmersive()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        PcLyrics.watch(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        PcLyrics.watch(false)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) applyImmersive()
+    }
+
+    private fun applyImmersive() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    @Composable
+    override fun Screen() = MediaModeScreen(onDone = ::finish)
 }

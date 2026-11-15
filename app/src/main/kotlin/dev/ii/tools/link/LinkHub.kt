@@ -26,6 +26,7 @@ import dev.ii.tools.clip.ClipHistory
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.files.FileServer
 import dev.ii.tools.gallery.Gallery
+import dev.ii.tools.media.PcLyrics
 import dev.ii.tools.media.PcMedia
 import dev.ii.tools.media.PhoneMedia
 import dev.ii.tools.pcactions.PcActions
@@ -589,6 +590,7 @@ object LinkHub {
         _display.value = null
         _apps.value = null
         PcMedia.clear()
+        PcLyrics.onLinkLost()
         FileServer.stop()
         Gallery.onLinkLost(app)
         ClipHistory.onLinkLost()
@@ -677,6 +679,7 @@ object LinkHub {
                     socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", true).toString())
                     ClipHistory.refresh()
                 }
+                PcLyrics.onShellHello()
                 // The PC takes notifications: give it the whole list, and the live
                 // updates their link path.
                 if (isOnline()) {
@@ -727,6 +730,7 @@ object LinkHub {
             "act" -> PcActions.handle(app, m)
             "mediaCmd" -> PhoneMedia.command(m)
             "pcMedia" -> PcMedia.update(app, m)
+            "pcLyrics" -> PcLyrics.update(m)
             "handoff" -> dev.ii.tools.media.Handoff.onPc(app, m)
             "modeActions" -> dev.ii.tools.routines.ModeCatalog.onMessage(app, m)
             "files" -> FileServer.command(app, m)

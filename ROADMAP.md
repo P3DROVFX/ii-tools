@@ -621,6 +621,8 @@ mutar áudio do PC, Wake-on-LAN, ativar/desativar um mode ou preset do shell).
 
 ### 5.13 Media Mode de letras no app · **S**
 
+Status: **implemented** (compiles cleanly; not tested on the device).
+
 Botão no `MediaCard` que abre um **Media Mode focado em lyrics** dentro do app em **modo
 paisagem** (tela cheia, barras do sistema escondidas, tela acesa): fundo imersivo derivado da
 capa/cores da faixa (mesma linguagem visual do Media Mode do shell) e a letra sincronizada vinda

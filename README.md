@@ -8,7 +8,7 @@ Kotlin + Jetpack Compose, Material 3 Expressive with Material You dynamic colour
 Google Sans Flex (the ii shell's face). The home is a dashboard of the PC: its card (the
 lock, its state), what plays on it, its volume with output and input as split buttons
 (the device list opens in a bottom sheet), what it is doing live, the tools used most,
-its quick toggles and its load. Every tool is in *Tools*, every permission and switch in
+its quick toggles, its load, and a card to stream the phone as the PC's microphone. Every tool is in *Tools*, every permission and switch in
 *Settings* (where pairing lives too); each screen is its own activity (`Dest` →
 `MainActivity`).
 
@@ -131,7 +131,9 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   defaults to off.
 - **PC media on the phone:** what plays on the PC shows as a media player on the phone's
   lock screen and Quick Settings (title, artist, cover, position), with play, skip and
-  seek. The phone's own players are never echoed back.
+  seek, plus a landscape full-screen **Media Mode** with cover-tinted backdrop,
+  karaoke/synced lyrics, lyrics-only toggle, and per-100 ms sync nudge. The phone's own
+  players are never echoed back.
 - **Verification codes:** a code in a mirrored notification (SMS or app) is copied on the
   PC and shown in a popup with *Copy*; the PC reads it from the notification text, so the
   phone has nothing extra to allow. The copy is marked sensitive (no clipboard history) and

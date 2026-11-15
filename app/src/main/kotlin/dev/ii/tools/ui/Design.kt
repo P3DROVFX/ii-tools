@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +45,7 @@ import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -95,6 +97,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.takeOrElse
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.toPath
@@ -154,7 +157,16 @@ fun ToolScaffold(
             LargeFlexibleTopAppBar(
                 title = {
                     // Size comes from the bar (large expanded, small collapsed); the face is the widest.
-                    Text(title, fontFamily = Expressive.xwide(1.sp).fontFamily, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val maxSize = LocalTextStyle.current.fontSize.takeOrElse { 36.sp }
+                    val minSize = if (maxSize.isSp && maxSize.value > 16f) 16.sp else maxSize
+                    Text(
+                        title,
+                        fontFamily = Expressive.xwide(1.sp).fontFamily,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        autoSize = TextAutoSize.StepBased(minFontSize = minSize, maxFontSize = maxSize),
+                    )
                 },
                 subtitle = {
                     if (!subtitle.isNullOrEmpty()) {

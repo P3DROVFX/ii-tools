@@ -46,6 +46,7 @@ data class PcPlayer(
     val canPrevious: Boolean,
     val canSeek: Boolean,
     val url: String = "",
+    val track: String = "",
 ) {
     /** Where the track is at [now] (elapsed realtime). */
     fun positionAt(now: Long): Long {
@@ -90,7 +91,8 @@ object PcMedia {
         LinkHub.announceCaps()
     }
 
-    fun caps(c: Context): List<String> = if (isEnabled(c)) listOf("pcMedia") else emptyList()
+    fun caps(c: Context): List<String> =
+        if (isEnabled(c)) listOf("pcMedia", "pcLyrics") else emptyList()
 
     /** The `pcMedia` topic, from the socket thread. */
     fun update(c: Context, m: JSONObject) {
@@ -134,6 +136,7 @@ object PcMedia {
         main.post {
             current = null
             _player.value = null
+            PcLyrics.onPlayerCleared()
             session?.let {
                 it.isActive = false
                 it.release()
@@ -184,6 +187,7 @@ object PcMedia {
     private fun show(ctx: Context) {
         val m = current ?: return
         val playing = m.optBoolean("playing")
+        val track = m.optString("track")
         _player.value = PcPlayer(
             title = m.optString("title"),
             artist = m.optString("artist"),
@@ -198,7 +202,9 @@ object PcMedia {
             canPrevious = m.optBoolean("canPrevious"),
             canSeek = m.optBoolean("canSeek"),
             url = m.optString("url"),
+            track = track,
         )
+        PcLyrics.onTrackChanged(track)
         val s = session ?: MediaSession(ctx, "ii tools PC").also {
             it.setCallback(callback, main)
             session = it

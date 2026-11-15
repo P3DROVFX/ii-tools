@@ -384,7 +384,7 @@ fun ClipboardScreen(onBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
-private fun ClipHistoryRow(
+internal fun ClipHistoryRow(
     entry: ClipHistoryEntry,
     thumb: ImageBitmap?,
     onTap: () -> Unit,

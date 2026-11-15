@@ -130,6 +130,12 @@
             android:exported="false" />
 
         <activity
+            android:name=".MediaModeActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="false"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
             android:name=".CallsActivity"
             android:exported="false" />
 

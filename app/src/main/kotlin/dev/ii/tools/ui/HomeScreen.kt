@@ -4,6 +4,7 @@ package dev.ii.tools.ui
 
 import android.widget.Toast
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,6 +42,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +52,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -77,11 +82,14 @@ import dev.ii.tools.link.ShellInfo
 import dev.ii.tools.link.Wake
 import dev.ii.tools.media.Handoff
 import dev.ii.tools.media.PcMedia
+import dev.ii.tools.mic.Mic
+import dev.ii.tools.mic.MicPhase
 import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.pclive.PcLiveItem
 import dev.ii.tools.ui.theme.Expressive
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
@@ -92,6 +100,7 @@ import androidx.compose.runtime.setValue
  */
 @Composable
 fun HomeScreen(onOpen: (Dest) -> Unit) {
+    val clipHistory = clipHistoryAvailable()
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     val shell by LinkHub.shell.collectAsStateWithLifecycle()
@@ -115,7 +124,7 @@ fun HomeScreen(onOpen: (Dest) -> Unit) {
             val current = pc
             when {
                 current == null -> item(key = "pair") { PairContent(status, scanner, network) }
-                online -> dashboard(current, shell!!, onOpen)
+                online -> dashboard(current, shell!!, clipHistory, onOpen)
                 else -> away(current, status, onOpen)
             }
         }
@@ -159,7 +168,7 @@ private fun BarButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit
 
 // ── Connected ─────────────────────────────────────────────────────────────
 
-private fun LazyListScope.dashboard(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
+private fun LazyListScope.dashboard(pc: PairedPc, shell: ShellInfo, clipHistory: Boolean, onOpen: (Dest) -> Unit) {
     item(key = "hero") { PcHero(pc, shell, onOpen) }
     item(key = "media") { MediaCard(onOpen) }
     if ("audio" in shell.caps) item(key = "audio") { AudioCard(onOpen) }
@@ -169,10 +178,14 @@ private fun LazyListScope.dashboard(pc: PairedPc, shell: ShellInfo, onOpen: (Des
     item(key = "monitor") { SecondScreenCard(onOpen) }
     if ("remote" in shell.caps && shell.actions.any { it.id != "lock" }) {
         item(key = "controlsHeader") { SectionHeader(stringResource(R.string.controls_title), stringResource(R.string.remote_short)) { onOpen(Dest.REMOTE) } }
-        item(key = "controls") { ControlsRow(shell) }
+        item(key = "controls") { ControlsRow(shell, onOpen) }
     }
+    if ("display" in shell.caps) item(key = "display") { HomeDisplay(onOpen) }
     item(key = "webcam") { WebcamCard(onOpen) }
     if ("perf" in shell.caps) item(key = "perf") { PerfCard(onOpen) }
+    item(key = "mic") { MicCard(onOpen) }
+    // Last on the home: the PC's clipboard history, its list in a bottom sheet.
+    if (clipHistory) item(key = "clip") { ClipHistoryCard(onOpen) }
 }
 
 /** The PC, big: where the shell's wallpaper will go, its name and the lock. */
@@ -276,13 +289,13 @@ private fun MediaCard(onOpen: (Dest) -> Unit) {
         }
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val haptics = LocalHapticFeedback.current
                 Box(Modifier.size(28.dp).clip(CircleShape).background(cs.onSecondaryContainer), contentAlignment = Alignment.Center) {
                     Icon(painterResource(R.drawable.rounded_music_note), null, tint = cs.secondaryContainer, modifier = Modifier.size(18.dp))
                 }
                 Text(p.app, style = Expressive.caption, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 if (p.url.startsWith("http")) {
                     val ctx = LocalContext.current
-                    val haptics = LocalHapticFeedback.current
                     Row(
                         Modifier.clip(CircleShape).background(cs.onSecondaryContainer.copy(alpha = 0.12f)).clickable {
                             haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
@@ -304,6 +317,15 @@ private fun MediaCard(onOpen: (Dest) -> Unit) {
                         Icon(painterResource(R.drawable.rounded_speaker), null, Modifier.size(16.dp))
                         Text(out.name, style = Expressive.title(13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 140.dp))
                     }
+                }
+                Box(
+                    Modifier.clip(CircleShape).background(cs.onSecondaryContainer.copy(alpha = 0.12f)).clickable {
+                        haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                        onOpen(Dest.MEDIA_MODE)
+                    }.size(30.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(painterResource(R.drawable.rounded_lyrics), stringResource(R.string.media_mode_open), Modifier.size(16.dp))
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -383,12 +405,13 @@ private fun AudioCard(onOpen: (Dest) -> Unit) {
                 icon = if (out.mute) R.drawable.rounded_volume_off else R.drawable.rounded_volume_up,
                 enabled = !out.mute,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DeviceSplitButton(out, R.drawable.rounded_speaker, R.drawable.rounded_volume_off, stringResource(R.string.audio_pick_output), onPick = { sheet = 0 }, modifier = Modifier.weight(1f))
+            // One per row: side by side each had ~55 dp left for its name.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                DeviceSplitButton(out, R.drawable.rounded_speaker, R.drawable.rounded_volume_off, stringResource(R.string.audio_pick_output), onPick = { sheet = 0 }, modifier = Modifier.fillMaxWidth())
                 a.mic?.let { mic ->
                     DeviceSplitButton(
                         mic, R.drawable.rounded_mic, R.drawable.rounded_mic_off, stringResource(R.string.audio_pick_input), onPick = { sheet = 1 },
-                        modifier = Modifier.weight(1f), container = cs.tertiaryContainer, content = cs.onTertiaryContainer,
+                        modifier = Modifier.fillMaxWidth(), container = cs.tertiaryContainer, content = cs.onTertiaryContainer,
                     )
                 }
             }
@@ -562,20 +585,24 @@ internal fun MonitorDrawing(modifier: Modifier = Modifier, scale: Float = 1f) {
 
 /** The shell's toggles (all but the lock, which the hero holds), round, showing the real state. */
 @Composable
-private fun ControlsRow(shell: ShellInfo) {
+private fun ControlsRow(shell: ShellInfo, onOpen: (Dest) -> Unit) {
     val active by LinkHub.active.collectAsStateWithLifecycle()
     val runner = rememberActionRunner()
     val actions = shell.actions.filter { it.id != "lock" }
+    // The shell's own Media Mode lives on the Controls page; here the same place opens the
+    // phone's player (Media Mode in the app).
+    val playerId = "mediaMode"
     val shapes = listOf(MaterialShapes.Sunny, MaterialShapes.Cookie9Sided, MaterialShapes.Cookie7Sided, MaterialShapes.Clover4Leaf, MaterialShapes.SoftBurst)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         actions.chunked(4).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { a ->
+                    val player = a.id == playerId
                     RoundAction(
-                        label = a.name,
-                        icon = symbolPainter(a.icon),
-                        active = a.id in active,
-                        onClick = { runner.run(a.id) },
+                        label = if (player) stringResource(R.string.home_player_mp3) else a.name,
+                        icon = if (player) painterResource(R.drawable.rounded_lyrics) else symbolPainter(a.icon),
+                        active = !player && a.id in active,
+                        onClick = { if (player) onOpen(Dest.MEDIA_MODE) else runner.run(a.id) },
                         onShape = shapes[actions.indexOf(a) % shapes.size],
                         note = runner.notes[a.id],
                         modifier = Modifier.weight(1f),
@@ -585,6 +612,17 @@ private fun ControlsRow(shell: ShellInfo) {
             }
         }
     }
+}
+
+/** The Remote page's display card (the focused monitor's brightness and night light), live while it shows. */
+@Composable
+private fun HomeDisplay(onOpen: (Dest) -> Unit) {
+    val display by LinkHub.display.collectAsStateWithLifecycle()
+    DisposableEffect(Unit) {
+        LinkHub.subscribeDisplay(true)
+        onDispose { LinkHub.subscribeDisplay(false) }
+    }
+    display?.let { DisplayCard(it) }
 }
 
 /** The phone as the PC's webcam (roadmap 4.6). */
@@ -655,6 +693,193 @@ private fun WebcamCard(onOpen: (Dest) -> Unit) {
             } else {
                 FilledPill(stringResource(R.string.webcam_start), onClick = { onOpen(Dest.CAMERA) }, icon = R.drawable.rounded_play_arrow_fill1, modifier = Modifier.fillMaxWidth())
             }
+        }
+    }
+}
+
+/** The phone as the PC's microphone (roadmap 5.14). */
+@Composable
+private fun MicCard(onOpen: (Dest) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val ctx = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    val status by Mic.status.collectAsStateWithLifecycle()
+    val muted by Mic.muted.collectAsStateWithLifecycle()
+    val shell by LinkHub.shell.collectAsStateWithLifecycle()
+    var hasPermission by remember { mutableStateOf(Mic.hasPermission(ctx)) }
+    LifecycleResumeEffect(Unit) {
+        hasPermission = Mic.hasPermission(ctx)
+        onPauseOrDispose { }
+    }
+    val live = status.phase == MicPhase.LIVE
+    val starting = status.phase == MicPhase.STARTING
+    val asking = status.phase == MicPhase.ASKING
+    val failed = status.phase == MicPhase.FAILED
+    val pcReady = shell?.caps?.contains("mic") == true
+    val now = rememberClock(live)
+    val elapsed = if (live && status.since > 0L) clockText((now - status.since) / 1000L) else "0:00"
+
+    val shapeColor = when {
+        live && muted -> Layer.field
+        live -> cs.tertiary
+        failed -> cs.errorContainer
+        else -> cs.tertiaryContainer
+    }
+    val iconTint = when {
+        live && muted -> cs.onSurfaceVariant
+        live -> cs.onTertiary
+        failed -> cs.onErrorContainer
+        else -> cs.onTertiaryContainer
+    }
+    val iconRes = when {
+        live && muted -> R.drawable.rounded_mic_off
+        live -> R.drawable.rounded_mic_fill1
+        else -> R.drawable.rounded_mic
+    }
+
+    ExpressiveCard(Layer.pane, cs.onSurface, onClick = { onOpen(Dest.MIC) }) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Caption(stringResource(R.string.mic_title), color = cs.onSurfaceVariant)
+                    Text(
+                        stringResource(R.string.home_mic_headline),
+                        style = Expressive.xwide(30.sp),
+                        autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 30.sp),
+                        maxLines = 2,
+                    )
+                }
+                StateShape(active = live, size = 104.dp, color = shapeColor, on = MaterialShapes.Clover4Leaf) {
+                    Icon(painterResource(iconRes), null, tint = iconTint, modifier = Modifier.size(46.dp))
+                }
+            }
+            if (live) {
+                val liveText = if (status.reconnecting) {
+                    stringResource(R.string.mic_reconnecting)
+                } else {
+                    stringResource(R.string.home_mic_stats, elapsed, status.kbps)
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                        Row(
+                            Modifier
+                                .clip(CircleShape)
+                                .background(if (status.reconnecting) cs.errorContainer else cs.tertiaryContainer)
+                                .padding(start = 10.dp, end = 12.dp)
+                                .height(32.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (status.reconnecting) cs.error else cs.tertiary),
+                            )
+                            Text(
+                                liveText,
+                                style = Expressive.title(13.sp),
+                                color = if (status.reconnecting) cs.onErrorContainer else cs.onTertiaryContainer,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    ToggleButton(
+                        checked = muted,
+                        onCheckedChange = {
+                            haptics.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                            Mic.setMuted(it)
+                        },
+                        colors = ToggleButtonDefaults.colors(
+                            containerColor = Layer.onPane,
+                            contentColor = cs.onSurface,
+                            checkedContainerColor = cs.errorContainer,
+                            checkedContentColor = cs.onErrorContainer,
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        modifier = Modifier.height(34.dp),
+                    ) {
+                        Icon(painterResource(if (muted) R.drawable.rounded_mic_off else R.drawable.rounded_mic), null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(if (muted) R.string.home_mic_muted else R.string.mic_mute), style = Expressive.title(13.sp), maxLines = 1)
+                    }
+                }
+                MicLevelMeter(muted = muted)
+            } else {
+                val body = when {
+                    starting -> stringResource(R.string.webcam_starting)
+                    asking -> stringResource(R.string.mic_asking)
+                    failed -> micError(status.error)
+                    !pcReady -> stringResource(R.string.mic_pc_off)
+                    !hasPermission -> stringResource(R.string.home_mic_perm_needed)
+                    else -> stringResource(R.string.home_mic_card_body)
+                }
+                Text(body, style = Expressive.live(14.sp), color = if (failed) cs.error else cs.onSurfaceVariant)
+            }
+            when {
+                live -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledPill(
+                        stringResource(R.string.webcam_open),
+                        onClick = { onOpen(Dest.MIC) },
+                        container = cs.tertiary,
+                        content = cs.onTertiary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    DashedPill(
+                        stringResource(R.string.webcam_stop),
+                        onClick = { Mic.stop() },
+                        icon = R.drawable.rounded_stop,
+                        outline = cs.error,
+                        content = cs.error,
+                    )
+                }
+                starting -> DashedPill(
+                    stringResource(R.string.webcam_stop),
+                    onClick = { Mic.stop() },
+                    icon = R.drawable.rounded_stop,
+                    outline = cs.error,
+                    content = cs.error,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                else -> FilledPill(
+                    stringResource(if (failed) R.string.retry else R.string.webcam_start),
+                    onClick = { startMicOr(hasPermission) { onOpen(Dest.MIC) } },
+                    icon = R.drawable.rounded_play_arrow_fill1,
+                    container = cs.tertiary,
+                    content = cs.onTertiary,
+                    enabled = pcReady,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MicLevelMeter(muted: Boolean, modifier: Modifier = Modifier) {
+    val cs = MaterialTheme.colorScheme
+    val level by Mic.level.collectAsStateWithLifecycle()
+    val animated by animateFloatAsState(
+        targetValue = if (muted) 0f else level.coerceIn(0f, 1f),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "micLevel",
+    )
+    val track = cs.tertiaryContainer
+    val fill = cs.tertiary
+    Canvas(modifier.fillMaxWidth().height(8.dp)) {
+        val r = CornerRadius(size.height / 2, size.height / 2)
+        drawRoundRect(color = track, cornerRadius = r)
+        if (animated > 0.005f) {
+            drawRoundRect(
+                color = fill,
+                size = Size((size.width * animated).coerceAtLeast(size.height), size.height),
+                cornerRadius = r,
+            )
         }
     }
 }
