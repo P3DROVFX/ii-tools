@@ -25,6 +25,8 @@ object UpdateMarkdown {
     private val unorderedRegex = Regex("""^(\s*)[-*+]\s+(.+)$""")
     private val orderedRegex = Regex("""^(\s*)(\d+[.)])\s+(.+)$""")
     private val hrRegex = Regex("""^\s{0,3}([-*_])(?:\s*\1){2,}\s*$""")
+    /** A line that is only an image (a release's banner): the app shows no pictures. */
+    private val imageRegex = Regex("""^!\[[^\]]*]\([^)]*\)$""")
 
     fun parse(markdown: String): List<MarkdownBlock> {
         val lines = markdown.replace("\r\n", "\n").replace('\r', '\n').split('\n')
@@ -50,7 +52,7 @@ object UpdateMarkdown {
                 continue
             }
 
-            if (hrRegex.matches(line)) {
+            if (hrRegex.matches(line) || imageRegex.matches(trimmed)) {
                 i++
                 continue
             }

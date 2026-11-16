@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0
 
 - **Shell widgets on the home screen:** Poster, Deck, Halo and Cover media, Bloom clock,
   Month Tall, Date Type, Date Shapes, Date Banner, Weather Strip and Weather Monolith,
