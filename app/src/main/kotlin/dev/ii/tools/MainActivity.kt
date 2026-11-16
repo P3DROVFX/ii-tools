@@ -64,6 +64,7 @@ abstract class ScreenActivity : ComponentActivity() {
 
 private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
     Dest.SETTINGS -> LinkActivity::class.java
+    Dest.HOME_EDIT -> HomeEditActivity::class.java
     Dest.REMOTE -> RemoteActivity::class.java
     Dest.AUDIO -> AudioActivity::class.java
     Dest.DECK -> DeckActivity::class.java
@@ -99,6 +100,16 @@ class MainActivity : ScreenActivity() {
 
     @Composable
     override fun Screen() = HomeScreen(onOpen = ::open)
+}
+
+/** Home screen editor, opened from Settings directly into edit mode. */
+class HomeEditActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = HomeScreen(
+        onOpen = ::open,
+        startEditing = true,
+        onFinishEdit = ::finish,
+    )
 }
 
 /** Settings: pairing, the link, every permission and switch. Also where `iilink://pair` links land. */

@@ -751,6 +751,26 @@ com H.264.
 > normal); com a mídia do PC tocando, o provider vai para a sessão do `PcMedia`. Desligado
 > por padrão; switch no Áudio e no Settings.
 
+### 5.20 Microfone sem fio sem tocar no celular · **S**
+
+> **Status (2026-11-15): implementado.** O Android 14+ não deixa iniciar um serviço de
+> microfone com o app em segundo plano; o pedido do PC virava uma notificação a tocar
+> (pelo USB o fallback do scrcpy escondia isso). Testado no S23 (Android 17): o serviço do
+> link não herda a permissão de uso depois de o processo reiniciar em segundo plano, e o
+> listener de notificações também não; com *Sobrepor a outros apps*, uma activity
+> invisível e instantânea (`MicStartActivity`) é aberta em segundo plano, dá o estado de
+> primeiro plano e inicia o `MicService` sem acender a tela. Sem a permissão, a
+> notificação continua (e também se a activity não abrir em 3 s); o shell mostra "Toque na
+> notificação no celular" enquanto espera.
+
+### 5.21 Editar a home · **S**
+
+> **Status (2026-11-15): implementado.** Registro `HomeCards` (id, nome, ícone, removível,
+> visível por padrão); a ordem e os ids conhecidos ficam em `SharedPreferences`, e um card
+> novo de uma versão futura entra sozinho na posição padrão. *Settings → Editar a tela
+> inicial* abre a home em modo de edição: arrastar pela alça (ou toque longo), remover,
+> *Adicionar cards*, restaurar o padrão. O card do PC fica fixo.
+
 ---
 
 ## Resumo
@@ -762,4 +782,4 @@ com H.264.
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home |

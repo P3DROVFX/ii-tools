@@ -3,12 +3,17 @@
 package dev.ii.tools.ui
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,9 +32,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -40,15 +49,25 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,15 +76,21 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.ii.tools.R
@@ -88,7 +113,9 @@ import dev.ii.tools.pclive.PcLive
 import dev.ii.tools.pclive.PcLiveItem
 import dev.ii.tools.ui.theme.Expressive
 import dev.ii.tools.update.AppUpdate
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -100,45 +127,142 @@ import androidx.compose.runtime.setValue
  * everything else is one tap away in Tools.
  */
 @Composable
-fun HomeScreen(onOpen: (Dest) -> Unit) {
+fun HomeScreen(
+    onOpen: (Dest) -> Unit,
+    startEditing: Boolean = false,
+    onFinishEdit: (() -> Unit)? = null,
+) {
     val ctx = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val clipHistory = clipHistoryAvailable()
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     val shell by LinkHub.shell.collectAsStateWithLifecycle()
     val update by AppUpdate.state.collectAsStateWithLifecycle()
+    val layout by HomeLayoutStore.layout(ctx).collectAsStateWithLifecycle()
     val scanner = rememberPairScanner()
     val network = rememberNetworkPermission()
     val online = status is LinkStatus.Online && shell != null
+
+    var editing by rememberSaveable { mutableStateOf(startEditing) }
+    val exitEdit = {
+        if (onFinishEdit != null) onFinishEdit() else editing = false
+    }
+    BackHandler(editing) { exitEdit() }
+
     // The PC samples its load only while a screen shows it.
-    val showsPerf = online && shell?.caps?.contains("perf") == true
+    val showsPerf = online && shell?.caps?.contains("perf") == true && HomeCards.PERF in layout.visible
     LifecycleResumeEffect(showsPerf) {
         if (showsPerf) LinkHub.subscribePerf(true)
         onPauseOrDispose { if (showsPerf) LinkHub.subscribePerf(false) }
     }
 
-    Scaffold(containerColor = Layer.page) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item(key = "bar") { HomeBar(paired = pc != null, onOpen = onOpen) }
-            val latestUpdate = update.latest
-            if (update.visibleOnHome && latestUpdate != null) {
-                item(key = "update_${latestUpdate.tagName}") {
-                    HomeUpdateCard(
-                        release = latestUpdate,
-                        onOpenUpdate = { onOpen(Dest.UPDATE) },
-                        onDismiss = { AppUpdate.dismiss(ctx, latestUpdate.tagName) },
-                    )
+    val editListState = rememberLazyListState()
+    val currentVisibleIds = rememberUpdatedState(layout.visible)
+    val dragState = remember(editListState, haptics) {
+        HomeDragState(
+            listState = editListState,
+            haptics = haptics,
+            currentIds = currentVisibleIds,
+            onMove = { from, to -> HomeLayoutStore.move(ctx, from, to) },
+        )
+    }
+
+    if (editing) {
+        val density = LocalDensity.current
+        LaunchedEffect(dragState.draggedId) {
+            if (dragState.draggedId == null) return@LaunchedEffect
+            val edgePx = with(density) { 72.dp.toPx() }
+            val maxStepPx = with(density) { 14.dp.toPx() }
+            while (isActive) {
+                val step = dragState.autoScrollStep(edgePx, maxStepPx)
+                if (step != 0f) {
+                    val consumed = editListState.scrollBy(step)
+                    if (consumed != 0f) dragState.checkSwap()
                 }
+                withFrameNanos { }
             }
-            val current = pc
-            when {
-                current == null -> item(key = "pair") { PairContent(status, scanner, network) }
-                online -> dashboard(current, shell!!, clipHistory, onOpen)
-                else -> away(current, status, onOpen)
+        }
+    }
+
+    Scaffold(
+        containerColor = Layer.page,
+        topBar = {
+            if (editing) {
+                HomeEditTopBar(
+                    canReset = layout != HomeCards.defaultLayout,
+                    onReset = {
+                        haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                        HomeLayoutStore.reset(ctx)
+                    },
+                    onDone = exitEdit,
+                )
+            }
+        },
+    ) { padding ->
+        if (editing) {
+            val visibleCards = remember(layout.visible) {
+                layout.visible.mapNotNull { HomeCards.byId[it] }
+            }
+            val hiddenCards = remember(layout.visible) {
+                val visibleSet = layout.visible.toHashSet()
+                HomeCards.all.filter { it.id !in visibleSet }
+            }
+            LazyColumn(
+                state = editListState,
+                userScrollEnabled = dragState.draggedId == null,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = padding.calculateTopPadding() + 8.dp,
+                    bottom = padding.calculateBottomPadding() + 32.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                editDashboard(
+                    visibleCards = visibleCards,
+                    hiddenCards = hiddenCards,
+                    pc = pc,
+                    shell = shell,
+                    online = online,
+                    clipHistory = clipHistory,
+                    dragState = dragState,
+                    onOpen = onOpen,
+                    onRemove = { id -> HomeLayoutStore.remove(ctx, id) },
+                    onAdd = { id -> HomeLayoutStore.add(ctx, id) },
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = padding.calculateTopPadding() + 8.dp,
+                    bottom = padding.calculateBottomPadding() + 32.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item(key = "bar") {
+                    HomeBar(paired = pc != null, onOpen = onOpen)
+                }
+                val latestUpdate = update.latest
+                if (update.visibleOnHome && latestUpdate != null) {
+                    item(key = "update_${latestUpdate.tagName}") {
+                        HomeUpdateCard(
+                            release = latestUpdate,
+                            onOpenUpdate = { onOpen(Dest.UPDATE) },
+                            onDismiss = { AppUpdate.dismiss(ctx, latestUpdate.tagName) },
+                        )
+                    }
+                }
+                val current = pc
+                when {
+                    current == null -> item(key = "pair") { PairContent(status, scanner, network) }
+                    online -> dashboard(layout.visible, current, shell!!, clipHistory, onOpen)
+                    else -> away(current, status, onOpen)
+                }
             }
         }
     }
@@ -166,6 +290,50 @@ private fun HomeBar(paired: Boolean, onOpen: (Dest) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeEditTopBar(
+    canReset: Boolean,
+    onReset: () -> Unit,
+    onDone: () -> Unit,
+) {
+    val haptics = LocalHapticFeedback.current
+    TopAppBar(
+        title = {
+            Text(
+                stringResource(R.string.home_edit_short),
+                style = Expressive.xwide(24.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        navigationIcon = {
+            IconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                    onDone()
+                },
+                colors = IconButtonDefaults.iconButtonColors(containerColor = Layer.pane),
+            ) { Icon(painterResource(R.drawable.rounded_arrow_back), stringResource(R.string.back)) }
+        },
+        actions = {
+            IconButton(
+                onClick = onReset,
+                enabled = canReset,
+            ) {
+                Icon(painterResource(R.drawable.rounded_restart_alt), stringResource(R.string.home_edit_reset))
+            }
+            TonalPill(
+                stringResource(R.string.deck_done),
+                onClick = onDone,
+                icon = R.drawable.rounded_check,
+            )
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Layer.page),
+        modifier = Modifier.padding(horizontal = 8.dp),
+    )
+}
+
 @Composable
 private fun BarButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
     val haptics = LocalHapticFeedback.current
@@ -181,24 +349,42 @@ private fun BarButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit
 
 // ── Connected ─────────────────────────────────────────────────────────────
 
-private fun LazyListScope.dashboard(pc: PairedPc, shell: ShellInfo, clipHistory: Boolean, onOpen: (Dest) -> Unit) {
-    item(key = "hero") { PcHero(pc, shell, onOpen) }
-    item(key = "media") { MediaCard(onOpen) }
-    if ("audio" in shell.caps) item(key = "audio") { AudioCard(onOpen) }
-    item(key = "live") { LiveCards() }
-    item(key = "toolsHeader") { SectionHeader(stringResource(R.string.tools_title), stringResource(R.string.tools_all)) { onOpen(Dest.TOOLS) } }
-    item(key = "tools") { ToolsStrip(onOpen) }
-    item(key = "monitor") { SecondScreenCard(onOpen) }
-    if ("remote" in shell.caps && shell.actions.any { it.id != "lock" }) {
-        item(key = "controlsHeader") { SectionHeader(stringResource(R.string.controls_title), stringResource(R.string.remote_short)) { onOpen(Dest.REMOTE) } }
-        item(key = "controls") { ControlsRow(shell, onOpen) }
+private fun LazyListScope.dashboard(
+    order: List<String>,
+    pc: PairedPc,
+    shell: ShellInfo,
+    clipHistory: Boolean,
+    onOpen: (Dest) -> Unit,
+) {
+    order.forEach { id ->
+        when (id) {
+            HomeCards.HERO -> item(key = HomeCards.HERO) { PcHero(pc, shell, onOpen) }
+            HomeCards.MEDIA -> item(key = HomeCards.MEDIA) { MediaCard(onOpen) }
+            HomeCards.AUDIO -> if ("audio" in shell.caps) item(key = HomeCards.AUDIO) { AudioCard(onOpen) }
+            HomeCards.LIVE -> item(key = HomeCards.LIVE) { LiveCards() }
+            HomeCards.TOOLS -> item(key = HomeCards.TOOLS) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SectionHeader(stringResource(R.string.tools_title), stringResource(R.string.tools_all)) { onOpen(Dest.TOOLS) }
+                    ToolsStrip(onOpen)
+                }
+            }
+            HomeCards.MONITOR -> item(key = HomeCards.MONITOR) { SecondScreenCard(onOpen) }
+            HomeCards.CONTROLS -> if ("remote" in shell.caps && shell.actions.any { it.id != "lock" }) {
+                item(key = HomeCards.CONTROLS) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionHeader(stringResource(R.string.controls_title), stringResource(R.string.remote_short)) { onOpen(Dest.REMOTE) }
+                        ControlsRow(shell, onOpen)
+                    }
+                }
+            }
+            HomeCards.DISPLAY -> if ("display" in shell.caps) item(key = HomeCards.DISPLAY) { HomeDisplay() }
+            HomeCards.WEBCAM -> item(key = HomeCards.WEBCAM) { WebcamCard(onOpen) }
+            HomeCards.PERF -> if ("perf" in shell.caps) item(key = HomeCards.PERF) { PerfCard(onOpen) }
+            HomeCards.MIC -> item(key = HomeCards.MIC) { MicCard(onOpen) }
+            // Last by default: the PC's clipboard history, its list in a bottom sheet.
+            HomeCards.CLIP -> if (clipHistory) item(key = HomeCards.CLIP) { ClipHistoryCard(onOpen) }
+        }
     }
-    if ("display" in shell.caps) item(key = "display") { HomeDisplay(onOpen) }
-    item(key = "webcam") { WebcamCard(onOpen) }
-    if ("perf" in shell.caps) item(key = "perf") { PerfCard(onOpen) }
-    item(key = "mic") { MicCard(onOpen) }
-    // Last on the home: the PC's clipboard history, its list in a bottom sheet.
-    if (clipHistory) item(key = "clip") { ClipHistoryCard(onOpen) }
 }
 
 /** The PC, big: where the shell's wallpaper will go, its name and the lock. */
@@ -629,13 +815,14 @@ private fun ControlsRow(shell: ShellInfo, onOpen: (Dest) -> Unit) {
 
 /** The Remote page's display card (the focused monitor's brightness and night light), live while it shows. */
 @Composable
-private fun HomeDisplay(onOpen: (Dest) -> Unit) {
+private fun HomeDisplay(placeholder: (@Composable () -> Unit)? = null) {
     val display by LinkHub.display.collectAsStateWithLifecycle()
     DisposableEffect(Unit) {
         LinkHub.subscribeDisplay(true)
         onDispose { LinkHub.subscribeDisplay(false) }
     }
-    display?.let { DisplayCard(it) }
+    val d = display
+    if (d != null) DisplayCard(d) else placeholder?.invoke()
 }
 
 /** The phone as the PC's webcam (roadmap 4.6). */
@@ -1046,6 +1233,402 @@ private fun AwayTiles(onOpen: (Dest) -> Unit) {
                     Text(stringResource(R.string.link_stay), style = Expressive.title(18.sp))
                     Text(stringResource(R.string.home_stay_body), style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
                 }
+            }
+        }
+    }
+}
+
+// ── Edit mode ─────────────────────────────────────────────────────────────
+
+private fun LazyListScope.editDashboard(
+    visibleCards: List<HomeCardDef>,
+    hiddenCards: List<HomeCardDef>,
+    pc: PairedPc?,
+    shell: ShellInfo?,
+    online: Boolean,
+    clipHistory: Boolean,
+    dragState: HomeDragState,
+    onOpen: (Dest) -> Unit,
+    onRemove: (String) -> Unit,
+    onAdd: (String) -> Unit,
+) {
+    items(items = visibleCards, key = { it.id }) { card ->
+        val isDragging = dragState.draggedId == card.id
+        val itemModifier = if (isDragging) {
+            Modifier
+                .zIndex(1f)
+                .graphicsLayer { translationY = dragState.translationFor(card.id) }
+        } else {
+            Modifier.animateItem()
+        }
+        EditCardFrame(
+            card = card,
+            isDragging = isDragging,
+            dragState = dragState,
+            onRemove = { onRemove(card.id) },
+            modifier = itemModifier,
+        ) {
+            EditCardContent(
+                card = card,
+                pc = pc,
+                shell = shell,
+                online = online,
+                clipHistory = clipHistory,
+                onOpen = onOpen,
+            )
+        }
+    }
+
+    if (hiddenCards.isNotEmpty()) {
+        item(key = "addHeader") { GroupHeader(stringResource(R.string.home_edit_add_title)) }
+        item(key = "addCards") {
+            CardGroup {
+                hiddenCards.forEach { card ->
+                    ToolRow(
+                        title = stringResource(card.title),
+                        summary = stringResource(card.description),
+                        icon = card.icon,
+                        tint = Tint.SECONDARY,
+                        onClick = { onAdd(card.id) },
+                        trailing = {
+                            Icon(
+                                painterResource(R.drawable.rounded_add),
+                                stringResource(R.string.home_edit_add_action, stringResource(card.title)),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    } else {
+        item(key = "allShownHint") {
+            Hint(stringResource(R.string.home_edit_all_shown), Modifier.padding(top = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun EditCardFrame(
+    card: HomeCardDef,
+    isDragging: Boolean,
+    dragState: HomeDragState,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val haptics = LocalHapticFeedback.current
+    val frameColor by animateColorAsState(
+        targetValue = if (isDragging) cs.primaryContainer else Layer.onPane,
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "editFrame",
+    )
+    val titleColor = if (isDragging) cs.onPrimaryContainer else cs.onSurface
+    val mutedColor = if (isDragging) cs.onPrimaryContainer.copy(alpha = 0.75f) else cs.onSurfaceVariant
+
+    Surface(
+        shape = RoundedCornerShape(Radius.card + 4.dp),
+        color = frameColor,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 10.dp)) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .pointerInput(card.id) {
+                            detectDragGestures(
+                                onDragStart = { dragState.startDrag(card.id) },
+                                onDragEnd = { dragState.endDrag() },
+                                onDragCancel = { dragState.endDrag() },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    dragState.onDrag(dragAmount.y)
+                                },
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painterResource(R.drawable.rounded_drag_indicator),
+                        stringResource(R.string.home_edit_drag_handle, stringResource(card.title)),
+                        tint = mutedColor,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Icon(
+                    painterResource(card.icon),
+                    null,
+                    tint = titleColor,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    stringResource(card.title),
+                    style = Expressive.title(15.sp),
+                    color = titleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (card.removable) {
+                    IconButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.ToggleOff)
+                            onRemove()
+                        },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = if (isDragging) cs.onPrimaryContainer.copy(alpha = 0.14f) else Layer.field,
+                            contentColor = titleColor,
+                        ),
+                        modifier = Modifier.size(38.dp),
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.rounded_close),
+                            stringResource(R.string.home_edit_remove, stringResource(card.title)),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                } else {
+                    Text(
+                        stringResource(R.string.home_edit_pinned),
+                        style = Expressive.caption,
+                        color = mutedColor,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
+            }
+            // The overlay sibling stops taps/sliders inside the card while allowing long-press drag.
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.card))) {
+                Box(Modifier.clearAndSetSemantics { }) { content() }
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .pointerInput(card.id) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { dragState.startDrag(card.id) },
+                                onDragEnd = { dragState.endDrag() },
+                                onDragCancel = { dragState.endDrag() },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    dragState.onDrag(dragAmount.y)
+                                },
+                            )
+                        },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditCardContent(
+    card: HomeCardDef,
+    pc: PairedPc?,
+    shell: ShellInfo?,
+    online: Boolean,
+    clipHistory: Boolean,
+    onOpen: (Dest) -> Unit,
+) {
+    val activeOnline = online && pc != null && shell != null
+    val player by PcMedia.player.collectAsStateWithLifecycle()
+    val audio by LinkHub.audio.collectAsStateWithLifecycle()
+    val liveItems by PcLive.items.collectAsStateWithLifecycle()
+
+    when (card.id) {
+        HomeCards.HERO -> {
+            if (activeOnline) PcHero(pc!!, shell!!, onOpen)
+            else EditCardPlaceholder(card, pc?.name?.takeIf { it.isNotEmpty() } ?: stringResource(R.string.home_edit_offline_preview))
+        }
+        HomeCards.MEDIA -> {
+            if (activeOnline && player != null) MediaCard(onOpen)
+            else EditCardPlaceholder(card, stringResource(if (activeOnline) R.string.home_edit_when_active else R.string.home_edit_offline_preview))
+        }
+        HomeCards.AUDIO -> {
+            val hasCap = activeOnline && "audio" in shell!!.caps
+            if (hasCap && audio?.output != null) AudioCard(onOpen)
+            else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
+        }
+        HomeCards.LIVE -> {
+            if (activeOnline && liveItems.isNotEmpty()) LiveCards()
+            else EditCardPlaceholder(card, stringResource(if (activeOnline) R.string.home_edit_when_active else R.string.home_edit_offline_preview))
+        }
+        HomeCards.TOOLS -> {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionHeader(stringResource(R.string.tools_title), stringResource(R.string.tools_all)) { }
+                ToolsStrip(onOpen)
+            }
+        }
+        HomeCards.MONITOR -> SecondScreenCard(onOpen)
+        HomeCards.CONTROLS -> {
+            val hasCap = activeOnline && "remote" in shell!!.caps && shell.actions.any { it.id != "lock" }
+            if (hasCap) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SectionHeader(stringResource(R.string.controls_title), stringResource(R.string.remote_short)) { }
+                    ControlsRow(shell!!, onOpen)
+                }
+            } else {
+                EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
+            }
+        }
+        HomeCards.DISPLAY -> {
+            val hasCap = activeOnline && "display" in shell!!.caps
+            if (hasCap) HomeDisplay(placeholder = { EditCardPlaceholder(card, stringResource(R.string.home_edit_when_active)) })
+            else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
+        }
+        HomeCards.WEBCAM -> WebcamCard(onOpen)
+        HomeCards.PERF -> {
+            val hasCap = activeOnline && "perf" in shell!!.caps
+            if (hasCap) PerfCard(onOpen)
+            else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
+        }
+        HomeCards.MIC -> MicCard(onOpen)
+        HomeCards.CLIP -> {
+            if (activeOnline && clipHistory) ClipHistoryCard(onOpen)
+            else EditCardPlaceholder(
+                card,
+                stringResource(
+                    when {
+                        !activeOnline -> R.string.home_edit_offline_preview
+                        "clipHistory" !in shell!!.caps -> R.string.home_edit_unsupported
+                        else -> R.string.home_edit_clip_off
+                    },
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun editCapSummary(online: Boolean, supported: Boolean): String = stringResource(
+    when {
+        !online -> R.string.home_edit_offline_preview
+        !supported -> R.string.home_edit_unsupported
+        else -> R.string.home_edit_when_active
+    },
+)
+
+@Composable
+private fun EditCardPlaceholder(card: HomeCardDef, summary: String) {
+    val cs = MaterialTheme.colorScheme
+    ExpressiveCard(Layer.pane, cs.onSurface) {
+        Row(
+            Modifier.fillMaxWidth().padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            IconBadge(card.icon, Tint.SECONDARY)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(card.title), style = Expressive.title(16.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(summary, style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Stable
+private class HomeDragState(
+    private val listState: LazyListState,
+    private val haptics: HapticFeedback,
+    private val currentIds: State<List<String>>,
+    private val onMove: (from: Int, to: Int) -> Unit,
+) {
+    var draggedId by mutableStateOf<String?>(null)
+        private set
+    private var initialTopPx = 0f
+    private var draggedTopPx by mutableFloatStateOf(0f)
+    private var draggedHeightPx by mutableIntStateOf(0)
+    private var pendingSwapIndex by mutableIntStateOf(-1)
+
+    fun startDrag(id: String) {
+        val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == id } ?: return
+        draggedId = id
+        initialTopPx = info.offset.toFloat()
+        draggedTopPx = info.offset.toFloat()
+        draggedHeightPx = info.size
+        pendingSwapIndex = -1
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    fun onDrag(deltaY: Float) {
+        if (draggedId == null) return
+        draggedTopPx += deltaY
+        checkSwap()
+    }
+
+    fun endDrag() {
+        draggedId = null
+        pendingSwapIndex = -1
+    }
+
+    fun translationFor(id: String): Float {
+        if (draggedId != id) return 0f
+        val currentOffset = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == id }?.offset ?: return 0f
+        return draggedTopPx - currentOffset
+    }
+
+    fun autoScrollStep(edgePx: Float, maxStepPx: Float): Float {
+        if (draggedId == null || abs(draggedTopPx - initialTopPx) < 4f) return 0f
+        val layout = listState.layoutInfo
+        val topDist = draggedTopPx - layout.viewportStartOffset
+        val bottomDist = layout.viewportEndOffset - (draggedTopPx + draggedHeightPx)
+        return when {
+            topDist < edgePx && listState.canScrollBackward -> {
+                val factor = ((edgePx - topDist) / edgePx).coerceIn(0f, 1f)
+                -maxStepPx * factor
+            }
+            bottomDist < edgePx && listState.canScrollForward -> {
+                val factor = ((edgePx - bottomDist) / edgePx).coerceIn(0f, 1f)
+                maxStepPx * factor
+            }
+            else -> 0f
+        }
+    }
+
+    /**
+     * LazyColumn keeps its first visible item's key in place across a reorder. Cards are tall,
+     * so the one above the dragged card is usually the first visible: swapping with it would
+     * push the dragged card off screen and stop the drag. Pin the scroll by index instead.
+     */
+    private fun move(from: Int, to: Int) {
+        val first = listState.firstVisibleItemIndex
+        val offset = listState.firstVisibleItemScrollOffset
+        onMove(from, to)
+        if (from == first || to == first) listState.requestScrollToItem(first, offset)
+    }
+
+    fun checkSwap() {
+        val id = draggedId ?: return
+        val ids = currentIds.value
+        val currentIndex = ids.indexOf(id)
+        if (currentIndex < 0) return
+        val visible = listState.layoutInfo.visibleItemsInfo
+        val currentInfo = visible.firstOrNull { it.key == id } ?: return
+        // Wait for layout to reflect the previous swap before evaluating another.
+        if (pendingSwapIndex >= 0) {
+            if (currentInfo.index != pendingSwapIndex) return
+            pendingSwapIndex = -1
+        }
+        if (currentIndex < ids.lastIndex) {
+            val nextInfo = visible.firstOrNull { it.key == ids[currentIndex + 1] }
+            if (nextInfo != null && draggedTopPx + draggedHeightPx > nextInfo.offset + nextInfo.size / 2f) {
+                pendingSwapIndex = currentIndex + 1
+                move(currentIndex, currentIndex + 1)
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                return
+            }
+        }
+        if (currentIndex > 0) {
+            val prevInfo = visible.firstOrNull { it.key == ids[currentIndex - 1] }
+            if (prevInfo != null && draggedTopPx < prevInfo.offset + prevInfo.size / 2f) {
+                pendingSwapIndex = currentIndex - 1
+                move(currentIndex, currentIndex - 1)
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
             }
         }
     }

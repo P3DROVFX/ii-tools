@@ -2,6 +2,11 @@
 
 package dev.ii.tools.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import android.Manifest
 import android.content.Intent
 import android.provider.Settings
@@ -65,6 +70,7 @@ import dev.ii.tools.live.LiveHub
 import dev.ii.tools.media.Handoff
 import dev.ii.tools.media.PcMedia
 import dev.ii.tools.media.PhoneMedia
+import dev.ii.tools.mic.Mic
 import dev.ii.tools.notify.NotifMirror
 import dev.ii.tools.pclive.DndSync
 import dev.ii.tools.pclive.PcLive
@@ -95,6 +101,7 @@ private data class SettingsState(
     val restricted: Boolean,
     val copyService: Boolean,
     val battery: Boolean,
+    val overlay: Boolean,
 )
 
 /**
@@ -115,6 +122,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val favorite by FavoritePreset.name.collectAsStateWithLifecycle()
     val volumeKeys by VolumeKeys.enabled.collectAsStateWithLifecycle()
     val update by AppUpdate.state.collectAsStateWithLifecycle()
+    val homeLayout by HomeLayoutStore.layout(ctx).collectAsStateWithLifecycle()
     val scanner = rememberPairScanner()
     val network = rememberNetworkPermission()
     val cameraPerm = rememberCameraPermission()
@@ -134,6 +142,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
             restricted = ClipWatchService.restricted(ctx),
             copyService = ClipWatchService.isEnabled(ctx),
             battery = LinkHub.batteryUnrestricted(),
+            overlay = Mic.canStartFromBackground(ctx),
         )
     }
     var s by remember { mutableStateOf(read()) }
@@ -213,7 +222,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
 
     var confirmForget by remember { mutableStateOf(false) }
     val missing = listOf(
-        s.listener, s.post, s.phone, s.contacts, s.bluetooth, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, network.granted, cameraPerm.granted,
+        s.listener, s.post, s.phone, s.contacts, s.bluetooth, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, s.overlay, network.granted, cameraPerm.granted,
     ).count { !it }
 
     ToolScaffold(
@@ -278,6 +287,9 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 }
                 PermissionRow(stringResource(R.string.settings_copy_service), stringResource(R.string.clip_step_service_body), R.drawable.rounded_content_paste, s.copyService) {
                     ClipWatchService.openSettings(ctx)
+                }
+                PermissionRow(stringResource(R.string.perm_overlay), stringResource(R.string.perm_overlay_body), R.drawable.rounded_window, s.overlay) {
+                    ctx.startActivity(Mic.overlayPermissionIntent(ctx))
                 }
             }
         }
@@ -446,6 +458,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 )
             }
         }
+
+        item { EditHomeCard(homeLayout.visible, onEdit = { onOpen(Dest.HOME_EDIT) }) }
 
         item { GroupHeader(stringResource(R.string.update_title)) }
         item {
@@ -654,4 +668,72 @@ internal fun LazyListScope.linkGate(pc: PairedPc?, status: LinkStatus, shellRead
     if (status is LinkStatus.Online && shellReady) return true
     item { CardGroup { StatusRow(pc, status) } }
     return false
+}
+
+/** The way into editing the home: what it holds now, drawn as a small phone, and a pill to edit. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun EditHomeCard(visible: List<String>, onEdit: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val hidden = (HomeCards.all.size - visible.size).coerceAtLeast(0)
+    ExpressiveCard(cs.secondaryContainer, cs.onSecondaryContainer, onClick = onEdit) {
+        Ornament(MaterialShapes.Cookie12Sided, 220.dp, cs.secondary, Alignment.BottomStart, x = (-90).dp, y = 110.dp, alpha = 0.10f)
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ShapeBox(MaterialShapes.Cookie9Sided, 48.dp, cs.secondary) {
+                    Icon(painterResource(R.drawable.rounded_dashboard_customize), null, tint = cs.onSecondary, modifier = Modifier.size(24.dp))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.home_edit_title), style = Expressive.wide(22.sp))
+                    Text(
+                        if (hidden == 0) {
+                            pluralStringResource(R.plurals.home_edit_summary_all, visible.size, visible.size)
+                        } else {
+                            stringResource(R.string.home_edit_summary_hidden, visible.size, hidden)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = cs.onSecondaryContainer.copy(alpha = 0.8f),
+                    )
+                }
+                FilledPill(
+                    text = stringResource(R.string.home_edit_action),
+                    onClick = onEdit,
+                    icon = R.drawable.rounded_edit,
+                    container = cs.secondary,
+                    content = cs.onSecondary,
+                    height = 44.dp,
+                )
+            }
+            HomePreview(visible.size)
+        }
+    }
+}
+
+/** A phone with the home's cards stacked in it: the PC's card on top, then one bar per card. */
+@Composable
+private fun HomePreview(cards: Int) {
+    val cs = MaterialTheme.colorScheme
+    Column(
+        Modifier
+            .size(width = 76.dp, height = 132.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(cs.surfaceContainerLowest)
+            .padding(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(12.dp)).background(cs.secondary))
+        repeat((cards - 1).coerceIn(0, 6)) { i ->
+            Box(
+                Modifier
+                    .fillMaxWidth(if (i % 3 == 2) 0.62f else 1f)
+                    .height(if (i % 2 == 0) 16.dp else 11.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(cs.secondary.copy(alpha = 0.35f)),
+            )
+        }
+    }
 }

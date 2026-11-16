@@ -15,7 +15,9 @@ import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
+import android.net.Uri
 import android.os.SystemClock
+import android.provider.Settings
 import dev.ii.tools.MicActivity
 import dev.ii.tools.R
 import dev.ii.tools.link.LinkHub
@@ -78,6 +80,8 @@ object Mic {
 
     private lateinit var app: Context
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /** Falls back to the notification when the trampoline's launch was blocked. */
+    private var launchFallback: Job? = null
 
     private val _status = MutableStateFlow(MicStatus())
     val status: StateFlow<MicStatus> = _status.asStateFlow()
@@ -216,6 +220,7 @@ object Mic {
                     capture?.effects(fx)
                 }
                 "stop" -> {
+                    launchFallback?.cancel()
                     dismissAsk()
                     val phase = _status.value.phase
                     if (phase == MicPhase.STARTING || phase == MicPhase.LIVE) end(tellPc = false)
@@ -254,10 +259,35 @@ object Mic {
         }
     }
 
+    fun canStartFromBackground(ctx: Context): Boolean = Settings.canDrawOverlays(ctx)
+
+    fun overlayPermissionIntent(ctx: Context): Intent =
+        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.fromParts("package", ctx.packageName, null))
+
+    /** Called by [MicStartActivity] once the process holds foreground activity state. */
+    fun startFromTrampoline() {
+        if (!::app.isInitialized) return
+        val phase = _status.value.phase
+        if (phase == MicPhase.STARTING || phase == MicPhase.LIVE) return
+        if (hasPermission(app) && pcReady()) start()
+    }
+
     private fun onRequest() {
         when {
             _status.value.phase == MicPhase.STARTING || _status.value.phase == MicPhase.LIVE -> {}
             screenOpen && hasPermission(app) -> start()
+            canStartFromBackground(app) && hasPermission(app) -> {
+                // Display over other apps grants BAL exemption on Android 14+ without waking the screen.
+                val i = Intent(app, MicStartActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                runCatching { app.startActivity(i) }.onFailure { ask() }
+                // A blocked background launch fails silently: no start soon means it didn't open.
+                launchFallback?.cancel()
+                launchFallback = scope.launch {
+                    delay(3_000)
+                    if (_status.value.phase != MicPhase.STARTING && _status.value.phase != MicPhase.LIVE && pcReady()) ask()
+                }
+            }
             else -> ask()
         }
     }

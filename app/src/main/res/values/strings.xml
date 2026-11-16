@@ -661,6 +661,8 @@
     <string name="mic_pc_off">The PC doesn’t offer the microphone: turn it on in Settings → ii tools, or update ii on the PC.</string>
     <string name="perm_mic">Microphone</string>
     <string name="perm_mic_body">Lets the phone record sound for the PC.</string>
+    <string name="perm_overlay">Display over other apps</string>
+    <string name="perm_overlay_body">Lets the PC turn on the microphone while the phone is in your pocket.</string>
     <string name="mic_err_permission">Microphone permission is needed.</string>
     <string name="mic_err_mic">Couldn’t open the microphone. Another app may be using it.</string>
     <string name="mic_err_device">The PC couldn’t create its microphone. The Phone tab on the PC says why.</string>
@@ -753,6 +755,39 @@
     <string name="update_channel_desc">Silent notice when a new version of ii tools is released on GitHub.</string>
     <string name="update_notif_title">ii tools %1$s is available</string>
     <string name="update_notif_body">Tap to see what\'s new and download the update.</string>
+    <string name="home_card_live">Live activity</string>
+    <string name="home_edit_title">Edit home screen</string>
+    <string name="home_edit_action">Edit</string>
+    <string name="home_edit_short">Edit home</string>
+    <plurals name="home_edit_summary_all">
+        <item quantity="one">%1$d card shown</item>
+        <item quantity="other">%1$d cards shown</item>
+    </plurals>
+    <string name="home_edit_summary_hidden">%1$d shown · %2$d hidden</string>
+    <string name="home_edit_reset">Reset to default</string>
+    <string name="home_edit_drag_handle">Reorder %1$s</string>
+    <string name="home_edit_remove">Remove %1$s</string>
+    <string name="home_edit_pinned">Pinned</string>
+    <string name="home_edit_add_title">Add cards</string>
+    <string name="home_edit_add_action">Add %1$s</string>
+    <string name="home_edit_all_shown">Every card is on your home screen. Remove any card above to hide it.</string>
+    <string name="home_edit_when_active">Appears here when active on the PC</string>
+    <string name="home_edit_offline_preview">Connect to the PC to see live data</string>
+    <string name="home_edit_unsupported">Not supported by this PC</string>
+    <string name="home_edit_clip_off">Hidden while PC clipboard history is off</string>
+    <string name="home_card_hero_desc">PC status, workspace, mode and quick lock</string>
+    <string name="home_card_media_desc">Playback controls and cover art from the PC</string>
+    <string name="home_card_audio_desc">Master volume slider and device switcher</string>
+    <string name="home_card_live_desc">Active timers, alarms and recordings</string>
+    <string name="home_card_tools_desc">Quick shortcuts to Touchpad, Deck, Draw and Presenter</string>
+    <string name="home_card_monitor_desc">Extend or mirror the PC onto your phone</string>
+    <string name="home_card_controls_desc">Quick toggles for shell actions</string>
+    <string name="home_card_display_desc">Monitor brightness and night light</string>
+    <string name="home_card_webcam_desc">Use the phone camera as a PC webcam</string>
+    <string name="home_card_perf_desc">Live CPU, GPU and RAM usage</string>
+    <string name="home_card_mic_desc">Use the phone as the PC’s microphone</string>
+    <string name="home_card_clip_desc">Latest item from the PC’s clipboard history</string>
+
     <!-- Shell widgets on the home screen -->
     <string name="wd_date">Date</string>
     <string name="wd_week">Week</string>

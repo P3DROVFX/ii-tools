@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- Lets the PC start the microphone from the background without tapping a notification. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <!-- The link's foreground service; CHANGE_NETWORK_STATE is its type's prerequisite. -->
@@ -108,6 +110,10 @@
 
         <activity
             android:name=".RoutinesActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".HomeEditActivity"
             android:exported="false" />
 
         <!-- One activity per screen: the system's own transitions and predictive back. -->
@@ -230,6 +236,17 @@
             android:name=".MicActivity"
             android:launchMode="singleTop"
             android:exported="false" />
+
+        <!-- Transparent trampoline to bring the app into foreground state when the PC asks
+             for the microphone while Display over other apps is granted. -->
+        <activity
+            android:name=".mic.MicStartActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.IiTools.Invisible" />
 
         <activity
             android:name=".SecondScreenViewActivity"

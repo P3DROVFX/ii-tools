@@ -664,6 +664,8 @@
     <string name="mic_pc_off">O PC não oferece o microfone: ative em Configurações → ii tools ou atualize o ii no PC.</string>
     <string name="perm_mic">Microfone</string>
     <string name="perm_mic_body">Deixa o celular gravar o som para o PC.</string>
+    <string name="perm_overlay">Sobrepor a outros apps</string>
+    <string name="perm_overlay_body">Deixa o PC ligar o microfone com o celular no bolso.</string>
     <string name="mic_err_permission">A permissão do microfone é necessária.</string>
     <string name="mic_err_mic">Não deu para abrir o microfone. Outro app pode estar usando.</string>
     <string name="mic_err_device">O PC não conseguiu criar o microfone dele. A aba Phone no PC diz o motivo.</string>
@@ -758,6 +760,40 @@
     <string name="update_channel_desc">Aviso silencioso quando uma nova versão do ii tools sai no GitHub.</string>
     <string name="update_notif_title">ii tools %1$s disponível</string>
     <string name="update_notif_body">Toque para ver as novidades e baixar a atualização.</string>
+    <string name="home_card_live">Atividade ao vivo</string>
+    <string name="home_edit_title">Editar tela inicial</string>
+    <string name="home_edit_action">Editar</string>
+    <string name="home_edit_short">Editar início</string>
+    <plurals name="home_edit_summary_all">
+        <item quantity="one">%1$d cartão visível</item>
+        <item quantity="many">%1$d cartões visíveis</item>
+        <item quantity="other">%1$d cartões visíveis</item>
+    </plurals>
+    <string name="home_edit_summary_hidden">%1$d visíveis · %2$d ocultos</string>
+    <string name="home_edit_reset">Restaurar padrão</string>
+    <string name="home_edit_drag_handle">Reordenar %1$s</string>
+    <string name="home_edit_remove">Remover %1$s</string>
+    <string name="home_edit_pinned">Fixado</string>
+    <string name="home_edit_add_title">Adicionar cartões</string>
+    <string name="home_edit_add_action">Adicionar %1$s</string>
+    <string name="home_edit_all_shown">Todos os cartões estão na tela inicial. Remova qualquer cartão acima para ocultá-lo.</string>
+    <string name="home_edit_when_active">Aparece aqui quando ativo no PC</string>
+    <string name="home_edit_offline_preview">Conecte ao PC para ver dados ao vivo</string>
+    <string name="home_edit_unsupported">Não compatível com este PC</string>
+    <string name="home_edit_clip_off">Oculto enquanto o histórico do PC estiver desligado</string>
+    <string name="home_card_hero_desc">Estado do PC, área de trabalho, modo e bloqueio</string>
+    <string name="home_card_media_desc">Controles de mídia e capa do PC</string>
+    <string name="home_card_audio_desc">Volume principal e seletor de dispositivos</string>
+    <string name="home_card_live_desc">Cronômetros, alarmes e gravações ativos</string>
+    <string name="home_card_tools_desc">Atalhos para Touchpad, Deck, Desenho e Apresentador</string>
+    <string name="home_card_monitor_desc">Estender ou espelhar o PC no celular</string>
+    <string name="home_card_controls_desc">Botões rápidos para ações do shell</string>
+    <string name="home_card_display_desc">Brilho do monitor e luz noturna</string>
+    <string name="home_card_webcam_desc">Usar a câmera do celular como webcam do PC</string>
+    <string name="home_card_perf_desc">Uso de CPU, GPU e RAM ao vivo</string>
+    <string name="home_card_mic_desc">Usar o celular como microfone do PC</string>
+    <string name="home_card_clip_desc">Último item do histórico de transferência do PC</string>
+
     <!-- Shell widgets on the home screen -->
     <string name="wd_date">Data</string>
     <string name="wd_week">Semana</string>

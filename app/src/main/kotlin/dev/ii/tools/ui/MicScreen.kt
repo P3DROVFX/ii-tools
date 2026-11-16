@@ -57,8 +57,10 @@ fun MicScreen(onBack: () -> Unit) {
     val shell by LinkHub.shell.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     var granted by remember { mutableStateOf(Mic.hasPermission(ctx)) }
+    var overlayGranted by remember { mutableStateOf(Mic.canStartFromBackground(ctx)) }
     LifecycleResumeEffect(Unit) {
         granted = Mic.hasPermission(ctx)
+        overlayGranted = Mic.canStartFromBackground(ctx)
         Mic.screenOpen = true
         // The "start" notification opened the screen: go live now that it is up.
         if (Mic.pendingStart && granted) {
@@ -78,16 +80,27 @@ fun MicScreen(onBack: () -> Unit) {
 
     ToolScaffold(title = stringResource(R.string.mic_title), onBack = onBack) {
         item { Hint(stringResource(R.string.mic_hint)) }
-        if (!granted) {
+        if (!granted || !overlayGranted) {
             item {
                 CardGroup {
-                    PermissionRow(
-                        title = stringResource(R.string.perm_mic),
-                        body = stringResource(R.string.perm_mic_body),
-                        icon = R.drawable.rounded_mic,
-                        granted = false,
-                        onGrant = { ask.launch(Manifest.permission.RECORD_AUDIO) },
-                    )
+                    if (!granted) {
+                        PermissionRow(
+                            title = stringResource(R.string.perm_mic),
+                            body = stringResource(R.string.perm_mic_body),
+                            icon = R.drawable.rounded_mic,
+                            granted = false,
+                            onGrant = { ask.launch(Manifest.permission.RECORD_AUDIO) },
+                        )
+                    }
+                    if (!overlayGranted) {
+                        PermissionRow(
+                            title = stringResource(R.string.perm_overlay),
+                            body = stringResource(R.string.perm_overlay_body),
+                            icon = R.drawable.rounded_window,
+                            granted = false,
+                            onGrant = { ctx.startActivity(Mic.overlayPermissionIntent(ctx)) },
+                        )
+                    }
                 }
             }
         }

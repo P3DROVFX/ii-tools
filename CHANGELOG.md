@@ -14,6 +14,10 @@
   to change the PC's volume while the phone itself plays nothing.
 - **Bluetooth batteries on the PC:** the battery of the earbuds, watch or headset connected
   to the phone shows next to the phone's own in the shell.
+- **Wireless microphone without a tap:** with *Display over other apps* allowed, the PC
+  turns the phone's microphone on by itself, even with the phone locked.
+- **Edit the home:** reorder, remove and add back the home's cards (Settings → Edit home
+  screen).
 - **Fixed:** the PC's sound during a Wi-Fi second-screen session (needs the shell's
   `ii_link` helper rebuilt: *Settings → ii tools* flags an outdated helper).
 

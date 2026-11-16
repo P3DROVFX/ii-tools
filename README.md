@@ -94,6 +94,7 @@ without the ones you refuse; that feature just stays off.
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `WAKE_LOCK` | Keeping the link up in Doze; holding Wi-Fi awake while a stream runs |
 | `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS` | Its own notifications and Android 16 Live Updates |
 | `SET_WALLPAPER` | Only when *Use the PC's wallpaper* is on |
+| `SYSTEM_ALERT_WINDOW` (Display over other apps) | Only to let the PC turn on the microphone while the phone is in the background; nothing is drawn |
 | `BLUETOOTH_CONNECT` | The battery of the phone's connected Bluetooth devices, for the PC |
 
 ## Roadmap
@@ -102,9 +103,7 @@ What's planned next, in no particular order:
 
 - **Wireless mirroring.** The phone's screen mirrored and extended over Wi-Fi, without a
   cable or `adb reverse`, with an adaptive bitrate.
-- **Wireless microphone.** Polishing the phone as the PC's microphone over the link,
-  with Opus as an option for weak networks.
-- **Home screen cards reordering.** Drag the home's cards to put them in your own order.
+- **Opus for the microphone.** An option for weak networks.
 - **Widgets.** More home screen widgets ported from the shell, and the PC's state and
   controls.
 
@@ -232,8 +231,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   (720p or 1080p). Keeps streaming with the screen off, and the PC can request the
   camera with the phone confirming from a notification.
 - **Microphone:** the phone as the PC's microphone over ii link (a PipeWire source
-  `ii-tools-mic`, raw 48 kHz mono PCM), from the Mic tool or on the PC's request through a
-  notification. Keeps recording with the screen off. The PC's Phone tab and EasyEffects use it
+  `ii-tools-mic`, raw 48 kHz mono PCM) over Wi-Fi, from the Mic tool or on the PC's
+  request. With *Display over other apps* allowed, the PC turns it on by itself, phone
+  locked and in the pocket: an invisible, instant activity gives Android the foreground
+  state it requires before recording (the screen stays off). Without it, the PC's request
+  is a notification to tap. Keeps recording with the screen off. The PC's Phone tab and EasyEffects use it
   like any microphone; scrcpy and DroidCam stay as a fallback there.
 - **Presenter:** a slide clicker for any presentation app on the PC: next and previous
   (the volume keys too), start, black screen and end, a laser dot on the focused screen
@@ -292,6 +294,10 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   locks and trickles a 4-byte UDP keep-awake datagram (`iim\n`) every 50 ms to keep the
   radio out of power save until the last session ends, the link drops, or a 3 h safety
   timeout fires. Nothing runs outside a wireless session.
+- **Your own home:** *Settings → Edit home screen* opens the home in edit mode: drag a
+  card by its handle (or long-press it) to move it, remove the ones you don't use, add
+  them back from *Add cards*, or reset to the default. Cards added in future versions
+  show up on their own in their default place. The PC's card stays.
 - **Updates:** the app checks GitHub's releases at most every 12 hours, only when it is
   opened or the link comes up (no background job). A newer version shows a card on the
   home, a row in Settings and one silent notification per version; its screen has the
