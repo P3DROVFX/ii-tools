@@ -18,6 +18,8 @@ class ScreenDecoder(
     private val width: Int,
     private val height: Int,
     private val surface: Surface,
+    /** Told the moment each frame reaches the screen (latency, stalls). */
+    private val metrics: StreamMetrics? = null,
     private val onError: () -> Unit,
 ) {
     @Volatile private var closed = false
@@ -76,6 +78,9 @@ class ScreenDecoder(
             }
 
             override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
+                // Decoded: the last exact time on this side (the QTI decoder's render callback
+                // reports the pts, not when the frame was shown).
+                metrics?.decoded(info.presentationTimeUs, System.nanoTime())
                 runCatching { codec.releaseOutputBuffer(index, true) }
             }
 

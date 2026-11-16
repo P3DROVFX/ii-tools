@@ -64,7 +64,8 @@ class ScreenSocket(
     private var reconnectJob: Job? = null
 
     // Off the codec's callback thread: releasing a MediaCodec from its own callback can hang.
-    private val decoder = ScreenDecoder(width, height, surface) {
+    private val metrics = StreamMetrics()
+    private val decoder = ScreenDecoder(width, height, surface, metrics) {
         if (running) scope.launch {
             if (running) {
                 stop()
@@ -107,6 +108,7 @@ class ScreenSocket(
                 frameQueue.offer(Frame(kind, pts, arr))
                 return
             }
+            metrics.received(pts)
             if (frameQueue.size > MAX_QUEUED_FRAMES) {
                 // The backlog is late: skip it and go on. The PC's encoder refreshes the
                 // picture in waves, so the damage heals within a second without a key frame
@@ -123,7 +125,9 @@ class ScreenSocket(
             when (m.optString("t")) {
                 "pong" -> {
                     val sent = pings.remove(m.optInt("id")) ?: return
-                    val rtt = (SystemClock.elapsedRealtime() - sent).toInt().coerceAtLeast(0)
+                    val recv = System.nanoTime()
+                    metrics.pong(sent, recv, m.optLong("now", 0L))
+                    val rtt = ((recv - sent) / 1_000_000).toInt().coerceAtLeast(0)
                     lastRttMs = rtt
                     lastStats?.let { cur ->
                         val updated = cur.copy(rttMs = rtt)
@@ -166,13 +170,16 @@ class ScreenSocket(
         decoderThread.start()
         connect()
         scope.launch {
+            var sent = 0
             while (isActive && running) {
-                delay(PING_INTERVAL_MS)
+                // A quick burst first: the clock offset (StreamMetrics) needs a low-RTT sample.
+                delay(if (sent < 5) 200L else PING_INTERVAL_MS)
+                sent++
                 val w = ws
                 if (open && w != null) {
                     val id = nextPingId.getAndIncrement()
                     if (pings.size > 16) pings.clear()
-                    pings[id] = SystemClock.elapsedRealtime()
+                    pings[id] = System.nanoTime()
                     w.send(JSONObject().put("t", "ping").put("id", id).toString())
                 }
             }
