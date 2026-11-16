@@ -101,11 +101,9 @@ without the ones you refuse; that feature just stays off.
 
 What's planned next, in no particular order:
 
-- **Wireless mirroring.** The phone's screen mirrored and extended over Wi-Fi, without a
-  cable or `adb reverse`, with an adaptive bitrate.
-- **Opus for the microphone.** An option for weak networks.
-- **Widgets.** More home screen widgets ported from the shell, and the PC's state and
-  controls.
+- **Multiple devices connection** Allow the phone to connect to multiple pc's
+- **New cards inside home screen** Like more expressive and dedicated cards to other hidden features  
+- **New modes integrated with the shell** At first, a screen saver
 
 The long version is in [ROADMAP.md](ROADMAP.md).
 
