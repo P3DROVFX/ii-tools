@@ -156,7 +156,7 @@ private fun PcRow(entry: PcEntry, onPick: () -> Unit) {
             Text(entry.pc.name.ifEmpty { "PC" }, style = Expressive.title(16.sp), color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 when (status) {
-                    is LinkStatus.Online -> stringResource(R.string.status_online)
+                    is LinkStatus.Online -> onlineLabel(status.host, withHost = false)
                     is LinkStatus.Offline -> problemText(status.problem, status.failure)
                     else -> statusLabel(status)
                 },

@@ -5,6 +5,9 @@
 - **Several PCs:** pair more than one PC without unpairing any. They all stay connected;
   the home's title is the controlled PC's name, and its arrow switches to another one or
   pairs a new one. The phone's notifications, calls and media reach every PC.
+- **Away from home over Tailscale:** with *Away from home* on in the PC's Settings → ii
+  tools, the app reaches the PC from any network: a *Connect over Tailscale* button when
+  the PC is away, or *Tailscale away from home* to turn it on and off by itself.
 
 ## 1.2.0
 

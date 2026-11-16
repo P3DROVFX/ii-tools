@@ -264,6 +264,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     mirrorRadio = it
                     MirrorRadio.setEnabled(ctx, it)
                 }, R.drawable.rounded_speed, summary = stringResource(R.string.mirror_radio_body))
+                TailnetAutoRow()
                 PermissionRow(
                     stringResource(R.string.link_battery), stringResource(R.string.settings_battery_body), R.drawable.rounded_battery_full, s.battery,
                 ) {
@@ -567,7 +568,7 @@ private fun PcCard(pc: PairedPc, status: LinkStatus, onForget: () -> Unit) {
                         when {
                             woke == true -> stringResource(R.string.wake_sent)
                             woke == false -> stringResource(R.string.wake_failed)
-                            status is LinkStatus.Online -> stringResource(R.string.status_online) + " · " + status.host
+                            status is LinkStatus.Online -> onlineLabel(status.host)
                             status is LinkStatus.Offline -> problemText(status.problem, status.failure)
                             else -> statusLabel(status)
                         },
@@ -577,7 +578,7 @@ private fun PcCard(pc: PairedPc, status: LinkStatus, onForget: () -> Unit) {
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(painterResource(R.drawable.rounded_lan), stringResource(R.string.link_address), Modifier.size(18.dp))
-                Text(pc.hosts.joinToString(" · ") { "$it:${pc.port}" }, style = Expressive.digitsSoft(16.sp), maxLines = 2)
+                Text((pc.hosts + pc.tailnet).joinToString(" · ") { "$it:${pc.port}" }, style = Expressive.digitsSoft(16.sp), maxLines = 3)
             }
             if (!online) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -586,6 +587,7 @@ private fun PcCard(pc: PairedPc, status: LinkStatus, onForget: () -> Unit) {
                     }
                     DashedPill(stringResource(R.string.retry), onClick = { LinkHub.retry() }, icon = R.drawable.rounded_refresh, modifier = Modifier.weight(1f))
                 }
+                TailnetButton(Modifier.fillMaxWidth())
             }
             FilledPill(
                 stringResource(R.string.forget_pc), onClick = onForget, icon = R.drawable.rounded_link_off,

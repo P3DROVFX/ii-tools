@@ -785,6 +785,19 @@ com H.264.
 > selecionado, guardados por PC e trocados na hora. Nada mudou no protocolo nem no shell.
 > Pareamentos antigos migram sozinhos.
 
+### 5.23 Fora de casa pelo Tailscale · **S**
+
+> **Status (2026-11-16): implementado.** Shell: `iiTools.tailscale.enable` (tile *Away from
+> home*); o `IiLinkService` lê o Tailscale só em eventos (helper subindo, celular
+> conectando, switch), sobe um Tailscale logado e parado (`TailscaleService.ensureUp()`, sem
+> pkexec) e manda `hello.routes` (LAN + tailnet com nome MagicDNS). App: rotas guardadas por
+> PC (`PairedPc.tailnet`, migrando o `100.x` que o QR trazia), ordem por rede (fora da LAN
+> do PC com Tailscale ligado, tailnet primeiro), botão *Conectar pelo Tailscale* no PC
+> ausente (broadcast `CONNECT_VPN` do app Tailscale), modo automático *Tailscale fora de
+> casa* que liga longe e desliga ao voltar (só se foi o app que ligou), e volta para a LAN
+> quando o Wi-Fi de casa aparece. Falta: acordar o PC de longe (relay por outro PC pareado
+> na mesma LAN).
+
 ---
 
 ## Resumo
@@ -796,4 +809,4 @@ com H.264.
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale |

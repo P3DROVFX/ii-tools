@@ -439,7 +439,7 @@ private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
             ) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(cs.primary))
                 Text(
-                    listOfNotNull(stringResource(R.string.status_online), (status as? LinkStatus.Online)?.host).joinToString(" · "),
+                    onlineLabel((status as? LinkStatus.Online)?.host),
                     style = Expressive.title(14.sp),
                     color = cs.onSurface,
                     maxLines = 1,
@@ -1172,6 +1172,7 @@ private fun LoadColumn(value: String, unit: String, label: String, fraction: Flo
 private fun LazyListScope.away(pc: PairedPc, status: LinkStatus, onOpen: (Dest) -> Unit) {
     item(key = "awayHero") { AwayHero(pc, status) }
     item(key = "awayTiles") { AwayTiles(onOpen) }
+    item(key = "awayTailnet") { CardGroup { TailnetAutoRow() } }
     item(key = "toolsHeader") { SectionHeader(stringResource(R.string.tools_title), stringResource(R.string.tools_all)) { onOpen(Dest.TOOLS) } }
     item(key = "tools") { ToolsStrip(onOpen) }
 }
@@ -1212,6 +1213,8 @@ private fun AwayHero(pc: PairedPc, status: LinkStatus) {
                 }
                 DashedPill(stringResource(R.string.retry), onClick = { LinkHub.retry() }, icon = R.drawable.rounded_refresh, height = 60.dp, modifier = Modifier.weight(1f))
             }
+            // Away from its LAN: the same PC over Tailscale, when its shell allows it.
+            TailnetButton(Modifier.fillMaxWidth().padding(top = 8.dp))
         }
     }
 }

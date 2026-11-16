@@ -127,6 +127,13 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   (gallery, files, contacts, the webcam or microphone a PC asks for) goes back to the PC
   that asked. The PC's media, lyrics, live activity and wallpaper shown on the phone are
   the controlled PC's.
+- **Away from home (Tailscale):** turn on *Away from home* in the PC's *Settings → ii tools*
+  and the shell keeps Tailscale up and tells the phone its tailnet address (`hello.routes`),
+  so a pairing made at home works from any network, no re-pairing. Away from the PC's LAN
+  the app tries the tailnet first; on an away PC, *Connect over Tailscale* turns the
+  Tailscale app's VPN on (its `CONNECT_VPN` broadcast) and retries, and *Tailscale away
+  from home* (Settings, and the away home) does it by itself, turning it off again back
+  home. The status says *Connected via Tailscale*. Wake-on-LAN cannot cross networks.
 - **Lifetime:** the link stays open in the background (*Stay connected*, on by default),
   so the PC can reach the phone at any time; it needs the app let off battery
   optimisation (a guided step), or Doze cuts it. No foreground service for the link: the process lives

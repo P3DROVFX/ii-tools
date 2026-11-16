@@ -387,6 +387,15 @@
     <string name="home_pc_load">PC load</string>
     <string name="home_ram_of">RAM of %1$s</string>
     <string name="home_paired_pc">Paired PC</string>
+    <string name="status_online_tailnet">Connected via Tailscale</string>
+    <string name="tailnet_connect">Connect over Tailscale</string>
+    <string name="tailnet_connecting">Turning Tailscale on…</string>
+    <string name="tailnet_install">Get Tailscale</string>
+    <string name="tailnet_failed">Tailscale did not connect. Open the Tailscale app once, log in and allow its VPN.</string>
+    <string name="tailnet_auto">Tailscale away from home</string>
+    <string name="tailnet_auto_body">Turns Tailscale on by itself when the PC\'s network is not around, and off again back home</string>
+    <string name="tailnet_needs_app">Needs the Tailscale app on this phone</string>
+    <string name="tailnet_needs_pc">On the PC, turn on Settings → ii tools → Away from home</string>
     <string name="pcs_title">Your PCs</string>
     <string name="pcs_switch">Switch PC</string>
     <string name="pcs_hint">Every paired PC stays connected and gets the phone\'s notifications, calls and media. The home and the tools control the one picked here.</string>

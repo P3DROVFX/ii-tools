@@ -666,9 +666,10 @@ object LinkHub {
                         id = reply.getString("id"),
                         token = reply.getString("token"),
                         fingerprint = uri.fingerprint,
-                        hosts = listOf(host) + uri.hosts.filter { it != host },
+                        hosts = (listOf(host) + uri.hosts.filter { it != host }).filter { !Tailnet.isTailnet(it) },
                         port = uri.port,
                         name = reply.optString("name").ifEmpty { uri.pcName },
+                        tailnet = uri.hosts.filter { Tailnet.isTailnet(it) },
                     )
                     synchronized(this) {
                         // Pairing a PC again replaces its old pairing.
@@ -733,6 +734,8 @@ object LinkHub {
                         remember(link, found)
                         continue
                     }
+                    // Away from its LAN: Tailscale, if the user lets the app turn it on.
+                    if (autoTailnet(pc)) continue
                     failures++
                     link.status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE, link.lastFailure)
                     // Only notifications wanted it, from the background: the PC is not
@@ -779,6 +782,30 @@ object LinkHub {
         cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: android.net.Network) {
                 networkEpoch.value++
+                scope.launch {
+                    // Addresses settle a moment after the network does.
+                    delay(1_500)
+                    onNetworkChanged()
+                }
+            }
+
+            override fun onLost(network: android.net.Network) {
+                scope.launch {
+                    delay(1_500)
+                    onNetworkChanged()
+                }
+            }
+        })
+        // Under a VPN the default network stays the VPN when Wi-Fi changes: Wi-Fi itself
+        // tells when the phone comes home (or leaves).
+        val wifi = android.net.NetworkRequest.Builder().addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI).build()
+        cm.registerNetworkCallback(wifi, object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                networkEpoch.value++
+                scope.launch {
+                    delay(1_500)
+                    onNetworkChanged()
+                }
             }
         })
     }
@@ -787,14 +814,15 @@ object LinkHub {
         val client = clientFor(pc.fingerprint)
         val auth = JSONObject().put("t", "auth").put("id", pc.id).put("token", pc.token).toString()
         val tried = mutableListOf<Session>()
-        for (host in pc.hosts) {
+        val hosts = candidates(pc)
+        for (host in hosts) {
             val s = open(client, host, pc.port, link)
             tried += s
             s.ws.send(auth)
             val reply = withTimeoutOrNull(5_000) { s.first.await() }
             when (reply?.optString("t")) {
                 "authOk" -> {
-                    if (host != pc.hosts.first()) remember(link, host)
+                    if (host != pc.hosts.firstOrNull()) remember(link, host)
                     link.unpairedByPc = false
                     link.socket = s.ws
                     link.status.value = LinkStatus.Online(host)
@@ -826,7 +854,7 @@ object LinkHub {
                 else -> s.ws.cancel()
             }
         }
-        link.lastFailure = failure(tried, pc.hosts, pc.port)
+        link.lastFailure = failure(tried, hosts, pc.port)
         return Outcome.UNREACHABLE
     }
 
@@ -862,7 +890,83 @@ object LinkHub {
         }
     }
 
+    /**
+     * The addresses to try, in order. On the PC's LAN, its LAN addresses (and the tailnet
+     * one after them); away from it with Tailscale up, the tailnet first, so the phone does
+     * not wait out a timeout per LAN address that cannot answer here.
+     */
+    private fun candidates(pc: PairedPc): List<String> {
+        if (pc.tailnet.isEmpty() || !Tailnet.isUp(app)) return pc.hosts
+        return if (Tailnet.onLanOf(app, pc.hosts)) pc.hosts + pc.tailnet else pc.tailnet + pc.hosts
+    }
+
+    /** The link to the controlled PC goes over Tailscale right now. */
+    fun viaTailnet(): Boolean = Tailnet.isTailnet((status.value as? LinkStatus.Online)?.host)
+
+    /** The controlled PC can be reached over Tailscale (its shell announced a tailnet address). */
+    fun hasTailnet(): Boolean = sel?.pc?.value?.tailnet?.isNotEmpty() == true
+
+    /**
+     * The button on an away PC: turns the Tailscale app's VPN on, then tries again. Null
+     * once it is up, else why not ("missing", "failed").
+     */
+    suspend fun connectTailnet(): String? {
+        if (!Tailnet.installed(app)) return "missing"
+        if (!Tailnet.connect(app)) return "failed"
+        networkEpoch.value++
+        retry()
+        return null
+    }
+
+    /** Away from the PC's LAN with the automatic switch on: bring Tailscale up for it. */
+    private suspend fun autoTailnet(pc: PairedPc): Boolean {
+        if (pc.tailnet.isEmpty() || !Tailnet.auto(app) || !Tailnet.installed(app) || Tailnet.isUp(app)) return false
+        if (Tailnet.onLanOf(app, pc.hosts)) return false
+        return Tailnet.connect(app)
+    }
+
+    /**
+     * The network changed. Back on a PC's LAN, a link still on the tailnet moves to the
+     * LAN, and a VPN this app turned on goes off once nothing uses it.
+     */
+    private fun onNetworkChanged() {
+        if (!Tailnet.isUp(app)) {
+            if (Tailnet.ours(app)) Tailnet.disconnectIfOurs(app)
+            return
+        }
+        links.value.forEach { link ->
+            val pc = link.pc.value ?: return@forEach
+            val host = (link.status.value as? LinkStatus.Online)?.host
+            if (Tailnet.isTailnet(host) && Tailnet.onLanOf(app, pc.hosts)) {
+                endSession(link)
+                if (foreground || holds.isNotEmpty()) ensureSession(link)
+            }
+        }
+        if (Tailnet.ours(app) && links.value.none { l -> l.pc.value?.let { pc -> !Tailnet.onLanOf(app, pc.hosts) && pc.tailnet.isNotEmpty() && l.session?.isActive == true } == true }) {
+            Tailnet.disconnectIfOurs(app)
+        }
+    }
+
+    /** `hello.routes`: where the PC can be reached now. Its LAN list and its tailnet ones, kept with the pairing. */
+    private fun learnRoutes(link: PcLink, routes: org.json.JSONArray) {
+        val pc = link.pc.value ?: return
+        val lan = mutableListOf<String>()
+        val tail = mutableListOf<String>()
+        for (i in 0 until routes.length()) {
+            val r = routes.optJSONObject(i) ?: continue
+            val addr = r.optString("addr").ifEmpty { null } ?: continue
+            if (r.optString("kind") == "tailscale" || Tailnet.isTailnet(addr)) tail += addr else lan += addr
+        }
+        // The address that answered stays first; one the PC no longer has goes.
+        val hosts = (pc.hosts.filter { it in lan || it == "127.0.0.1" } + lan).distinct().ifEmpty { pc.hosts }
+        val updated = pc.copy(hosts = hosts, tailnet = tail.distinct())
+        if (updated == pc) return
+        link.pc.value = updated
+        LinkPrefs.save(app, links.value.mapNotNull { it.pc.value })
+    }
+
     private fun remember(link: PcLink, host: String) {
+        if (Tailnet.isTailnet(host)) return
         val pc = link.pc.value ?: return
         link.pc.value = pc.copy(hosts = listOf(host) + pc.hosts.filter { it != host })
         LinkPrefs.save(app, links.value.mapNotNull { it.pc.value })
@@ -927,6 +1031,8 @@ object LinkHub {
                     }
                 }
                 Wake.remember(app, link.key, m.optJSONArray("wake"))
+                // A shell from before routes says nothing: what the QR code carried stays.
+                m.optJSONArray("routes")?.let { learnRoutes(link, it) }
                 val caps = m.optJSONArray("caps")
                 link.shell.value = ShellInfo(
                     name = m.optString("name"),

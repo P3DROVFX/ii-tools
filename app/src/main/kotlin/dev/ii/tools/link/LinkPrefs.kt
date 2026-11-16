@@ -38,6 +38,8 @@ data class PairedPc(
     val hosts: List<String>,
     val port: Int,
     val name: String,
+    /** Its Tailscale addresses, tried away from its LAN (the shell's `hello.routes`). */
+    val tailnet: List<String> = emptyList(),
 )
 
 /**
@@ -65,9 +67,12 @@ object LinkPrefs {
                         id = id,
                         token = token,
                         fingerprint = fp,
-                        hosts = o.optString("hosts").split(',').filter { it.isNotEmpty() },
+                        hosts = o.optString("hosts").split(',').filter { it.isNotEmpty() && !Tailnet.isTailnet(it) },
                         port = o.optInt("port", 47210),
                         name = o.optString("name"),
+                        // A QR code made with Tailscale up carried the tailnet address among the hosts.
+                        tailnet = (o.optString("tailnet").split(',') + o.optString("hosts").split(','))
+                            .filter { Tailnet.isTailnet(it) }.distinct(),
                     ),
                 )
             }
@@ -84,7 +89,8 @@ object LinkPrefs {
                     .put("fp", pc.fingerprint)
                     .put("hosts", pc.hosts.joinToString(","))
                     .put("port", pc.port)
-                    .put("name", pc.name),
+                    .put("name", pc.name)
+                    .put("tailnet", pc.tailnet.joinToString(",")),
             )
         }
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(PCS, arr.toString()).apply()
