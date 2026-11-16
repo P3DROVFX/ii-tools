@@ -1,6 +1,7 @@
 package dev.ii.tools.screen
 
 import android.os.SystemClock
+import android.util.Log
 import android.view.Surface
 import dev.ii.tools.link.LinkHub
 import kotlinx.coroutines.CoroutineScope
@@ -39,7 +40,8 @@ class ScreenSocket(
         private const val PATH = "/iilink/1/screen"
         // About 130 ms at 60 fps: a GC pause or a slow surface must not cost a key frame.
         private const val MAX_QUEUED_FRAMES = 8
-        private const val IDR_COOLDOWN_MS = 2_000L
+        // Short: a stream waiting for a key frame shows a frozen picture until it comes.
+        private const val IDR_COOLDOWN_MS = 500L
         private const val SEND_QUEUE_LIMIT = 64L * 1024L
         private const val PING_INTERVAL_MS = 1_000L
         private const val RECONNECT_MS = 9_000L
@@ -58,6 +60,10 @@ class ScreenSocket(
     @Volatile private var open = false
     @Volatile private var ws: WebSocket? = null
     @Volatile private var droppedAt = 0L
+    /** The PC's encoder heals a lost frame by itself (intra refresh: NVENC, x264; not VA-API). */
+    @Volatile private var refreshing = false
+    /** Frames were dropped without a key frame after them: wait for one. */
+    @Volatile private var awaitingKey = false
     @Volatile private var lastRttMs: Int? = null
     @Volatile private var lastStats: ScreenStats? = null
     @Volatile private var audio: ScreenAudio? = null
@@ -109,12 +115,38 @@ class ScreenSocket(
                 return
             }
             metrics.received(pts)
-            if (frameQueue.size > MAX_QUEUED_FRAMES) {
-                // The backlog is late: skip it and go on. The PC's encoder refreshes the
-                // picture in waves, so the damage heals within a second without a key frame
-                // (an encoder without refresh answers the idr with one).
-                frameQueue.removeIf { it.kind == 1 }
+            if (kind == 2) {
+                awaitingKey = false
+            } else if (awaitingKey) {
+                // A frame whose references were dropped draws smears: hold the last picture,
+                // and ask again if the first request went unanswered.
                 requestIdr()
+                return
+            }
+            if (frameQueue.size > MAX_QUEUED_FRAMES) {
+                if (refreshing) {
+                    // Skip the backlog and go on: the encoder refreshes the picture in waves,
+                    // so the damage heals within a second without a key frame.
+                    Log.w(StreamMetrics.TAG, "backlog ${frameQueue.size} frames: dropped (refreshing encoder)")
+                    frameQueue.removeIf { it.kind == 1 }
+                } else {
+                    val lastKey = frameQueue.lastOrNull { it.kind == 2 }
+                    if (lastKey != null) {
+                        // Start again from the newest key frame: everything after it is intact.
+                        var seen = false
+                        frameQueue.removeIf { f -> if (f === lastKey) { seen = true; false } else !seen && f.kind != 0 }
+                        Log.w(StreamMetrics.TAG, "backlog: skipped to the newest key frame")
+                    } else {
+                        // Every later frame needs the dropped ones: none until a key frame.
+                        frameQueue.removeIf { it.kind == 1 }
+                        Log.w(StreamMetrics.TAG, "backlog: dropped, waiting for a key frame")
+                        requestIdr()
+                        if (kind != 2) {
+                            awaitingKey = true
+                            return
+                        }
+                    }
+                }
             }
             frameQueue.offer(Frame(kind, pts, arr))
         }
@@ -136,6 +168,8 @@ class ScreenSocket(
                     }
                 }
                 "stats" -> {
+                    // screen.rs: Wi-Fi sessions refresh on every encoder but VA-API.
+                    refreshing = m.optString("encoder") in setOf("nvenc", "x264")
                     val bitrateBps = m.optLong("bitrate", 0L)
                     val maxBps = m.optLong("max", 0L)
                     val stats = ScreenStats(
@@ -158,10 +192,12 @@ class ScreenSocket(
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            Log.w(StreamMetrics.TAG, "socket closed: $code $reason")
             handleDisconnect(webSocket)
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            Log.w(StreamMetrics.TAG, "socket failed: $t")
             handleDisconnect(webSocket)
         }
     }
@@ -237,6 +273,7 @@ class ScreenSocket(
         val prev = lastIdrAt.get()
         if (now - prev < IDR_COOLDOWN_MS) return
         if (lastIdrAt.compareAndSet(prev, now)) {
+            Log.w(StreamMetrics.TAG, "asking the PC for a key frame")
             if (open) ws?.send("""{"t":"idr"}""")
         }
     }

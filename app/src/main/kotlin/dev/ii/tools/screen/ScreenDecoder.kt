@@ -29,6 +29,7 @@ class ScreenDecoder(
     @Volatile private var closed = false
     private var codec: MediaCodec? = null
     private var configured = false
+    private var lastConfig: ByteArray? = null
     private val codecThread = HandlerThread("screen-codec").apply { start() }
     private val inputs = LinkedBlockingQueue<Int>()
 
@@ -38,7 +39,15 @@ class ScreenDecoder(
 
     fun feed(kind: Int, pts: Long, bytes: ByteArray, off: Int = 0, len: Int = bytes.size) {
         if (closed) return
-        // A second codec config: the PC's capture restarted (new scale/mode or reconnect).
+        if (kind == 0) {
+            val cfg = bytes.copyOfRange(off, off + len)
+            // The same parameters again (an encoder restart for a key frame): the decoder
+            // has them. Recreating it here took long enough at 120 fps to back the queue
+            // up, which asked for another key frame, which restarted the encoder: a loop.
+            if (configured && cfg.contentEquals(lastConfig)) return
+            lastConfig = cfg
+        }
+        // A new codec config: the PC's capture changed (new scale/mode or codec).
         if (kind == 0 && configured) {
             synchronized(this) {
                 if (closed) return
