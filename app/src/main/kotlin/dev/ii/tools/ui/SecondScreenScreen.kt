@@ -253,7 +253,7 @@ fun SecondScreenScreen(onBack: () -> Unit) {
                     ) { set(p.copy(res = it)) }
                     Choice(
                         stringResource(R.string.second_fps),
-                        listOf(30 to "30", 60 to "60", 90 to "90", 120 to "120"),
+                        SecondScreen.fpsChoices(ctx).sorted().map { it to "$it" },
                         p.fps,
                     ) { set(p.copy(fps = it)) }
                     Choice(

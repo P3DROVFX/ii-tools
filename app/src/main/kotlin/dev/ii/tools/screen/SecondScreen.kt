@@ -1,6 +1,8 @@
 package dev.ii.tools.screen
 
 import android.content.Context
+import android.hardware.display.DisplayManager
+import android.view.Display
 import android.view.WindowManager
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
@@ -151,6 +153,18 @@ object SecondScreen {
     private const val PREFS = "second_screen"
     private val _prefs = MutableStateFlow<ScreenPrefs?>(null)
 
+    /** The stream rates the PC takes (PhoneScreenService), highest first. */
+    private val FPS_STEPS = listOf(120, 90, 60, 30)
+
+    /** The rates this phone's display can show, highest first: the first is the default. */
+    fun fpsChoices(ctx: Context): List<Int> {
+        val modes = ctx.getSystemService(DisplayManager::class.java)
+            ?.getDisplay(Display.DEFAULT_DISPLAY)?.supportedModes.orEmpty()
+        val max = modes.maxOfOrNull { it.refreshRate } ?: 60f
+        // 119.9 Hz panels count as 120.
+        return FPS_STEPS.filter { it <= max + 1f }.ifEmpty { listOf(FPS_STEPS.last()) }
+    }
+
     fun prefs(ctx: Context): StateFlow<ScreenPrefs?> {
         appCtx = ctx.applicationContext
         if (_prefs.value == null) {
@@ -170,7 +184,11 @@ object SecondScreen {
             val barAt = p.getFloat("barAt", 0.3f).coerceIn(0f, 1f)
             _prefs.value = ScreenPrefs(
                 res = p.getFloat("res", 1f),
-                fps = p.getInt("fps", 60),
+                // The display's highest rate unless one was picked: saving any setting wrote
+                // `fps` too, so a stored value alone is not a choice.
+                fps = fpsChoices(ctx).let { choices ->
+                    p.getInt("fps", 0).takeIf { p.getBoolean("fpsChosen", false) && it in choices } ?: choices.first()
+                },
                 scale = p.getFloat("scale", 1.5f),
                 side = p.getString("side", "right") ?: "right",
                 bitrate = p.getInt("bitrate", 16),
@@ -188,8 +206,10 @@ object SecondScreen {
 
     fun setPrefs(ctx: Context, v: ScreenPrefs) {
         appCtx = ctx.applicationContext
+        val fpsChanged = _prefs.value?.let { it.fps != v.fps } ?: false
         _prefs.value = v
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .apply { if (fpsChanged) putBoolean("fpsChosen", true) }
             .putFloat("res", v.res).putInt("fps", v.fps).putFloat("scale", v.scale)
             .putString("side", v.side).putInt("bitrate", v.bitrate).putString("mirror", v.mirror)
             .putString("transport", v.transport).putBoolean("adaptive", v.adaptive)
