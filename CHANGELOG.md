@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Shell widgets on the home screen:** Poster, Deck, Halo and Cover media, Bloom clock,
+  Month Tall, Date Type, Date Shapes, Date Banner, Weather Strip and Weather Monolith,
+  ported from the shell at its proportions. They work without the PC: the media ones
+  follow any app's player, the weather ones fetch on their own. Optional calendar and
+  location access in Settings → Home screen widgets.
 - **Updates in the app:** a card on the home, a row in Settings and one quiet notification
   when a new version is out, with the changelog of every release since yours and a direct
   download from GitHub.

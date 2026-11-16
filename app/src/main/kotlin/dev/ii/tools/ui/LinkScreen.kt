@@ -197,6 +197,18 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         Gallery.onPermissionChanged(ctx)
     }
     val askPost = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { s = read() }
+    // Optional, for the home screen widgets: they redraw with what was granted.
+    fun granted(p: String) = ctx.checkSelfPermission(p) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    var calendarOk by remember { mutableStateOf(granted(Manifest.permission.READ_CALENDAR)) }
+    var locationOk by remember { mutableStateOf(granted(Manifest.permission.ACCESS_COARSE_LOCATION)) }
+    val askCalendar = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        calendarOk = ok
+        if (ok) dev.ii.tools.widgets.ShellWidget.refresh(ctx, *dev.ii.tools.widgets.DateData.WIDGETS)
+    }
+    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        locationOk = ok
+        if (ok) dev.ii.tools.widgets.WeatherWidget.refetch(ctx)
+    }
     val listenerSettings = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
 
     var confirmForget by remember { mutableStateOf(false) }
@@ -266,6 +278,18 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 }
                 PermissionRow(stringResource(R.string.settings_copy_service), stringResource(R.string.clip_step_service_body), R.drawable.rounded_content_paste, s.copyService) {
                     ClipWatchService.openSettings(ctx)
+                }
+            }
+        }
+
+        item { GroupHeader(stringResource(R.string.settings_widgets)) }
+        item {
+            CardGroup {
+                PermissionRow(stringResource(R.string.perm_widget_calendar), stringResource(R.string.perm_widget_calendar_body), R.drawable.rounded_calendar_month, calendarOk) {
+                    askCalendar.launch(Manifest.permission.READ_CALENDAR)
+                }
+                PermissionRow(stringResource(R.string.perm_widget_location), stringResource(R.string.perm_widget_location_body), R.drawable.rounded_location_on, locationOk) {
+                    askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                 }
             }
         }

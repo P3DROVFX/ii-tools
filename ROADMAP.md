@@ -281,6 +281,29 @@ O app já tem o `NotificationListenerService`; este é o primeiro pedaço do KDE
 Tiles do Android para bloquear o PC, AOD, media mode e um preset favorito. Widget com uma mini
 grade do deck.
 
+### 2.1b Widgets do shell na tela inicial · **M**
+
+> **Status (2026-11-15): implementado.** Onze widgets de desktop do shell portados na
+> proporção do shell (1 célula do shell = 2 do launcher). O lado mais justo da célula fixa a
+> escala e o outro cresce até 30% (`Frame.w`/`h`), com cada widget ancorando o layout nas bordas
+> reais: preenche a célula sem faixas vazias; o Bloom, sem cartão, fica redondo: Poster, Deck, Halo e Cover (mídia de qualquer app pela sessão de
+> mídia, via acesso às notificações), Bloom (relógio em TextClock, o sistema faz o tique),
+> Month Tall, Date Type, Date Shapes, Date Banner (eventos com a permissão de agenda),
+> Weather Strip e Weather Monolith (Open-Meteo, a mesma fonte do shell, pela localização
+> aproximada ou pela rede). Funcionam sem o PC.
+>
+> Motor (`dev.ii.tools.widgets`): cada widget desenha em unidades do shell numa `Frame` de
+> RemoteViews; cada camada é uma máscara alfa recortada ao próprio retângulo e tingida por
+> papel de cor (`wr_*`, o `WidgetColorScheme` padrão do shell), resolvido pelo launcher:
+> wallpaper e modo escuro mudam sem redesenho. Custos: datas redesenham à meia-noite
+> (alarme não-wakeup), clima a cada 30 min só com widget no lugar, mídia a cada faixa ou
+> estado e a linha de progresso a 1 Hz só tocando com a tela ligada (atualização parcial de
+> 4 camadas pequenas). Prévias geradas no seletor (Android 15+). `WidgetSnapshot` (debug)
+> renderiza todos em PNG para revisão.
+>
+> Próximo: opções por widget (forma da capa, cores do álbum, preenchido) e tamanhos
+> responsivos.
+
 ### 2.2 Compartilhar para o shell · **S**
 
 > **Status (2026-11-11): implementado.** "Enviar ao PC" no menu de compartilhar: link →

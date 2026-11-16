@@ -105,7 +105,8 @@ What's planned next, in no particular order:
 - **Wireless microphone.** Polishing the phone as the PC's microphone over the link,
   with Opus as an option for weak networks.
 - **Home screen cards reordering.** Drag the home's cards to put them in your own order.
-- **Widgets.** Android home screen widgets for the PC's state and controls.
+- **Widgets.** More home screen widgets ported from the shell, and the PC's state and
+  controls.
 
 The long version is in [ROADMAP.md](ROADMAP.md).
 
@@ -169,6 +170,14 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   favourite preset (the star in Remote control). With the panel open the tiles show the
   PC's real state; a tap connects, runs and lets the link go. A home screen widget holds
   the first eight top-level deck keys (tapping a folder opens the deck directly in that folder).
+- **Shell widgets on the home screen:** eleven of the shell's desktop widgets, ported at
+  their shell proportions and working on the phone alone (no PC needed): Poster, Deck,
+  Halo and Cover media (any app's player, through notification access), Bloom clock,
+  Month Tall, Date Type, Date Shapes and Date Banner (events with calendar access), and
+  Weather Strip and Weather Monolith (Open-Meteo, the shell's source, at the phone's
+  approximate location or the network's). Colours follow Material You and dark mode live;
+  nothing runs between redraws, and the seek lines tick only while music plays with the
+  screen on.
 - **Send to PC:** in Android's share sheet. A link opens in the PC's browser or goes to
   its AI chat; text becomes a note, a reminder or a task; a photo or any file goes
   to `~/Downloads` as KDE Connect does (never overwriting), to the shell's file shelf, or
@@ -386,6 +395,8 @@ ii tools stands on other people's work:
 | [Jetpack Compose and Material 3](https://developer.android.com/jetpack/compose) | The UI, in Material 3 Expressive | Apache-2.0 |
 | [Material Symbols](https://github.com/google/material-design-icons) | Every icon (`rounded_*`) | Apache-2.0 |
 | [Google Sans Flex](https://fonts.google.com/specimen/Google+Sans+Flex) | The typeface (`res/font`), © Google LLC | SIL OFL 1.1 |
+| [JetBrains Mono](https://www.jetbrains.com/lp/mono/) | The widgets' monospace lines (`res/font/jetbrains_mono_*`, Latin subset), © JetBrains s.r.o. | SIL OFL 1.1 |
+| [Open-Meteo](https://open-meteo.com/) | The weather widgets' forecast | CC BY 4.0 (data) |
 | [Google code scanner](https://developers.google.com/ml-kit/vision/barcode-scanning/code-scanner) | The pairing QR scanner, through Google Play services (no camera permission) | Google APIs Terms |
 
 The bundled Google Sans Flex keeps its weight, width, roundness and slant axes; grade and

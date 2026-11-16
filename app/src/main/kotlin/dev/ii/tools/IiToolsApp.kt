@@ -15,6 +15,8 @@ class IiToolsApp : Application() {
         dev.ii.tools.update.AppUpdate.init(this)
         // Send to PC in the share sheet's top row; one binder call, off the main thread.
         Thread { dev.ii.tools.routines.ShortcutKit.publish(this) }.start()
+        // The widget picker's previews, once per version.
+        Thread { dev.ii.tools.widgets.WidgetPreviews.publishIfNew(this) }.start()
         dev.ii.tools.camera.Webcam.init(this)
         dev.ii.tools.mic.Mic.init(this)
         // The link follows the app as a whole, not one screen: moving between activities
