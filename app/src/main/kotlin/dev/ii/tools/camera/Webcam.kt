@@ -247,7 +247,7 @@ object Webcam {
     fun hasPermission(ctx: Context) = ctx.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
     /** The linked PC takes the camera now. */
-    fun pcReady(): Boolean = LinkHub.shell.value?.caps?.contains("camera") == true
+    fun pcReady(): Boolean = LinkHub.askerHas("camera", "camera")
 
     fun currentLens(): LensInfo? = _caps.value?.find(_settings.value.lens)
 
@@ -449,7 +449,7 @@ object Webcam {
             .putExtra(EXTRA_START, true)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val tap = PendingIntent.getActivity(app, ASK_ID, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val pc = LinkHub.pc.value?.name?.ifEmpty { null } ?: "PC"
+        val pc = LinkHub.askerName("camera")
         val n = Notification.Builder(app, CHANNEL)
             .setSmallIcon(R.drawable.rounded_videocam)
             .setContentTitle(app.getString(R.string.webcam_ask_title, pc))
@@ -619,7 +619,7 @@ object Webcam {
         @Volatile private var meta: String? = null
 
         fun connect() {
-            ws = LinkHub.openSide(PATH, this, if (viaUsb) "127.0.0.1" else null)
+            ws = LinkHub.openSide(PATH, this, if (viaUsb) "127.0.0.1" else null, topic = "camera")
             if (ws == null) onSocketClosed(this)
         }
 

@@ -65,7 +65,7 @@ object PcActions {
         }
     }
 
-    private fun pcName() = LinkHub.pc.value?.name?.ifEmpty { null } ?: "PC"
+    private fun pcName() = LinkHub.askerName("act")
 
     private fun channel(ctx: Context) {
         ctx.getSystemService(NotificationManager::class.java).createNotificationChannel(

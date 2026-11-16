@@ -771,6 +771,20 @@ com H.264.
 > inicial* abre a home em modo de edição: arrastar pela alça (ou toque longo), remover,
 > *Adicionar cards*, restaurar o padrão. O card do PC fica fixo.
 
+### 5.22 Vários PCs · **M**
+
+> **Status (2026-11-16): implementado.** O app pareia quantos PCs quiser, sem desparear
+> nenhum, e mantém todos conectados ao mesmo tempo (um `PcLink` por PC no `LinkHub`, cada
+> um com seu socket, estado e tópicos). A home controla um: o título é o nome do PC, com
+> uma seta que abre a lista (bottom sheet) para trocar ou *Parear outro PC*; a mesma lista
+> está em Settings. A API pública do `LinkHub` é a do PC selecionado (telas, tiles, widget e
+> rotinas não mudaram). O que o celular conta de si (notificações, live, ligações, mídia,
+> bateria, DND, tempo de tela, caps) vai para todos; respostas (galeria, arquivos,
+> contatos, ícones do launcher, webcam e microfone pedidos pelo PC) voltam para quem
+> pediu. Mídia, letras, live activity e wallpaper do PC mostrados no celular são os do
+> selecionado, guardados por PC e trocados na hora. Nada mudou no protocolo nem no shell.
+> Pareamentos antigos migram sozinhos.
+
 ---
 
 ## Resumo
@@ -782,4 +796,4 @@ com H.264.
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs |

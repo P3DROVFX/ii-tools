@@ -9,27 +9,32 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 
 /**
- * Wake-on-LAN for the paired PC. The shell lists its adapters' MACs and subnet
- * broadcasts in every `hello`; they are kept with the pairing, since they are needed
- * exactly when the PC is off and cannot say them.
+ * Wake-on-LAN for a paired PC. The shell lists its adapters' MACs and subnet
+ * broadcasts in every `hello`; they are kept with the pairing (per PC, by fingerprint),
+ * since they are needed exactly when the PC is off and cannot say them.
  */
 object Wake {
     private const val PREFS = "link"
     private const val KEY = "wake"
 
-    fun remember(ctx: Context, targets: JSONArray?) {
-        if (targets == null) return
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, targets.toString()).apply()
+    fun remember(ctx: Context, pc: String, targets: JSONArray?) {
+        if (targets == null || pc.isEmpty()) return
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("$KEY:$pc", targets.toString()).apply()
     }
 
-    fun available(ctx: Context): Boolean = targets(ctx).length() > 0
+    fun forget(ctx: Context, pc: String) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove("$KEY:$pc").apply()
+    }
 
-    private fun targets(ctx: Context): JSONArray =
-        runCatching { JSONArray(ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "[]")) }.getOrDefault(JSONArray())
+    /** The PC the home controls can be woken. */
+    fun available(ctx: Context): Boolean = targets(ctx, LinkHub.selectedKey()).length() > 0
+
+    private fun targets(ctx: Context, pc: String?): JSONArray =
+        runCatching { JSONArray(ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("$KEY:$pc", "[]")) }.getOrDefault(JSONArray())
 
     /** The magic packet (6 × FF, then the MAC 16 times) to each adapter, on ports 9 and 7. */
-    suspend fun send(ctx: Context): Boolean = withContext(Dispatchers.IO) {
-        val targets = targets(ctx)
+    suspend fun send(ctx: Context, pc: String?): Boolean = withContext(Dispatchers.IO) {
+        val targets = targets(ctx, pc)
         var sent = false
         runCatching {
             DatagramSocket().use { sock ->

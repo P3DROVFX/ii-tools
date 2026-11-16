@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Several PCs:** pair more than one PC without unpairing any. They all stay connected;
+  the home's title is the controlled PC's name, and its arrow switches to another one or
+  pairs a new one. The phone's notifications, calls and media reach every PC.
+
 ## 1.2.0
 
 - **Shell widgets on the home screen:** Poster, Deck, Halo and Cover media, Bloom clock,

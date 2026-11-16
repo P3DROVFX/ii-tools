@@ -390,6 +390,11 @@
     <string name="home_pc_load">Uso do PC</string>
     <string name="home_ram_of">RAM de %1$s</string>
     <string name="home_paired_pc">PC pareado</string>
+    <string name="pcs_title">Seus PCs</string>
+    <string name="pcs_switch">Trocar de PC</string>
+    <string name="pcs_hint">Todo PC pareado continua conectado e recebe as notificações, ligações e mídia do celular. A home e as ferramentas controlam o escolhido aqui.</string>
+    <string name="pcs_pair_new">Parear outro PC</string>
+    <string name="pcs_count">%1$d pareados · %2$d conectados</string>
     <string name="home_live_relay">Live relay</string>
     <string name="home_live_relay_on">Ligado, ao vivo no PC</string>
     <string name="home_stay_body">Reconecta sozinho</string>

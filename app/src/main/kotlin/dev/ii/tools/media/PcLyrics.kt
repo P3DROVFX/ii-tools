@@ -64,6 +64,9 @@ object PcLyrics {
 
     @Volatile
     private var watching = false
+
+    /** Media Mode is open and wants lyrics. */
+    internal val isWatching: Boolean get() = watching
     private var initialized = false
 
     private val _lyrics = MutableStateFlow<PcLyricsData?>(null)

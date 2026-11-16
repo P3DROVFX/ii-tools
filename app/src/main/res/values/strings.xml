@@ -387,6 +387,11 @@
     <string name="home_pc_load">PC load</string>
     <string name="home_ram_of">RAM of %1$s</string>
     <string name="home_paired_pc">Paired PC</string>
+    <string name="pcs_title">Your PCs</string>
+    <string name="pcs_switch">Switch PC</string>
+    <string name="pcs_hint">Every paired PC stays connected and gets the phone\'s notifications, calls and media. The home and the tools control the one picked here.</string>
+    <string name="pcs_pair_new">Pair another PC</string>
+    <string name="pcs_count">%1$d paired · %2$d connected</string>
     <string name="home_live_relay">Live relay</string>
     <string name="home_live_relay_on">On, live on the PC</string>
     <string name="home_stay_body">Reconnects by itself</string>

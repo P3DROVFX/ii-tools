@@ -221,6 +221,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val listenerSettings = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
 
     var confirmForget by remember { mutableStateOf(false) }
+    var switching by remember { mutableStateOf(false) }
+    val machines by LinkHub.machines.collectAsStateWithLifecycle()
     val missing = listOf(
         s.listener, s.post, s.phone, s.contacts, s.bluetooth, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, s.overlay, network.granted, cameraPerm.granted,
     ).count { !it }
@@ -235,6 +237,20 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
             item { PairContent(status, scanner, network) }
         } else {
             item { PcCard(current, status, onForget = { confirmForget = true }) }
+        }
+        // Every paired PC, and pairing one more: the same sheet as the home's title.
+        if (machines.isNotEmpty()) {
+            item {
+                CardGroup {
+                    ToolRow(
+                        title = stringResource(R.string.pcs_title),
+                        summary = stringResource(R.string.pcs_count, machines.size, machines.count { it.status is LinkStatus.Online }),
+                        icon = R.drawable.rounded_devices,
+                        onClick = { switching = true },
+                        trailing = { Icon(painterResource(R.drawable.rounded_keyboard_arrow_down), null) },
+                    )
+                }
+            }
         }
 
         item { GroupHeader(stringResource(R.string.settings_connection)) }
@@ -516,6 +532,15 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     }
 
     if (confirmForget) ForgetSheet(onDismiss = { confirmForget = false })
+    if (switching) {
+        PcSwitcherSheet(
+            onDismiss = { switching = false },
+            onPairNew = {
+                switching = false
+                scanner.scan()
+            },
+        )
+    }
 }
 
 /** The paired PC: its state, its addresses, and the ways to reach it or let it go. */

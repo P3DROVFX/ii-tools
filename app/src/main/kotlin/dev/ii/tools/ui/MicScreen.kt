@@ -270,6 +270,7 @@ private fun MicLevelMeter(muted: Boolean, modifier: Modifier = Modifier) {
 
 internal fun startMicOr(hasPermission: Boolean, onNeedPermission: () -> Unit) {
     Mic.retry()
+    LinkHub.claim("mic")
     if (hasPermission) Mic.start() else onNeedPermission()
 }
 

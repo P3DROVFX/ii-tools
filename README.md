@@ -118,6 +118,15 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   scans it with Google's code scanner (no camera permission), or opens the same
   `iilink://pair?…` link. The PC's self-signed
   certificate is pinned by its SHA-256; the PC keeps only a hash of this phone's token.
+- **Several PCs:** pair as many PCs as you like (*Pair another PC* in the home's PC list
+  or in Settings); pairing one never unpairs another. All of them stay connected at
+  once. The home's title is the name of the PC it controls, with an arrow that opens
+  the list: the home, the tools, the tiles and widgets act on that PC only (Lock locks
+  that one). What the phone tells about itself (notifications, live updates, calls, its
+  media, battery, Do Not Disturb, screen time) goes to every connected PC, and an answer
+  (gallery, files, contacts, the webcam or microphone a PC asks for) goes back to the PC
+  that asked. The PC's media, lyrics, live activity and wallpaper shown on the phone are
+  the controlled PC's.
 - **Lifetime:** the link stays open in the background (*Stay connected*, on by default),
   so the PC can reach the phone at any time; it needs the app let off battery
   optimisation (a guided step), or Doze cuts it. No foreground service for the link: the process lives

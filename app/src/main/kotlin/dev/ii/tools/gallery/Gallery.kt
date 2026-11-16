@@ -524,7 +524,7 @@ object Gallery {
 
     private fun isObserverWanted(ctx: Context): Boolean =
         LinkHub.isConnected() &&
-            LinkHub.shell.value?.caps?.contains("gallery") == true &&
+            LinkHub.anyHas("gallery") &&
             isEnabled(ctx) &&
             canReadImages(ctx)
 
