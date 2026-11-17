@@ -804,8 +804,10 @@ fun SecondScreenView(onDone: () -> Unit) {
                     .padding(16.dp)
                     .pointerInput(Unit) { detectTapGestures { } },
             ) {
+                // Scrolls when the landscape screen is shorter than the panel: the rows
+                // keep their height instead of the last one being squashed.
                 Column(
-                    Modifier.padding(16.dp),
+                    Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
