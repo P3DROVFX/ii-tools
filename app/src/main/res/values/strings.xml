@@ -768,6 +768,8 @@
     <string name="update_no_notes">No release notes provided.</string>
     <string name="update_download">Download APK</string>
     <string name="update_download_short">Download</string>
+    <string name="update_downloading">Downloading %1$d %%</string>
+    <string name="update_install_permission">Allow ii tools to install apps, then tap Download again</string>
     <string name="update_view_github">View on GitHub</string>
     <string name="update_view_changes">What\'s new</string>
     <string name="update_card_title">ii tools %1$s</string>
@@ -792,6 +794,7 @@
     <string name="update_err_rate_limit">GitHub rate limit reached. Try again later.</string>
     <string name="update_err_http">GitHub returned HTTP %1$d.</string>
     <string name="update_err_parse">Couldn\'t read the release information from GitHub.</string>
+    <string name="update_err_checksum">The downloaded APK doesn\'t match GitHub\'s checksum. Try again.</string>
     <string name="update_err_network">Couldn\'t reach GitHub. Check your internet connection.</string>
     <string name="update_open_failed">No browser app available to open this link.</string>
     <string name="update_channel">App updates</string>

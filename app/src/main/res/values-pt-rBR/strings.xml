@@ -771,6 +771,8 @@
     <string name="update_no_notes">Nenhuma nota de lançamento informada.</string>
     <string name="update_download">Baixar APK</string>
     <string name="update_download_short">Baixar</string>
+    <string name="update_downloading">Baixando %1$d %%</string>
+    <string name="update_install_permission">Permita que o ii tools instale apps e toque em Baixar de novo</string>
     <string name="update_view_github">Ver no GitHub</string>
     <string name="update_view_changes">Novidades</string>
     <string name="update_card_title">ii tools %1$s</string>
@@ -797,6 +799,7 @@
     <string name="update_err_rate_limit">Limite do GitHub atingido. Tente novamente mais tarde.</string>
     <string name="update_err_http">O GitHub respondeu com HTTP %1$d.</string>
     <string name="update_err_parse">Não deu para ler os dados do lançamento no GitHub.</string>
+    <string name="update_err_checksum">O APK baixado não confere com o checksum do GitHub. Tente novamente.</string>
     <string name="update_err_network">Não deu para acessar o GitHub. Verifique sua conexão.</string>
     <string name="update_open_failed">Nenhum navegador disponível para abrir este link.</string>
     <string name="update_channel">Atualizações do app</string>

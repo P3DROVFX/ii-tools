@@ -14,6 +14,8 @@ data class ReleaseInfo(
     val apkUrl: String?,
     val apkName: String?,
     val apkSize: Long,
+    /** Lowercase hex SHA-256 of the APK from GitHub's asset `digest`, when GitHub provides one. */
+    val apkSha256: String? = null,
 )
 
 /** Parses GitHub's `/releases` payload and round-trips cached newer releases through JSON. */
@@ -47,6 +49,7 @@ object ReleaseParser {
                 apkUrl = apk?.url,
                 apkName = apk?.name,
                 apkSize = apk?.size ?: 0L,
+                apkSha256 = apk?.sha256,
             )
         }
         return out.sortedByDescending { it.version }
@@ -64,7 +67,8 @@ object ReleaseParser {
                     .put("body", r.body)
                     .put("apkUrl", r.apkUrl ?: "")
                     .put("apkName", r.apkName ?: "")
-                    .put("apkSize", r.apkSize),
+                    .put("apkSize", r.apkSize)
+                    .put("apkSha256", r.apkSha256 ?: ""),
             )
         }
         return arr.toString()
@@ -90,12 +94,17 @@ object ReleaseParser {
                 apkUrl = obj.optString("apkUrl").takeIf { it.startsWith("https://") },
                 apkName = obj.optString("apkName").takeIf { it.isNotEmpty() },
                 apkSize = obj.optLong("apkSize", 0L).coerceAtLeast(0L),
+                apkSha256 = parseSha256(obj.optString("apkSha256")),
             )
         }
         return out.sortedByDescending { it.version }
     }
 
-    private data class ApkAsset(val url: String, val name: String, val size: Long)
+    private data class ApkAsset(val url: String, val name: String, val size: Long, val sha256: String?)
+
+    /** Accepts `sha256:<hex>` (GitHub's format) or bare hex; anything else is treated as absent. */
+    private fun parseSha256(raw: String): String? =
+        raw.trim().removePrefix("sha256:").lowercase().takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
 
     private fun pickApkAsset(assets: JSONArray?): ApkAsset? {
         if (assets == null) return null
@@ -109,7 +118,7 @@ object ReleaseParser {
             val isApk = name.endsWith(".apk", ignoreCase = true) || contentType.equals(APK_MIME, ignoreCase = true)
             if (!isApk) continue
             val size = a.optLong("size", 0L).coerceAtLeast(0L)
-            val candidate = ApkAsset(url, name, size)
+            val candidate = ApkAsset(url, name, size, parseSha256(a.optString("digest")))
             if (name.contains("ii-tools", ignoreCase = true)) return candidate
             if (fallback == null) fallback = candidate
         }
