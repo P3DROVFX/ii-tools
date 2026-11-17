@@ -38,8 +38,10 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- Phone data (Fase 2.4): contacts with photos and Bluetooth peripheral battery for the PC. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <!-- Optional: event dots on the date widgets and the phone's place for the weather widgets. -->
+    <!-- Phone calendar for the shell's Timetable, and event dots on the date widgets. -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- Optional: the PC creates and edits the phone's events. -->
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- The PC browses the phone's storage (SFTP), as with KDE Connect. -->
@@ -189,6 +191,10 @@
 
         <activity
             android:name=".PhoneDataActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".CalendarActivity"
             android:exported="false" />
 
         <activity

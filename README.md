@@ -87,6 +87,8 @@ without the ones you refuse; that feature just stays off.
 | `RECORD_AUDIO`, `CAMERA` | The phone as the PC's microphone and webcam, only while streaming (foreground service) |
 | `READ_MEDIA_*` | Screenshots and the phone's gallery for the PC |
 | `READ_CONTACTS` | Contacts with photos for the shell's people widgets |
+| `READ_CALENDAR` | The phone's calendars in the shell's Timetable; event dots on the date widgets |
+| `WRITE_CALENDAR` | Only if you let the PC create, change and delete the phone's events |
 | `READ_PHONE_STATE`, `ANSWER_PHONE_CALLS`, `CALL_PHONE` | Call state on the PC, answer or end a call, dial from the PC |
 | `MANAGE_EXTERNAL_STORAGE` | The PC browses the phone's files over SFTP |
 | `PACKAGE_USAGE_STATS`, `QUERY_ALL_PACKAGES` | The phone's screen time in the shell's usage app; names and icons of apps in live notifications |
@@ -224,6 +226,19 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   the Phone tab and *Settings → ii tools*. Android only lets an app read a device's
   overall level, so separate buds and the case aren't available, and a device that
   doesn't report its battery over Bluetooth (most Wear OS watches) isn't listed.
+- **Calendar:** every calendar the phone syncs (Google, Samsung, Outlook, local) in the
+  shell's Timetable, widgets and calendar panels, without khal or vdirsyncer on the PC.
+  The PC asks for the dates it shows; the phone answers only when something changed and
+  pushes each change after, and the PC keeps the last list for when the phone is away.
+  Calendars you turn off in *Calendar* never leave the phone. With *Edit calendar*
+  allowed and *Let the PC edit events* on, the Timetable creates, moves, edits and
+  deletes phone events (one occurrence, this and the following, or the whole series),
+  and the account syncs them like edits made on the phone. Someone with khal and the
+  phone on the same Google account sees each event once: the phone sends each event's
+  iCalendar UID (rebuilt from Google's event id), which the shell matches against
+  khal's. On the PC, *Settings → ii tools → Phone calendar* (also in the Timetable's
+  settings) decides which calendars show, which copy wins, colours, declined
+  invitations and reminders.
 - **Do Not Disturb:** the shell's own (and modes chosen on the PC) silence the phone; the
   phone's turns on the shell's, or a mode. Only changes are sent, so turning it off by
   hand on either side sticks.

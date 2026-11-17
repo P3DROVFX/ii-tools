@@ -838,6 +838,25 @@ verificação da fingerprint. Ficou de fora: estado do outro PC (bateria, mídia
 
 Falta para as três etapas: o teste com dois PCs reais.
 
+### 5.25 Agenda do celular no Timetable · **M**
+
+> **Status (2026-11-16): implementado; testado ao vivo com o S23: leitura, mescla com o
+> khal, lista guardada com o celular longe, erros e timeout de edição, e criar/mover/apagar
+> um evento numa agenda local. Falta no aparelho: os escopos de série (exceção "só esta",
+> corrigida depois do teste; e "esta e as seguintes", cujo UNTIL foi gravado mas o
+> provider ainda listava a última instância).** O app lê o provider de agenda do Android
+> (Google, Samsung, Outlook, local; instâncias já expandidas) só quando um PC pede a sua
+> janela (`get calendar`), responde só se mudou e empurra cada mudança depois
+> (`ContentObserver` só enquanto há janela pedida). O shell mescla com o khal no
+> `CalendarService` (`events` = khal + celular sem duplicatas), guarda a última lista para
+> o celular longe e escreve de volta (`calendarEdit`: criar, editar, apagar, com escopos de
+> recorrência). Duplicatas: o Google esconde o UID dos apps, mas o id do evento é o UID
+> (`<id>@google.com`, ou base32hex quando começa com `_`); com a conta real, os 344 eventos
+> repetidos casaram todos por UID. Usuário decide: no app, compartilhar, deixar o PC editar
+> e quais agendas saem do celular; no shell (Settings → ii tools e configurações do
+> Timetable), mostrar, escrever, esconder duplicados e qual cópia fica, cores, convites
+> recusados, lembretes no PC e quais agendas aparecem.
+
 ---
 
 ## Resumo
@@ -849,4 +868,4 @@ Falta para as três etapas: o teste com dois PCs reais.
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable |

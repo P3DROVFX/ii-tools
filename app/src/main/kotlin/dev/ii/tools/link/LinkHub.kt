@@ -486,6 +486,10 @@ object LinkHub {
         }
     }
 
+    /** Sends [m] to the connected PC with fingerprint [key]: answers that belong to one PC only. */
+    fun sendToPc(key: String, m: JSONObject): Boolean =
+        online().firstOrNull { it.key == key }?.socket?.send(m.toString()) == true
+
     private var burstJob: Job? = null
 
     /**
@@ -517,6 +521,7 @@ object LinkHub {
         if (ClipSync.receives(app)) caps.put("clip")
         if (ShotSync.receives(app)) caps.put("shots")
         PhoneData.caps(app).forEach { caps.put(it) }
+        dev.ii.tools.calendar.PhoneCalendar.caps(app).forEach { caps.put(it) }
         DndSync.caps(app).forEach { caps.put(it) }
         PcLive.caps(app).forEach { caps.put(it) }
         PhoneMedia.caps(app).forEach { caps.put(it) }
@@ -914,6 +919,7 @@ object LinkHub {
         if (owns("camera")) dev.ii.tools.camera.Webcam.onLinkLost()
         if (owns("mic")) dev.ii.tools.mic.Mic.onLinkLost()
         if (owns("mirror")) MirrorRadio.onLinkLost()
+        dev.ii.tools.calendar.PhoneCalendar.onLinkLost(link.key)
         if (alone) {
             PhoneUsage.onLinkDisconnected()
             PhoneData.onLinkDisconnected()
@@ -1130,7 +1136,9 @@ object LinkHub {
                 "launcherIcons" -> m.optJSONArray("pkgs")?.let { k -> LauncherIcons.want(app, List(k.length()) { k.optString(it) }) }
                 "photos" -> m.optJSONArray("keys")?.let { k -> PhoneData.onPhotosAsked(List(k.length()) { k.optString(it) }) }
                 "phoneUsage" -> PhoneUsage.onGet(app, m.optString("since"))
+                "calendar" -> dev.ii.tools.calendar.PhoneCalendar.onAsked(app, link.key, m)
             }
+            "calendarEdit" -> dev.ii.tools.calendar.PhoneCalendar.onEdit(app, link.key, m)
             "notifAct" -> NotifMirror.command(m)
             "notifFilter" -> NotifMirror.onFilterMessage(app, m)
             "clip" -> ClipSync.receive(app, m)

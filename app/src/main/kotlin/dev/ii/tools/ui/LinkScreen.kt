@@ -85,6 +85,7 @@ import dev.ii.tools.update.AppUpdate
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import dev.ii.tools.calendar.PhoneCalendar
 
 /** What the settings show, re-read whenever the app comes back (permissions change in Android's own settings). */
 private data class SettingsState(
@@ -213,6 +214,15 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val askCalendar = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         calendarOk = ok
         if (ok) dev.ii.tools.widgets.ShellWidget.refresh(ctx, *dev.ii.tools.widgets.DateData.WIDGETS)
+        PhoneCalendar.onPermissionChanged(ctx)
+    }
+    // The phone's calendar for the PC: the same preferences as the Calendar screen.
+    var calWrite by remember { mutableStateOf(PhoneCalendar.canWrite(ctx)) }
+    var calShare by remember { mutableStateOf(PhoneCalendar.isEnabled(ctx)) }
+    var calEdits by remember { mutableStateOf(PhoneCalendar.editsAllowed(ctx)) }
+    val askCalendarWrite = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        calWrite = ok
+        PhoneCalendar.onPermissionChanged(ctx)
     }
     val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         locationOk = ok
@@ -284,6 +294,12 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 PermissionRow(stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_body), R.drawable.rounded_call, s.phone) { askPhone.launch(CallWatcher.PERMISSIONS) }
                 PermissionRow(stringResource(R.string.perm_contacts), stringResource(R.string.perm_contacts_body), R.drawable.rounded_contacts, s.contacts) { askContacts.launch(PhoneData.CONTACTS) }
                 PermissionRow(stringResource(R.string.perm_bluetooth), stringResource(R.string.perm_bluetooth_body), R.drawable.rounded_bluetooth, s.bluetooth) { askBluetooth.launch(PhoneData.BLUETOOTH) }
+                PermissionRow(stringResource(R.string.cal_perm_read), stringResource(R.string.cal_perm_read_body), R.drawable.rounded_calendar_month, calendarOk) {
+                    askCalendar.launch(PhoneCalendar.READ)
+                }
+                PermissionRow(stringResource(R.string.cal_perm_write), stringResource(R.string.cal_perm_write_body), R.drawable.rounded_edit_calendar, calWrite) {
+                    askCalendarWrite.launch(PhoneCalendar.WRITE)
+                }
                 PermissionRow(stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_body), R.drawable.rounded_photo_library, s.photos) { askPhotos.launch(ShotSync.PERMISSION) }
                 PermissionRow(stringResource(R.string.perm_gallery), stringResource(R.string.perm_gallery_body), R.drawable.rounded_photo_library, s.gallery) { askGallery.launch(Gallery.PERMISSIONS) }
                 PermissionRow(stringResource(R.string.perm_files), stringResource(R.string.perm_files_body), R.drawable.rounded_folder_open, s.files) {
@@ -345,6 +361,14 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     data = it
                     PhoneData.setEnabled(ctx, it)
                 }, R.drawable.rounded_battery_full, summary = stringResource(R.string.settings_data_body))
+                SwitchRow(stringResource(R.string.cal_share), calShare, {
+                    calShare = it
+                    PhoneCalendar.setEnabled(ctx, it)
+                }, R.drawable.rounded_event_available, enabled = calendarOk, summary = if (!calendarOk) stringResource(R.string.cal_status_perm) else null)
+                SwitchRow(stringResource(R.string.cal_edits), calEdits, {
+                    calEdits = it
+                    PhoneCalendar.setEditsAllowed(ctx, it)
+                }, R.drawable.rounded_edit_calendar, enabled = calShare && calendarOk && calWrite, summary = if (!calWrite) stringResource(R.string.cal_needs_write) else stringResource(R.string.cal_edits_body))
                 SwitchRow(stringResource(R.string.usage_share), usageEnabled, {
                     usageEnabled = it
                     PhoneUsage.setEnabled(ctx, it)
