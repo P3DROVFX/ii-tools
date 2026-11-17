@@ -154,24 +154,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     var clipRecv by remember { mutableStateOf(ClipSync.receives(ctx)) }
     var clipHistory by remember { mutableStateOf(ClipHistory.isEnabled(ctx)) }
     var mirrorRadio by remember { mutableStateOf(MirrorRadio.isEnabled(ctx)) }
-    LifecycleResumeEffect(Unit) {
-        val next = read()
-        if (next.usageAccess != s.usageAccess)
-            PhoneUsage.onPermissionChanged(ctx)
-        s = next
-        gallery = Gallery.isEnabled(ctx)
-        notifs = NotifMirror.isEnabled(ctx)
-        usageEnabled = PhoneUsage.isEnabled(ctx)
-        clipAuto = ClipSync.autoSend(ctx)
-        clipRecv = ClipSync.receives(ctx)
-        clipHistory = ClipHistory.isEnabled(ctx)
-        mirrorRadio = MirrorRadio.isEnabled(ctx)
-        Gallery.onPermissionChanged(ctx)
-        NotifMirror.load(ctx)
-        FavoritePreset.load(ctx)
-        onPauseOrDispose { }
-    }
-
     // The switches, each over its feature's own preference.
     var stays by remember { mutableStateOf(LinkHub.staysConnected()) }
     var phoneMedia by remember { mutableStateOf(PhoneMedia.isEnabled(ctx)) }
@@ -228,13 +210,40 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         locationOk = ok
         if (ok) dev.ii.tools.widgets.WeatherWidget.refetch(ctx)
     }
+    LifecycleResumeEffect(Unit) {
+        val next = read()
+        if (next.usageAccess != s.usageAccess)
+            PhoneUsage.onPermissionChanged(ctx)
+        val nextCalRead = granted(Manifest.permission.READ_CALENDAR)
+        val nextCalWrite = PhoneCalendar.canWrite(ctx)
+        if (nextCalRead != calendarOk || nextCalWrite != calWrite) {
+            calendarOk = nextCalRead
+            calWrite = nextCalWrite
+            PhoneCalendar.onPermissionChanged(ctx)
+        }
+        locationOk = granted(Manifest.permission.ACCESS_COARSE_LOCATION)
+        calShare = PhoneCalendar.isEnabled(ctx)
+        calEdits = PhoneCalendar.editsAllowed(ctx)
+        s = next
+        gallery = Gallery.isEnabled(ctx)
+        notifs = NotifMirror.isEnabled(ctx)
+        usageEnabled = PhoneUsage.isEnabled(ctx)
+        clipAuto = ClipSync.autoSend(ctx)
+        clipRecv = ClipSync.receives(ctx)
+        clipHistory = ClipHistory.isEnabled(ctx)
+        mirrorRadio = MirrorRadio.isEnabled(ctx)
+        Gallery.onPermissionChanged(ctx)
+        NotifMirror.load(ctx)
+        FavoritePreset.load(ctx)
+        onPauseOrDispose { }
+    }
     val listenerSettings = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
 
     var confirmForget by remember { mutableStateOf(false) }
     var switching by remember { mutableStateOf(false) }
     val machines by LinkHub.machines.collectAsStateWithLifecycle()
     val missing = listOf(
-        s.listener, s.post, s.phone, s.contacts, s.bluetooth, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, s.overlay, network.granted, cameraPerm.granted,
+        s.listener, s.post, s.phone, s.contacts, s.bluetooth, calendarOk, calWrite, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, s.overlay, network.granted, cameraPerm.granted,
     ).count { !it }
 
     ToolScaffold(

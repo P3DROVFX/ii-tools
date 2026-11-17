@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
 - **Several PCs:** pair more than one PC without unpairing any. They all stay connected;
   the home's title is the controlled PC's name, and its arrow switches to another one or
@@ -14,6 +14,11 @@
   dragged or opened), *Send to <PC>* sends files, a web page playing continues on the other
   PC, PCs can link with a 6-digit code without the phone, and *Wake* asks a connected PC to
   wake one that is off, so it works from away over Tailscale.
+- **Phone calendar on the PC:** every calendar the phone syncs (Google, Samsung, Outlook,
+  local) in the shell's Timetable, widgets and calendar panels, without khal or vdirsyncer
+  on the PC, and deduplicated when both are used. Choose which calendars leave the phone;
+  with *Edit calendar* allowed and *Let the PC edit events* on, the Timetable creates,
+  moves, edits and deletes phone events too.
 
 ## 1.2.0
 

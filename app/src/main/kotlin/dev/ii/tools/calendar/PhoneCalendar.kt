@@ -539,6 +539,9 @@ object PhoneCalendar {
 
     private fun truncate(c: Context, id: Long, r: Row, instanceBegin: Long) {
         val v = ContentValues()
+        // CalendarProvider2 only recomputes LAST_DATE and re-expands Instances when DTSTART/DURATION are present.
+        v.put(Events.DTSTART, r.dtstart)
+        if (r.duration.isNotEmpty()) v.put(Events.DURATION, r.duration)
         v.put(Events.RRULE, Rrule.until(r.rrule, instanceBegin - 1_000, r.allDay))
         c.contentResolver.update(ContentUris.withAppendedId(Events.CONTENT_URI, id), v, null, null)
     }
