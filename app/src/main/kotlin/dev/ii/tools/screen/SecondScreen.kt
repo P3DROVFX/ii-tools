@@ -37,6 +37,11 @@ data class ScreenPrefs(
     /** Docked toolbar edge ("LEFT", "RIGHT", "TOP", "BOTTOM") and handle fraction 0–1. */
     val barEdge: String = "RIGHT",
     val barAt: Float = 0.3f,
+    /**
+     * Frame pacing: false shows each frame the moment it is decoded (the least latency),
+     * true a steady delay after its capture, so Wi-Fi's jitter doesn't show as uneven motion.
+     */
+    val smooth: Boolean = false,
 )
 
 /** Live stream telemetry while a Wi-Fi second-screen session is active. */
@@ -48,6 +53,14 @@ data class ScreenStats(
     val dropped: Int = 0,
     val rttMs: Int? = null,
     val transport: String = "wifi",
+    /** PC capture → decoded here, p50 ms (the screen is about a refresh after). */
+    val latencyMs: Int? = null,
+    /** Its parts, ms: the PC's capture → send, the network, and received → decoded here. */
+    val pcMs: Int? = null,
+    val networkMs: Int? = null,
+    val phoneMs: Int? = null,
+    /** Frames decoded here in the last second. */
+    val shownFps: Int? = null,
 )
 
 /** One of the PC's screens, for mirror's choice. */
@@ -203,6 +216,7 @@ object SecondScreen {
                     ?: if (hevcSupported()) "hevc" else "h264",
                 barEdge = barEdge,
                 barAt = barAt,
+                smooth = p.getBoolean("smooth", false),
             )
         }
         return _prefs.asStateFlow()
@@ -218,8 +232,11 @@ object SecondScreen {
             .putString("side", v.side).putInt("bitrate", v.bitrate).putString("mirror", v.mirror)
             .putString("transport", v.transport).putBoolean("adaptive", v.adaptive)
             .putString("input", v.input).putString("orient", v.orient).putString("codec", v.codec)
-            .putString("barEdge", v.barEdge).putFloat("barAt", v.barAt).apply()
+            .putString("barEdge", v.barEdge).putFloat("barAt", v.barAt).putBoolean("smooth", v.smooth).apply()
     }
+
+    /** Frame pacing ([ScreenPrefs.smooth]), read by the decoder on every frame. */
+    val smooth: Boolean get() = _prefs.value?.smooth ?: false
 
     /** Updates live bitrate/adaptive over the side socket (when on Wi-Fi) and persists prefs. */
     fun setQuality(bitrateMbps: Int, adaptive: Boolean) {

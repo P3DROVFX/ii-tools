@@ -66,6 +66,35 @@ class StreamMetrics(private val onSecond: (Summary) -> Unit = {}) {
         }
     }
 
+    // Smooth pacing: the last frames' capture → decoded times (ns), and the delay most make.
+    private val lags = LongArray(240)
+    private var lagCount = 0
+    private var lagAt = 0
+    private var paceDelayNs = 0L
+
+    /**
+     * When to show the frame with pts [ptsUs], decoded at [decodedNs], for even motion: a
+     * steady delay after its capture, the one 90 % of recent frames make, so a frame Wi-Fi
+     * held up shows on time instead of the ones around it moving unevenly. [decodedNs]
+     * (show it now) before the clocks are synced, or for a frame later than that.
+     */
+    fun paceAt(ptsUs: Long, decodedNs: Long): Long {
+        val off = offsetUs ?: return decodedNs
+        val captureNs = (ptsUs - off) * 1000
+        val lag = decodedNs - captureNs
+        synchronized(lags) {
+            lags[lagAt] = lag
+            lagAt = (lagAt + 1) % lags.size
+            if (lagCount < lags.size) lagCount++
+            // Every 30 frames is enough for a delay that tracks seconds of Wi-Fi.
+            if (lagAt % 30 == 0 || paceDelayNs == 0L) {
+                val sorted = lags.copyOf(lagCount).also { it.sort() }
+                paceDelayNs = sorted[(lagCount - 1) * 90 / 100]
+            }
+        }
+        return maxOf(decodedNs, captureNs + paceDelayNs)
+    }
+
     /** A video frame (its PC pts) arrived. */
     fun received(ptsUs: Long, recvNs: Long = System.nanoTime()) {
         received[ptsUs] = recvNs

@@ -1045,12 +1045,39 @@ object LinkHub {
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
     }
 
+    /**
+     * Where a heavy stream (the second screen's video) should go: the link's host, unless the
+     * link runs over Tailscale and the PC answers on this LAN, then its LAN address.
+     *
+     * The link keeps whichever address answered last, so a link made away from home stays on
+     * Tailscale at home. Every packet then goes through Tailscale's WireGuard on this phone
+     * (decrypted there, then again by the stream): ~2,500 packets a second at 120 fps.
+     */
+    suspend fun streamHost(): String? {
+        val host = (_status.value as? LinkStatus.Online)?.host ?: return null
+        if (!isTailnet(host) || !hasNetworkPermission(app)) return host
+        val pc = _pc.value ?: return host
+        val lan = discover(pc, timeoutMs = 500)?.takeUnless(::isTailnet)
+        return lan ?: host
+    }
+
+    /** Tailscale's addresses: 100.64.0.0/10 and fd7a:115c:a1e0::/48. */
+    private fun isTailnet(host: String): Boolean {
+        val h = host.lowercase()
+        if (h.startsWith("fd7a:115c:a1e0:")) return true
+        val parts = h.split('.')
+        if (parts.size != 4) return false
+        val a = parts[0].toIntOrNull() ?: return false
+        val b = parts[1].toIntOrNull() ?: return false
+        return a == 100 && b in 64..127
+    }
+
     /** "iilink?" to the LAN broadcast; the PC answers with its fingerprint and port. */
-    private suspend fun discover(pc: PairedPc): String? = withContext(Dispatchers.IO) {
+    private suspend fun discover(pc: PairedPc, timeoutMs: Int = 1_500): String? = withContext(Dispatchers.IO) {
         runCatching {
             DatagramSocket().use { sock ->
                 sock.broadcast = true
-                sock.soTimeout = 1_500
+                sock.soTimeout = timeoutMs
                 val probe = "iilink?".toByteArray()
                 sock.send(DatagramPacket(probe, probe.size, InetAddress.getByName("255.255.255.255"), pc.port))
                 val buf = ByteArray(512)

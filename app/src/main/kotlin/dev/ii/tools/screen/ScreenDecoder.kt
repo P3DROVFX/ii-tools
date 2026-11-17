@@ -24,6 +24,8 @@ class ScreenDecoder(
     private val metrics: StreamMetrics? = null,
     /** The codec to start with; a config of the other kind switches (kind 0 H.264, 10 HEVC). */
     private var mime: String = MediaFormat.MIMETYPE_VIDEO_AVC,
+    /** Smooth frame pacing ([StreamMetrics.paceAt]) instead of each frame at once. */
+    private val smooth: () -> Boolean = { false },
     private val onError: () -> Unit,
 ) {
     @Volatile private var closed = false
@@ -103,8 +105,15 @@ class ScreenDecoder(
             override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
                 // Decoded: the last exact time on this side (the QTI decoder's render callback
                 // reports the pts, not when the frame was shown).
-                metrics?.decoded(info.presentationTimeUs, System.nanoTime())
-                runCatching { codec.releaseOutputBuffer(index, true) }
+                val now = System.nanoTime()
+                metrics?.decoded(info.presentationTimeUs, now)
+                // Paced: the screen shows it at the refresh nearest that time (up to a second
+                // ahead is allowed); at once, it goes to the next refresh.
+                val at = if (smooth()) metrics?.paceAt(info.presentationTimeUs, now) else null
+                runCatching {
+                    if (at != null && at > now + 1_000_000L) codec.releaseOutputBuffer(index, at)
+                    else codec.releaseOutputBuffer(index, true)
+                }
             }
 
             override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {

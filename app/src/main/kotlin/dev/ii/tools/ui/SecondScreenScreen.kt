@@ -265,6 +265,11 @@ fun SecondScreenScreen(onBack: () -> Unit) {
                         ) { set(p.copy(codec = it)) }
                     }
                     Choice(
+                        stringResource(R.string.second_pacing),
+                        listOf(false to stringResource(R.string.second_pacing_latency), true to stringResource(R.string.second_pacing_smooth)),
+                        p.smooth,
+                    ) { set(p.copy(smooth = it)) }
+                    Choice(
                         stringResource(R.string.second_scale),
                         listOf(1f to "1×", 1.25f to "1.25×", 1.5f to "1.5×", 2f to "2×"),
                         p.scale,
@@ -416,6 +421,27 @@ fun SecondScreenView(onDone: () -> Unit) {
         onDispose {
             view.keepScreenOn = false
             SecondScreen.stop()
+        }
+    }
+    // The panel at its highest refresh while the PC's screen is up: an adaptive-refresh
+    // display may drop a video surface to 60 Hz or below, which shows half of a 120 fps
+    // stream and waits up to a refresh longer for each frame.
+    DisposableEffect(Unit) {
+        val act = view.context as? Activity
+        val window = act?.window
+        val display = act?.display
+        val cur = display?.mode
+        val best = display?.supportedModes
+            ?.filter { cur == null || (it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight) }
+            ?.maxByOrNull { it.refreshRate }
+        val old = window?.attributes?.preferredDisplayModeId ?: 0
+        if (window != null && best != null) {
+            window.attributes = window.attributes.apply { preferredDisplayModeId = best.modeId }
+        }
+        onDispose {
+            if (window != null && best != null) {
+                window.attributes = window.attributes.apply { preferredDisplayModeId = old }
+            }
         }
     }
     LaunchedEffect(ready) {
@@ -792,6 +818,29 @@ fun SecondScreenView(onDone: () -> Unit) {
                             Icon(painterResource(R.drawable.rounded_close), stringResource(R.string.cancel))
                         }
                     }
+                    stats?.latencyMs?.let { total ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                stringResource(R.string.second_stats_latency, total, stats?.shownFps ?: 0),
+                                style = Expressive.live(15.sp).copy(fontFeatureSettings = "tnum"),
+                            )
+                            val pc = stats?.pcMs
+                            val net = stats?.networkMs
+                            val phone = stats?.phoneMs
+                            if (pc != null && net != null && phone != null) {
+                                Text(
+                                    stringResource(R.string.second_stats_split, pc, net, phone, stats?.rttMs ?: 0),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                                    color = cs.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                    Choice(
+                        stringResource(R.string.second_pacing),
+                        listOf(false to stringResource(R.string.second_pacing_latency), true to stringResource(R.string.second_pacing_smooth)),
+                        p.smooth,
+                    ) { SecondScreen.setPrefs(ctx, p.copy(smooth = it)) }
                     Choice(
                         stringResource(if (p.adaptive) R.string.second_max_bitrate else R.string.second_quality),
                         listOf(8 to "8 Mbps", 16 to "16 Mbps", 30 to "30 Mbps"),
@@ -1620,9 +1669,10 @@ private fun LiveChip(
         "${"%.1f".format(rate)} Mbps"
     }
     val textStyle = Expressive.live(13.sp).copy(fontFeatureSettings = "tnum")
+    // The whole way (capture → decoded) once it is measured, the ping until then.
     val mainLabel = listOfNotNull(
         rateText,
-        stats?.rttMs?.let { "$it ms" },
+        (stats?.latencyMs ?: stats?.rttMs)?.let { "$it ms" },
     ).joinToString(" · ")
     val dropped = stats?.dropped ?: 0
     Surface(

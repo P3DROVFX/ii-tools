@@ -95,7 +95,7 @@ class ScreenStream(
             socket = s
             out = s.getOutputStream().also { it.write("$token\n".toByteArray()); it.flush() }
             val metrics = StreamMetrics()
-            val dec = ScreenDecoder(width, height, surface, metrics) {
+            val dec = ScreenDecoder(width, height, surface, metrics, smooth = { SecondScreen.smooth }) {
                 running = false
                 runCatching { socket?.close() }
             }

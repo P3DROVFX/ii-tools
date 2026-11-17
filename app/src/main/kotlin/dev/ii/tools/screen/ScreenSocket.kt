@@ -60,6 +60,8 @@ class ScreenSocket(
     @Volatile private var running = true
     @Volatile private var open = false
     @Volatile private var ws: WebSocket? = null
+    /** Where the video comes from: the LAN address when the link is on Tailscale, else null (the link's host). */
+    @Volatile private var streamHost: String? = null
     @Volatile private var droppedAt = 0L
     /** The PC's encoder heals a lost frame by itself (intra refresh: NVENC, x264; not VA-API). */
     @Volatile private var refreshing = false
@@ -73,8 +75,9 @@ class ScreenSocket(
     private var reconnectJob: Job? = null
 
     // Off the codec's callback thread: releasing a MediaCodec from its own callback can hang.
-    private val metrics = StreamMetrics()
-    private val decoder = ScreenDecoder(width, height, surface, metrics) {
+    private val metrics = StreamMetrics(::onMetrics)
+    @Volatile private var lastSummary: StreamMetrics.Summary? = null
+    private val decoder = ScreenDecoder(width, height, surface, metrics, smooth = { SecondScreen.smooth }) {
         if (running) scope.launch {
             if (running) {
                 stop()
@@ -137,8 +140,9 @@ class ScreenSocket(
                         rttMs = lastRttMs,
                         transport = "wifi",
                     )
-                    lastStats = stats
-                    SecondScreen.updateStats(stats)
+                    val withMetrics = withMetrics(stats, lastSummary)
+                    lastStats = withMetrics
+                    SecondScreen.updateStats(withMetrics)
                 }
             }
         }
@@ -219,9 +223,34 @@ class ScreenSocket(
         frameQueue.offer(Frame(kind, pts, arr))
     }
 
+    /** Each second's latency and fps, into the stats the live chip shows. */
+    private fun onMetrics(s: StreamMetrics.Summary) {
+        lastSummary = s
+        val cur = lastStats ?: return
+        val updated = withMetrics(cur, s)
+        lastStats = updated
+        SecondScreen.updateStats(updated)
+    }
+
+    /**
+     * [s]'s numbers in [stats]. Frame pts are capture times (the patched recorder) when the
+     * PC reports its capture → send: "net" is then capture → received, the network the rest.
+     */
+    private fun withMetrics(stats: ScreenStats, s: StreamMetrics.Summary?): ScreenStats {
+        if (s == null) return stats
+        val pc = metrics.pcCaptureMs
+        return stats.copy(
+            latencyMs = s.totalP50,
+            pcMs = pc,
+            networkMs = s.netP50?.let { n -> if (pc != null) (n - pc).coerceAtLeast(0) else n },
+            phoneMs = s.phoneP50,
+            shownFps = s.frames,
+        )
+    }
+
     /** The PC's `{"t":"udp","port","key","sid"}`: receive the video there from now on. */
     private fun startUdp(m: JSONObject) {
-        val host = (LinkHub.status.value as? LinkStatus.Online)?.host ?: return
+        val host = streamHost ?: (LinkHub.status.value as? LinkStatus.Online)?.host ?: return
         val key = runCatching { android.util.Base64.decode(m.optString("key"), android.util.Base64.DEFAULT) }.getOrNull()
         if (key == null || key.size != 32) return
         udp?.stop()
@@ -244,7 +273,13 @@ class ScreenSocket(
 
     fun start() {
         decoderThread.start()
-        connect()
+        scope.launch {
+            // The LAN address when the link is on Tailscale (LinkHub.streamHost).
+            streamHost = LinkHub.streamHost()
+            val linkHost = (LinkHub.status.value as? LinkStatus.Online)?.host
+            if (streamHost != linkHost) Log.i(StreamMetrics.TAG, "stream on the LAN at $streamHost (link on $linkHost)")
+            connect()
+        }
         scope.launch {
             var sent = 0
             while (isActive && running) {
@@ -272,7 +307,7 @@ class ScreenSocket(
     @Synchronized
     private fun connect() {
         if (!running) return
-        val created = LinkHub.openSide(PATH, listener)
+        val created = LinkHub.openSide(PATH, listener, streamHost)
         ws = created
         if (created == null) handleDisconnect(null)
     }
@@ -283,6 +318,8 @@ class ScreenSocket(
         if (dead != null && dead !== ws) return
         open = false
         ws = null
+        // Lost on the LAN address: the next try goes the link's way (the phone may have left).
+        streamHost = null
         // The PC offers UDP again on the next socket.
         udp?.stop()
         udp = null

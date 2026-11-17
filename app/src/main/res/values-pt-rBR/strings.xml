@@ -489,6 +489,11 @@
     <string name="second_max_bitrate">Taxa máxima</string>
     <string name="second_dropped">%1$d perdidos</string>
     <string name="second_live_quality">Qualidade da transmissão</string>
+    <string name="second_pacing">Ritmo dos quadros</string>
+    <string name="second_pacing_latency">Menor latência</string>
+    <string name="second_pacing_smooth">Suave</string>
+    <string name="second_stats_latency">%1$d ms desde o PC · %2$d fps</string>
+    <string name="second_stats_split">PC %1$d · rede %2$d · celular %3$d ms · ping %4$d ms</string>
     <string name="second_resolution">Resolução</string>
     <string name="second_fps">Quadros por segundo</string>
     <string name="second_codec">Codec</string>
