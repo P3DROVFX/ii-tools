@@ -27,6 +27,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,6 +109,7 @@ fun PcSwitcherSheet(onDismiss: () -> Unit, onPairNew: () -> Unit) {
                 }
             }
             Hint(stringResource(R.string.pcs_hint), Modifier.fillMaxWidth())
+            LinkPcs(machines)
             FilledPill(
                 stringResource(R.string.pcs_pair_new),
                 onClick = onPairNew,
@@ -112,6 +120,61 @@ fun PcSwitcherSheet(onDismiss: () -> Unit, onPairNew: () -> Unit) {
         }
     }
 }
+
+/**
+ * Two connected PCs whose shells can link and are not linked yet: one tap introduces
+ * them, and from then on they talk directly (the clipboard goes straight between them).
+ */
+@Composable
+private fun LinkPcs(machines: List<PcEntry>) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var working by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val pairs = remember(machines) {
+        val ready = machines.filter { it.canLink }
+        buildList {
+            for (i in ready.indices) for (j in i + 1 until ready.size) {
+                val (a, b) = ready[i] to ready[j]
+                if (b.pc.fingerprint !in a.linked && a.pc.fingerprint !in b.linked) add(a to b)
+            }
+        }
+    }
+    if (pairs.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Hint(stringResource(R.string.pcs_link_hint), Modifier.fillMaxWidth())
+        pairs.forEach { (a, b) ->
+            val nameA = a.pc.name.ifEmpty { "PC" }
+            val nameB = b.pc.name.ifEmpty { "PC" }
+            val busy = working == (a.pc.fingerprint to b.pc.fingerprint)
+            TonalPill(
+                stringResource(if (busy) R.string.pcs_linking else R.string.pcs_link, nameA, nameB),
+                onClick = {
+                    if (working != null) return@TonalPill
+                    working = a.pc.fingerprint to b.pc.fingerprint
+                    scope.launch {
+                        val why = LinkHub.linkPcs(a.pc.fingerprint, b.pc.fingerprint)
+                        working = null
+                        val text = if (why == null) ctx.getString(R.string.pcs_linked, nameA, nameB) else ctx.getString(R.string.pcs_link_failed, linkProblem(ctx, why))
+                        Toast.makeText(ctx, text, Toast.LENGTH_LONG).show()
+                    }
+                },
+                icon = R.drawable.rounded_link,
+                height = 52.dp,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+private fun linkProblem(ctx: android.content.Context, code: String): String = ctx.getString(
+    when (code) {
+        "unreachable", "timeout" -> R.string.pcs_link_unreachable
+        "certificate" -> R.string.pcs_link_certificate
+        "disabled" -> R.string.pcs_link_disabled
+        "unsupported" -> R.string.pcs_link_unsupported
+        else -> R.string.pcs_link_other
+    },
+)
 
 /** One PC: the controlled one fills and scallops; each says whether it is connected. */
 @Composable

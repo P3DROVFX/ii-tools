@@ -396,6 +396,16 @@
     <string name="tailnet_auto_body">Turns Tailscale on by itself when the PC\'s network is not around, and off again back home</string>
     <string name="tailnet_needs_app">Needs the Tailscale app on this phone</string>
     <string name="tailnet_needs_pc">On the PC, turn on Settings → ii tools → Away from home</string>
+    <string name="pcs_link">Link %1$s and %2$s</string>
+    <string name="pcs_linking">Linking %1$s and %2$s…</string>
+    <string name="pcs_link_hint">Linked PCs talk directly, even without the phone: what you copy on one reaches the other.</string>
+    <string name="pcs_linked">%1$s and %2$s are linked</string>
+    <string name="pcs_link_failed">Could not link the PCs: %1$s</string>
+    <string name="pcs_link_unreachable">one PC cannot reach the other on the network</string>
+    <string name="pcs_link_certificate">a PC answered with another certificate</string>
+    <string name="pcs_link_disabled">Link with other PCs is off in one PC\'s Settings → ii tools</string>
+    <string name="pcs_link_unsupported">update the shell on both PCs</string>
+    <string name="pcs_link_other">try again</string>
     <string name="pcs_title">Your PCs</string>
     <string name="pcs_switch">Switch PC</string>
     <string name="pcs_hint">Every paired PC stays connected and gets the phone\'s notifications, calls and media. The home and the tools control the one picked here.</string>

@@ -134,6 +134,15 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   Tailscale app's VPN on (its `CONNECT_VPN` broadcast) and retries, and *Tailscale away
   from home* (Settings, and the away home) does it by itself, turning it off again back
   home. The status says *Connected via Tailscale*. Wake-on-LAN cannot cross networks.
+- **Linking PCs:** with two PCs paired and connected, *Link A and B* in the PC list
+  introduces them once (a one-time secret from one, handed by the phone to the other).
+  From then on the two shells talk directly, phone or not, and what you copy on one
+  reaches the other (*Settings → ii tools → Other PCs* on each PC: the link, the universal
+  clipboard, *Unlink*). Their shelves show on each other (files travel only when dragged or
+  opened), *Send to <PC>* on the shelf sends files, a web page playing on one continues on
+  the other, and the phone's *Wake* asks a connected PC to wake one that is off (the way to
+  wake a PC from away, over Tailscale). PCs can also link without the phone, with a 6-digit
+  code (*Settings → ii tools → Other PCs*).
 - **Lifetime:** the link stays open in the background (*Stay connected*, on by default),
   so the PC can reach the phone at any time; it needs the app let off battery
   optimisation (a guided step), or Doze cuts it. No foreground service for the link: the process lives

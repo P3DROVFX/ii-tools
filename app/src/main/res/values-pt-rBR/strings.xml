@@ -399,6 +399,16 @@
     <string name="tailnet_auto_body">Liga o Tailscale sozinho quando a rede do PC não está por perto, e desliga ao voltar para casa</string>
     <string name="tailnet_needs_app">Precisa do app do Tailscale neste celular</string>
     <string name="tailnet_needs_pc">No PC, ligue Configurações → ii tools → Fora de casa</string>
+    <string name="pcs_link">Ligar %1$s e %2$s</string>
+    <string name="pcs_linking">Ligando %1$s e %2$s…</string>
+    <string name="pcs_link_hint">PCs ligados falam direto, mesmo sem o celular: o que você copia em um chega no outro.</string>
+    <string name="pcs_linked">%1$s e %2$s estão ligados</string>
+    <string name="pcs_link_failed">Não deu para ligar os PCs: %1$s</string>
+    <string name="pcs_link_unreachable">um PC não alcança o outro pela rede</string>
+    <string name="pcs_link_certificate">um PC respondeu com outro certificado</string>
+    <string name="pcs_link_disabled">Ligar com outros PCs está desligado nas Configurações → ii tools de um dos PCs</string>
+    <string name="pcs_link_unsupported">atualize o shell nos dois PCs</string>
+    <string name="pcs_link_other">tente de novo</string>
     <string name="pcs_title">Seus PCs</string>
     <string name="pcs_switch">Trocar de PC</string>
     <string name="pcs_hint">Todo PC pareado continua conectado e recebe as notificações, ligações e mídia do celular. A home e as ferramentas controlam o escolhido aqui.</string>

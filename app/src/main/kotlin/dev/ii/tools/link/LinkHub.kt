@@ -107,10 +107,24 @@ data class LinkFailure(val reason: FailReason, val hosts: List<String>, val port
 data class ShellAction(val id: String, val name: String, val icon: String, val toggle: Boolean)
 
 /** What the shell announced in its `hello`: what it can do right now. */
-data class ShellInfo(val name: String, val caps: Set<String>, val actions: List<ShellAction>)
+data class ShellInfo(
+    val name: String,
+    val caps: Set<String>,
+    val actions: List<ShellAction>,
+    /** Fingerprints of the PCs this one is linked with (PC link). */
+    val pcLinks: Set<String> = emptySet(),
+)
 
 /** A paired PC as the switcher lists it: its state, and whether the home controls it. */
-data class PcEntry(val pc: PairedPc, val status: LinkStatus, val selected: Boolean)
+data class PcEntry(
+    val pc: PairedPc,
+    val status: LinkStatus,
+    val selected: Boolean,
+    /** Its shell can be linked with another PC right now (cap `pcLink`). */
+    val canLink: Boolean = false,
+    /** The PCs it is linked with already. */
+    val linked: Set<String> = emptySet(),
+)
 
 /**
  * One paired PC (or one being paired: [pc] is null until it answers) and its socket.
@@ -210,7 +224,13 @@ object LinkHub {
     val machines: StateFlow<List<PcEntry>> = combine(links, selected) { l, s -> l to s }
         .flatMapLatest { (l, s) ->
             if (l.isEmpty()) flowOf(emptyList())
-            else combine(l.map { link -> combine(link.pc, link.status) { p, st -> p?.let { PcEntry(it, st, link === s) } } }) { it.filterNotNull() }
+            else combine(
+                l.map { link ->
+                    combine(link.pc, link.status, link.shell) { p, st, sh ->
+                        p?.let { PcEntry(it, st, link === s, sh?.caps?.contains("pcLink") == true && st is LinkStatus.Online, sh?.pcLinks.orEmpty()) }
+                    }
+                },
+            ) { it.filterNotNull() }
         }
         .stateIn(mirror, SharingStarted.Eagerly, emptyList())
 
@@ -522,10 +542,20 @@ object LinkHub {
         online().forEach { it.socket?.send(m) }
     }
 
-    /** Wakes the controlled PC (Wake-on-LAN), then keeps trying to reach it while it boots. */
+    /**
+     * Wakes the controlled PC (Wake-on-LAN), then keeps trying to reach it while it boots.
+     * The phone's own packet only reaches a LAN it is on; every other connected PC that
+     * can relay (on that LAN, reached over Tailscale…) sends one too.
+     */
     suspend fun wake(): Boolean {
         val link = sel ?: return false
-        val sent = Wake.send(app, link.key)
+        val targets = Wake.targetsOf(app, link.key)
+        var relayed = false
+        if (targets.length() > 0) {
+            val ask = JSONObject().put("t", "wakeFor").put("targets", targets).toString()
+            online().filter { it !== link && it.has("wakeRelay") }.forEach { relayed = it.socket?.send(ask) == true || relayed }
+        }
+        val sent = Wake.send(app, link.key) || relayed
         if (sent) {
             networkEpoch.value++
             if (link.session?.isActive != true) retry()
@@ -1034,10 +1064,12 @@ object LinkHub {
                 // A shell from before routes says nothing: what the QR code carried stays.
                 m.optJSONArray("routes")?.let { learnRoutes(link, it) }
                 val caps = m.optJSONArray("caps")
+                val pcLinks = m.optJSONArray("pcLinks")
                 link.shell.value = ShellInfo(
                     name = m.optString("name"),
                     caps = buildSet { if (caps != null) for (i in 0 until caps.length()) add(caps.optString(i)) },
                     actions = list,
+                    pcLinks = buildSet { if (pcLinks != null) for (i in 0 until pcLinks.length()) add(pcLinks.optString(i)) },
                 )
                 // A PC that renamed itself shows the new name in the switcher.
                 val name = m.optString("name")
@@ -1135,7 +1167,52 @@ object LinkHub {
                 link.shell.value?.caps?.contains("mirrorRadio") == true,
             )
             "look" -> Look.update(app, link.key, m.optString("wall"))
+            "pcPairInfo", "pcPairResult" -> pcReplies.remove(m.optInt("id"))?.complete(m)
         }
+    }
+
+    // ── Linking two PCs ───────────────────────────────────────────────────
+
+    private val pcReplies = ConcurrentHashMap<Int, CompletableDeferred<JSONObject>>()
+
+    private suspend fun ask(link: PcLink, m: JSONObject, wait: Long): JSONObject? {
+        val ws = link.socket ?: return null
+        val id = nextId.getAndIncrement()
+        val reply = CompletableDeferred<JSONObject>()
+        pcReplies[id] = reply
+        try {
+            if (!ws.send(m.put("id", id).toString())) return null
+            return withTimeoutOrNull(wait) { reply.await() }
+        } finally {
+            pcReplies.remove(id)
+        }
+    }
+
+    /**
+     * Introduces two paired PCs to each other, once: [b] opens a pairing window and hands
+     * over a one-time secret, [a] dials it with that secret. From then on they talk
+     * directly (the shell's PC link), phone or not. Null once linked, else why not.
+     */
+    suspend fun linkPcs(a: String, b: String): String? {
+        val linkA = links.value.firstOrNull { it.key == a } ?: return "offline"
+        val linkB = links.value.firstOrNull { it.key == b } ?: return "offline"
+        if (!linkA.has("pcLink") || !linkB.has("pcLink")) return "unsupported"
+        val info = ask(linkB, JSONObject().put("t", "pcPairOpen"), REPLY_TIMEOUT_MS) ?: return "timeout"
+        info.optString("err").ifEmpty { null }?.let { return it }
+        // Where the phone reaches B now goes first: the PCs most likely share that network.
+        val pcB = linkB.pc.value ?: return "offline"
+        val reached = (linkB.status.value as? LinkStatus.Online)?.host?.takeIf { !Tailnet.isTailnet(it) }
+        val announced = info.optJSONArray("hosts")?.let { h -> List(h.length()) { h.optString(it) } }.orEmpty()
+        val hosts = (listOfNotNull(reached) + announced + pcB.hosts + pcB.tailnet).filter { it.isNotEmpty() && it != "127.0.0.1" }.distinct()
+        val join = JSONObject()
+            .put("t", "pcPairJoin")
+            .put("fp", info.optString("fp"))
+            .put("port", info.optInt("port", pcB.port))
+            .put("secret", info.optString("secret"))
+            .put("name", info.optString("name"))
+            .put("hosts", org.json.JSONArray(hosts))
+        val result = ask(linkA, join, 25_000) ?: return "timeout"
+        return if (result.optBoolean("ok")) null else result.optString("code").ifEmpty { "failed" }
     }
 
     // ── Commands ──────────────────────────────────────────────────────────

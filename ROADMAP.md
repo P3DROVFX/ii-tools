@@ -798,6 +798,46 @@ com H.264.
 > quando o Wi-Fi de casa aparece. Falta: acordar o PC de longe (relay por outro PC pareado
 > na mesma LAN).
 
+### 5.24 Link entre PCs · **L**
+
+Os shells falam direto um com o outro, sem o celular no meio: o mesmo `ii_link` (TLS com
+certificado fixado, rotas LAN e Tailscale) ganha o papel de cliente. O celular só
+apresenta os PCs uma vez.
+
+**Etapa 1 — link direto + clipboard universal** · *implementada (2026-11-16)*, falta o teste com dois PCs reais
+
+- **Helper (`pclink.rs`):** pares de PC em `pcs.json` (fingerprint, nome, endereços, porta,
+  credencial para discar o outro e hash da credencial que o outro usa), sessão PC↔PC no
+  mesmo WebSocket (`pcPair`/`pcAuth` no primeiro frame), só o PC de fingerprint menor disca
+  de volta (backoff até 5 min, parado enquanto conectado ou com o link desligado), ping a
+  cada 60 s. Imagens do clipboard chegam em base64 e o helper as grava em disco: o QML só
+  recebe o caminho. Ops: `pcPairOpen`, `pcPairJoin`, `pcSend`, `pcUnpair`, `config.pcLink`.
+- **Pareamento pelo celular:** no modal *Seus PCs*, *Ligar A e B*. O app pede a B uma janela
+  de pareamento (`pcPairOpen` → `pcPairInfo`: segredo de uso único por 2 min, fingerprint,
+  endereços), entrega a A (`pcPairJoin`), A disca B, os dois trocam credenciais e
+  respondem `pcPairResult`. O `hello` passa a listar `pcLinks` (fingerprints ligados).
+- **Clipboard universal:** `iiTools.pcLink.clipboard`. Cada cópia nova (`Cliphist.entryAdded`)
+  vai aos PCs ligados (texto, ou imagem até 5 MiB); o que chega entra como cópia interna
+  (`markInternalCopy`), então não volta nem gera pingue-pongue. Popup "Copiado de <PC>".
+- **Settings → ii tools → Outros PCs:** link ligado/desligado, clipboard, lista com estado
+  e *Desligar*.
+
+**Etapa 2 — shelf compartilhado** · *implementada (2026-11-16)*: cada PC publica o shelf
+(nome, miniatura 192 px feita uma vez por item) aos PCs ligados; lá ele aparece como
+`pc:<fp>:<id>` em todas as superfícies do shelf, e o arquivo só viaja ao clicar ou arrastar
+(faixa de arquivos limitada no helper, até 4 GiB, mensagens com prioridade). Chips *Enviar
+para <PC>* no painel do shelf (soltar arquivos, ou tocar para o shelf inteiro): chega em
+Downloads e no shelf do outro.
+
+**Etapa 3 — extras** · *implementada (2026-11-16)*: handoff de mídia PC↔PC (botão no
+player do shell e IPC `continueOnPc`); `ipc sendToPc` para "Enviar para" de gerenciadores de
+arquivos; acordar um PC pelo outro (botão *Acordar* em Outros PCs) e o *Acordar* do celular
+pedindo o magic packet aos PCs conectados (`wakeFor`), o que faz WoL funcionar de longe pelo
+Tailscale; pareamento sem celular por código de 6 dígitos com descoberta na LAN e
+verificação da fingerprint. Ficou de fora: estado do outro PC (bateria, mídia) no shell.
+
+Falta para as três etapas: o teste com dois PCs reais.
+
 ---
 
 ## Resumo
@@ -809,4 +849,4 @@ com H.264.
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) |

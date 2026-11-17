@@ -29,6 +29,9 @@ object Wake {
     /** The PC the home controls can be woken. */
     fun available(ctx: Context): Boolean = targets(ctx, LinkHub.selectedKey()).length() > 0
 
+    /** [pc]'s adapters, for another PC on its LAN to wake it (`wakeFor`). */
+    fun targetsOf(ctx: Context, pc: String?): JSONArray = targets(ctx, pc)
+
     private fun targets(ctx: Context, pc: String?): JSONArray =
         runCatching { JSONArray(ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("$KEY:$pc", "[]")) }.getOrDefault(JSONArray())
 

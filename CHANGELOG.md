@@ -8,6 +8,12 @@
 - **Away from home over Tailscale:** with *Away from home* on in the PC's Settings → ii
   tools, the app reaches the PC from any network: a *Connect over Tailscale* button when
   the PC is away, or *Tailscale away from home* to turn it on and off by itself.
+- **Linked PCs and a universal clipboard:** *Link A and B* in the PC list introduces two
+  PCs to each other once; then they talk directly, without the phone, and what you copy
+  on one reaches the other. Each PC's shelf shows on the others (the file comes over when
+  dragged or opened), *Send to <PC>* sends files, a web page playing continues on the other
+  PC, PCs can link with a 6-digit code without the phone, and *Wake* asks a connected PC to
+  wake one that is off, so it works from away over Tailscale.
 
 ## 1.2.0
 
