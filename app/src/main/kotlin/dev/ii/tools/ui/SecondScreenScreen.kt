@@ -132,6 +132,7 @@ import dev.ii.tools.screen.ScreenSession
 import dev.ii.tools.screen.ScreenSocket
 import dev.ii.tools.screen.ScreenState
 import dev.ii.tools.screen.ScreenStats
+import dev.ii.tools.screen.hevcSupported
 import dev.ii.tools.screen.ScreenStream
 import dev.ii.tools.screen.ScreenWorkspace
 import dev.ii.tools.screen.SecondScreen
@@ -256,6 +257,13 @@ fun SecondScreenScreen(onBack: () -> Unit) {
                         SecondScreen.fpsChoices(ctx).sorted().map { it to "$it" },
                         p.fps,
                     ) { set(p.copy(fps = it)) }
+                    if (hevcSupported()) {
+                        Choice(
+                            stringResource(R.string.second_codec),
+                            listOf("hevc" to "HEVC", "h264" to "H.264"),
+                            p.codec,
+                        ) { set(p.copy(codec = it)) }
+                    }
                     Choice(
                         stringResource(R.string.second_scale),
                         listOf(1f to "1×", 1.25f to "1.25×", 1.5f to "1.5×", 2f to "2×"),

@@ -41,7 +41,7 @@ class ScreenUdp(
         private const val TAG = 16
         private const val HELLO_MS = 500L
         /** A frame still incomplete this long after a later one completed is lost. */
-        private const val LOSS_WAIT_MS = 30L
+        private const val LOSS_WAIT_MS = 15L
     }
 
     private val keySpec = SecretKeySpec(key, "AES")

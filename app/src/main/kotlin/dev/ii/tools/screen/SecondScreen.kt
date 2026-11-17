@@ -30,6 +30,8 @@ data class ScreenPrefs(
     val adaptive: Boolean = true,
     /** Last session input mode: "touch" or "pad". */
     val input: String = "touch",
+    /** The stream's codec: "hevc" (the default where the phone decodes it) or "h264". */
+    val codec: String = "hevc",
     /** Extended output orientation: "landscape" or "portrait". */
     val orient: String = "landscape",
     /** Docked toolbar edge ("LEFT", "RIGHT", "TOP", "BOTTOM") and handle fraction 0–1. */
@@ -197,6 +199,8 @@ object SecondScreen {
                 adaptive = p.getBoolean("adaptive", true),
                 input = input,
                 orient = orient,
+                codec = p.getString("codec", null).takeIf { it == "hevc" || it == "h264" }
+                    ?: if (hevcSupported()) "hevc" else "h264",
                 barEdge = barEdge,
                 barAt = barAt,
             )
@@ -213,7 +217,7 @@ object SecondScreen {
             .putFloat("res", v.res).putInt("fps", v.fps).putFloat("scale", v.scale)
             .putString("side", v.side).putInt("bitrate", v.bitrate).putString("mirror", v.mirror)
             .putString("transport", v.transport).putBoolean("adaptive", v.adaptive)
-            .putString("input", v.input).putString("orient", v.orient)
+            .putString("input", v.input).putString("orient", v.orient).putString("codec", v.codec)
             .putString("barEdge", v.barEdge).putFloat("barAt", v.barAt).apply()
     }
 
@@ -258,6 +262,8 @@ object SecondScreen {
                 .put("res", p.res.toDouble()).put("fps", p.fps).put("scale", p.scale.toDouble())
                 .put("side", p.side).put("bitrate", p.bitrate).put("output", p.mirror)
                 .put("transport", transport).put("adaptive", p.adaptive)
+                // HEVC needs a decoder for it; the PC falls back to H.264 without an encoder.
+                .put("codec", if (p.codec == "hevc" && hevcSupported()) "hevc" else "h264")
                 .apply { if (mode == "extend") put("orient", p.orient) },
         )
     }

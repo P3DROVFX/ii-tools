@@ -491,6 +491,7 @@
     <string name="second_live_quality">Qualidade da transmissão</string>
     <string name="second_resolution">Resolução</string>
     <string name="second_fps">Quadros por segundo</string>
+    <string name="second_codec">Codec</string>
     <string name="second_scale">Escala no PC</string>
     <string name="second_side">Ao lado da tela em foco</string>
     <string name="second_side_left">Esquerda</string>

@@ -32,6 +32,13 @@ class StreamMetrics(private val onSecond: (Summary) -> Unit = {}) {
     @Volatile private var offsetAtNs: Long = 0L
     @Volatile var lastRttMs: Int? = null
         private set
+    /**
+     * The PC's capture → send (ms, mean and max over its last second), from `stats`. With it,
+     * frame pts are capture times: **total** is capture → decoded, and total minus this is
+     * send → decoded, the number the stock wf-recorder gave.
+     */
+    @Volatile var pcCaptureMs: Int? = null
+    @Volatile var pcCaptureMaxMs: Int? = null
 
     private val received = ConcurrentHashMap<Long, Long>()
     private val lock = Any()
@@ -109,7 +116,7 @@ class StreamMetrics(private val onSecond: (Summary) -> Unit = {}) {
         }
         Log.i(TAG, "fps=${s.frames} total p50=${s.totalP50} p95=${s.totalP95} p99=${s.totalP99} max=${s.totalMax} " +
             "net p50=${s.netP50} phone p50=${s.phoneP50} p99=${s.phoneP99} stalls=${s.stalls} worstGap=${s.worstGapMs} " +
-            "rtt=${s.rttMs} sync=${s.offsetKnown}")
+            "rtt=${s.rttMs} sync=${s.offsetKnown} pccap=${pcCaptureMs} pccapmax=${pcCaptureMaxMs}")
         onSecond(s)
     }
 

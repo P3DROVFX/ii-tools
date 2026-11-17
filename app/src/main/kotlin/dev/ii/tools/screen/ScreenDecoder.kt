@@ -22,8 +22,8 @@ class ScreenDecoder(
     private val surface: Surface,
     /** Told the moment each frame is decoded (latency, stalls). */
     private val metrics: StreamMetrics? = null,
-    /** The stream's codec: [MediaFormat.MIMETYPE_VIDEO_AVC] or [MediaFormat.MIMETYPE_VIDEO_HEVC]. */
-    private val mime: String = MediaFormat.MIMETYPE_VIDEO_AVC,
+    /** The codec to start with; a config of the other kind switches (kind 0 H.264, 10 HEVC). */
+    private var mime: String = MediaFormat.MIMETYPE_VIDEO_AVC,
     private val onError: () -> Unit,
 ) {
     @Volatile private var closed = false
@@ -39,16 +39,21 @@ class ScreenDecoder(
 
     fun feed(kind: Int, pts: Long, bytes: ByteArray, off: Int = 0, len: Int = bytes.size) {
         if (closed) return
-        if (kind == 0) {
+        val isConfig = kind == 0 || kind == KIND_HEVC_CONFIG
+        var switchCodec = false
+        if (isConfig) {
+            val want = if (kind == KIND_HEVC_CONFIG) MediaFormat.MIMETYPE_VIDEO_HEVC else MediaFormat.MIMETYPE_VIDEO_AVC
             val cfg = bytes.copyOfRange(off, off + len)
             // The same parameters again (an encoder restart for a key frame): the decoder
             // has them. Recreating it here took long enough at 120 fps to back the queue
             // up, which asked for another key frame, which restarted the encoder: a loop.
-            if (configured && cfg.contentEquals(lastConfig)) return
+            if (configured && want == mime && cfg.contentEquals(lastConfig)) return
             lastConfig = cfg
+            switchCodec = want != mime
+            mime = want
         }
         // A new codec config: the PC's capture changed (new scale/mode or codec).
-        if (kind == 0 && configured) {
+        if (isConfig && (configured || switchCodec)) {
             synchronized(this) {
                 if (closed) return
                 releaseCodecLocked()
@@ -56,7 +61,7 @@ class ScreenDecoder(
                 codec = createCodec()
             }
         }
-        if (kind == 0) configured = true
+        if (isConfig) configured = true
         val idx = inputs.poll(1, TimeUnit.SECONDS) ?: return
         if (closed) return
         val c = codec ?: return
@@ -68,7 +73,7 @@ class ScreenDecoder(
         }
         ib.put(bytes, off, len)
         val flags = when (kind) {
-            0 -> MediaCodec.BUFFER_FLAG_CODEC_CONFIG
+            0, KIND_HEVC_CONFIG -> MediaCodec.BUFFER_FLAG_CODEC_CONFIG
             2 -> MediaCodec.BUFFER_FLAG_KEY_FRAME
             else -> 0
         }
@@ -130,6 +135,12 @@ class ScreenDecoder(
         codecThread.quitSafely()
     }
 }
+
+/** The PC's packet kind for an HEVC codec config (screen.rs KIND_HEVC_CONFIG); 0 is H.264's. */
+const val KIND_HEVC_CONFIG = 10
+
+/** Whether this phone decodes HEVC in hardware (the stream's default codec then). */
+fun hevcSupported(): Boolean = pickDecoder(android.media.MediaFormat.MIMETYPE_VIDEO_HEVC) != null
 
 /**
  * The decoder that shows a frame soonest: a vendor's dedicated low-latency variant

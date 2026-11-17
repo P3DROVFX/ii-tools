@@ -124,6 +124,8 @@ class ScreenSocket(
                     // screen.rs: Wi-Fi sessions refresh on every encoder but VA-API.
                     refreshing = m.optString("encoder") in setOf("nvenc", "x264")
                     fecPct = m.optInt("fec", 0)
+                    metrics.pcCaptureMs = if (m.has("cap") && !m.isNull("cap")) m.optInt("cap") else null
+                    metrics.pcCaptureMaxMs = if (m.has("capmax") && !m.isNull("capmax")) m.optInt("capmax") else null
                     val bitrateBps = m.optLong("bitrate", 0L)
                     val maxBps = m.optLong("max", 0L)
                     val stats = ScreenStats(
@@ -175,7 +177,7 @@ class ScreenSocket(
             audio?.packet(pts, arr.copyOfRange(9, arr.size))
             return
         }
-        if (kind == 0) {
+        if (kind == 0 || kind == KIND_HEVC_CONFIG) {
             // Codec config is never dropped.
             frameQueue.offer(Frame(kind, pts, arr))
             return

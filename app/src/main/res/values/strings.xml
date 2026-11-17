@@ -488,6 +488,7 @@
     <string name="second_live_quality">Stream quality</string>
     <string name="second_resolution">Resolution</string>
     <string name="second_fps">Frames per second</string>
+    <string name="second_codec">Codec</string>
     <string name="second_scale">Scale on the PC</string>
     <string name="second_side">Beside the focused screen</string>
     <string name="second_side_left">Left</string>
