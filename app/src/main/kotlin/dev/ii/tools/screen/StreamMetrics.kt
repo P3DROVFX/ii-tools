@@ -1,6 +1,7 @@
 package dev.ii.tools.screen
 
 import android.util.Log
+import dev.ii.tools.BuildConfig
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -143,7 +144,8 @@ class StreamMetrics(private val onSecond: (Summary) -> Unit = {}) {
             total.clear(); net.clear(); phone.clear()
             frames = 0; stalls = 0; worstGapUs = 0
         }
-        Log.i(TAG, "fps=${s.frames} total p50=${s.totalP50} p95=${s.totalP95} p99=${s.totalP99} max=${s.totalMax} " +
+        // Every second: logcat only on debuggable builds (dev included), not what users run.
+        if (BuildConfig.DEBUG) Log.i(TAG, "fps=${s.frames} total p50=${s.totalP50} p95=${s.totalP95} p99=${s.totalP99} max=${s.totalMax} " +
             "net p50=${s.netP50} phone p50=${s.phoneP50} p99=${s.phoneP99} stalls=${s.stalls} worstGap=${s.worstGapMs} " +
             "rtt=${s.rttMs} sync=${s.offsetKnown} pccap=${pcCaptureMs} pccapmax=${pcCaptureMaxMs}")
         onSecond(s)

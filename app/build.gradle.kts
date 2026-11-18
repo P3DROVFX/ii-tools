@@ -58,6 +58,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG: the stream's once-a-second logs only on debuggable builds.
+        buildConfig = true
     }
 
     packaging {

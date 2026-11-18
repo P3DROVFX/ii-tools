@@ -1504,22 +1504,13 @@ object LinkHub {
      * (decrypted there, then again by the stream): ~2,500 packets a second at 120 fps.
      */
     suspend fun streamHost(): String? {
-        val host = (_status.value as? LinkStatus.Online)?.host ?: return null
-        if (!isTailnet(host) || !hasNetworkPermission(app)) return host
-        val pc = _pc.value ?: return host
-        val lan = discover(pc, timeoutMs = 500)?.takeUnless(::isTailnet)
+        // The controlled PC's link: the stream's socket goes there (openSide).
+        val link = sel ?: return null
+        val host = (link.status.value as? LinkStatus.Online)?.host ?: return null
+        if (!Tailnet.isTailnet(host) || !hasNetworkPermission(app)) return host
+        val pc = link.pc.value ?: return host
+        val lan = discover(pc, timeoutMs = 500)?.takeUnless(Tailnet::isTailnet)
         return lan ?: host
-    }
-
-    /** Tailscale's addresses: 100.64.0.0/10 and fd7a:115c:a1e0::/48. */
-    private fun isTailnet(host: String): Boolean {
-        val h = host.lowercase()
-        if (h.startsWith("fd7a:115c:a1e0:")) return true
-        val parts = h.split('.')
-        if (parts.size != 4) return false
-        val a = parts[0].toIntOrNull() ?: return false
-        val b = parts[1].toIntOrNull() ?: return false
-        return a == 100 && b in 64..127
     }
 
     /** "iilink?" to the LAN broadcast; the PC answers with its fingerprint and port. */

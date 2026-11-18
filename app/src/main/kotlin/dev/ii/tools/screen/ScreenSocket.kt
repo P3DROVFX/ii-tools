@@ -3,6 +3,7 @@ package dev.ii.tools.screen
 import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
+import dev.ii.tools.BuildConfig
 import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
 import kotlinx.coroutines.CoroutineScope
@@ -204,9 +205,10 @@ class ScreenSocket(
             } else {
                 val lastKey = frameQueue.lastOrNull { it.kind == 2 }
                 if (lastKey != null) {
-                    // Start again from the newest key frame: everything after it is intact.
+                    // Start again from the newest key frame: everything after it is intact. Codec
+                    // configs stay: one before the key frame may carry new parameters for it.
                     var seen = false
-                    frameQueue.removeIf { f -> if (f === lastKey) { seen = true; false } else !seen && f.kind != 0 }
+                    frameQueue.removeIf { f -> if (f === lastKey) { seen = true; false } else !seen && f.kind != 0 && f.kind != KIND_HEVC_CONFIG }
                     Log.w(StreamMetrics.TAG, "backlog: skipped to the newest key frame")
                 } else {
                     // Every later frame needs the dropped ones: none until a key frame.
@@ -288,7 +290,7 @@ class ScreenSocket(
                 sent++
                 udp?.takeCounts()?.let { c ->
                     if (sent > 5) {
-                        Log.i(StreamMetrics.TAG, "udp pkts=${c.packets} rebuilt=${c.rebuilt} lost=${c.lost} loss=${"%.1f".format(c.lossPct)}% fec=$fecPct%")
+                        if (BuildConfig.DEBUG) Log.i(StreamMetrics.TAG, "udp pkts=${c.packets} rebuilt=${c.rebuilt} lost=${c.lost} loss=${"%.1f".format(c.lossPct)}% fec=$fecPct%")
                         // The PC sizes its parity to the loss it causes here.
                         if (open) ws?.send(JSONObject().put("t", "net").put("loss", c.lossPct.toDouble()).put("lost", c.lost).toString())
                     }
