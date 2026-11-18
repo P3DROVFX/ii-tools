@@ -47,9 +47,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -106,10 +103,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -863,32 +856,11 @@ fun SecondScreenView(onDone: () -> Unit) {
                             )
                         }
                     }
-                    // Never seen: it only takes the IME's text, which goes out as it comes.
-                    var field by remember { mutableStateOf(TextFieldValue(SENTINEL, TextRange(SENTINEL.length))) }
-                    BasicTextField(
-                        value = field,
-                        onValueChange = { v ->
-                            if (v.composition != null) {
-                                field = v
-                                return@BasicTextField
-                            }
-                            when {
-                                v.text.isEmpty() -> sendKey("BackSpace")
-                                v.text.startsWith(SENTINEL) && v.text.length > SENTINEL.length -> {
-                                    val typed = v.text.substring(SENTINEL.length)
-                                    if (mods.isNotEmpty() && typed.length == 1) sendKey(typed) else stream[0]?.text(typed)
-                                }
-                                v.text != SENTINEL -> stream[0]?.text(v.text.trim())
-                            }
-                            field = TextFieldValue(SENTINEL, TextRange(SENTINEL.length))
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.None,
-                            autoCorrectEnabled = false,
-                            imeAction = ImeAction.Send,
-                        ),
-                        keyboardActions = KeyboardActions(onSend = { sendKey("Return") }),
-                        modifier = Modifier.size(1.dp).alpha(0f).focusRequester(focus),
+                    PcTyping(
+                        focus = focus,
+                        modsHeld = { mods.isNotEmpty() },
+                        text = { t -> stream[0]?.text(t) },
+                        key = { k -> stream[0]?.key(k, mods.toList()); mods.clear() },
                     )
                 }
             }

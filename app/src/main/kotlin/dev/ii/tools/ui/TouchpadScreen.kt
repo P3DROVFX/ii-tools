@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -42,7 +39,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -56,10 +52,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -70,11 +62,11 @@ import dev.ii.tools.link.LinkHub
 import dev.ii.tools.link.LinkStatus
 import dev.ii.tools.touchpad.Touchpad
 import dev.ii.tools.ui.theme.Expressive
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
 /** What the hidden field holds, so a backspace on "empty" still has something to delete. */
-internal const val SENTINEL = " "
 
 /**
  * The phone as the PC's touchpad: the whole surface reports every finger, the PC's
@@ -111,10 +103,20 @@ fun TouchpadScreen(onBack: () -> Unit) {
     }
     // The pad's size in millimetres: the PC's touchpad gets the same, so motion feels
     // like a touchpad of that size.
-    LaunchedEffect(online, supported, padSize) {
-        if (!online || !supported || padSize == IntSize.Zero) return@LaunchedEffect
+    // Not on every resize: the keyboard opening and its suggestion strip resize the pad
+    // many times, and each start rebuilds the PC's virtual touchpad. While typing the
+    // pad keeps the size it started with.
+    var padStarted by remember { mutableStateOf(false) }
+    LaunchedEffect(online, supported, if (typing) null else padSize) {
+        if (!online || !supported) {
+            padStarted = false
+            return@LaunchedEffect
+        }
+        if (padSize == IntSize.Zero || (typing && padStarted)) return@LaunchedEffect
+        if (padStarted) delay(300)
         val dm = ctx.resources.displayMetrics
         Touchpad.start(padSize.width / dm.xdpi * 25.4f, padSize.height / dm.ydpi * 25.4f)
+        padStarted = true
     }
     LaunchedEffect(typing) {
         if (typing) {
@@ -173,32 +175,11 @@ fun TouchpadScreen(onBack: () -> Unit) {
                     haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
                     if (m in mods) mods.remove(m) else mods.add(m)
                 })
-                // Never seen: it only takes the IME's text, which goes out as it comes.
-                var field by remember { mutableStateOf(TextFieldValue(SENTINEL, TextRange(SENTINEL.length))) }
-                BasicTextField(
-                    value = field,
-                    onValueChange = { v ->
-                        if (v.composition != null) {
-                            field = v
-                            return@BasicTextField
-                        }
-                        when {
-                            v.text.isEmpty() -> sendKey("BackSpace")
-                            v.text.startsWith(SENTINEL) && v.text.length > SENTINEL.length -> {
-                                val typed = v.text.substring(SENTINEL.length)
-                                if (mods.isNotEmpty() && typed.length == 1) sendKey(typed) else Touchpad.text(typed)
-                            }
-                            v.text != SENTINEL -> Touchpad.text(v.text.trim())
-                        }
-                        field = TextFieldValue(SENTINEL, TextRange(SENTINEL.length))
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.None,
-                        autoCorrectEnabled = false,
-                        imeAction = ImeAction.Send,
-                    ),
-                    keyboardActions = KeyboardActions(onSend = { sendKey("Return") }),
-                    modifier = Modifier.size(1.dp).alpha(0f).focusRequester(focus),
+                PcTyping(
+                    focus = focus,
+                    modsHeld = { mods.isNotEmpty() },
+                    text = Touchpad::text,
+                    key = { k -> Touchpad.key(k, mods.toList()); mods.clear() },
                 )
             }
 
