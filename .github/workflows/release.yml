@@ -14,6 +14,7 @@ on:
     paths:
       - app/build.gradle.kts
       - .github/releases/**
+      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:
@@ -31,7 +32,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -62,16 +63,20 @@ jobs:
           fi
           echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.jks"
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         if: steps.v.outputs.skip == 'false'
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
+      # The runner's own SDK (ANDROID_HOME): its sdkmanager takes the licences, and AGP fetches
+      # the platform and build tools it needs.
+      - name: Android SDK
         if: steps.v.outputs.skip == 'false'
+        run: |
+          echo "$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin | sort -V | tail -1)" >> "$GITHUB_PATH"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         if: steps.v.outputs.skip == 'false'
 
       - name: Build the APK
@@ -97,7 +102,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.v.outputs.skip == 'false'
         with:
           python-version: "3.12"
