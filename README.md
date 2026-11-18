@@ -261,9 +261,15 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   live draw on the focused screen, with its tools, colours and undo.
 - **Second screen:** the phone as a monitor for the PC over USB or Wi-Fi: extend (a new
   screen the phone's size) or mirror the focused screen, with touch as the PC's
-  touchscreen. Over Wi-Fi it rides ii link's encrypted connection, with adaptive bitrate
-  and a live chip showing the bitrate, latency and dropped frames; USB (adb on the PC,
-  USB debugging on the phone) is used when plugged in, for the lowest latency.
+  touchscreen. Over Wi-Fi it rides ii link's encrypted connection, the video as sealed UDP
+  datagrams with Reed–Solomon parity on the link's own port (a lost packet costs at most its
+  frame), HEVC where the phone decodes it, at the panel's top refresh, with adaptive bitrate,
+  a choice of lowest-latency or smooth frame pacing, and a live chip showing the latency
+  from the PC's capture, frame rate and dropped frames. A Tailscale link streams over the
+  LAN when the PC is there. USB (adb on the PC, USB debugging on the phone) is used when
+  plugged in. The PC streams best with `ii-wf-recorder` (the shell's
+  `scripts/wf-recorder-ii/build.sh install`): key frames and bitrate changes without
+  restarting the encoder.
 - **Webcam:** the phone's camera as the PC's webcam (`/dev/videoN` via `ii_link`) over
   ii link, with lens, zoom, exposure, focus, torch and stabilisation controls, 4:3 or 16:9
   (720p or 1080p). Keeps streaming with the screen off, and the PC can request the

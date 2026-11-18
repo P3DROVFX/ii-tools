@@ -1495,12 +1495,30 @@ object LinkHub {
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
     }
 
+    /**
+     * Where a heavy stream (the second screen's video) should go: the link's host, unless the
+     * link runs over Tailscale and the PC answers on this LAN, then its LAN address.
+     *
+     * The link keeps whichever address answered last, so a link made away from home stays on
+     * Tailscale at home. Every packet then goes through Tailscale's WireGuard on this phone
+     * (decrypted there, then again by the stream): ~2,500 packets a second at 120 fps.
+     */
+    suspend fun streamHost(): String? {
+        // The controlled PC's link: the stream's socket goes there (openSide).
+        val link = sel ?: return null
+        val host = (link.status.value as? LinkStatus.Online)?.host ?: return null
+        if (!Tailnet.isTailnet(host) || !hasNetworkPermission(app)) return host
+        val pc = link.pc.value ?: return host
+        val lan = discover(pc, timeoutMs = 500)?.takeUnless(Tailnet::isTailnet)
+        return lan ?: host
+    }
+
     /** "iilink?" to the LAN broadcast; the PC answers with its fingerprint and port. */
-    private suspend fun discover(pc: PairedPc): String? = withContext(Dispatchers.IO) {
+    private suspend fun discover(pc: PairedPc, timeoutMs: Int = 1_500): String? = withContext(Dispatchers.IO) {
         runCatching {
             DatagramSocket().use { sock ->
                 sock.broadcast = true
-                sock.soTimeout = 1_500
+                sock.soTimeout = timeoutMs
                 val probe = "iilink?".toByteArray()
                 sock.send(DatagramPacket(probe, probe.size, InetAddress.getByName("255.255.255.255"), pc.port))
                 val buf = ByteArray(512)

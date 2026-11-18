@@ -442,8 +442,17 @@ deck.
 > scrcpy agora acompanha a rotação do celular (o `video_size` vem da própria saída do
 > scrcpy) em vez de ficar com o formato retrato e barras pretas.
 >
-> **Depois:** HEVC na rede (FLV do wf-recorder não leva HEVC; precisa de outro mux) e
-> lembrar o encoder que funcionou para reinícios mais rápidos.
+> **Stream melhor (2026-11-18, PRs "Better stream"):** vídeo por UDP na porta do link
+> (AES-256-GCM com chave enviada pelo TLS, Reed–Solomon por bloco com paridade adaptada à
+> perda que o celular relata, volta ao WebSocket sem hellos), HEVC por padrão onde o celular
+> decodifica (H.264 de reserva), decoder de baixa latência do fabricante na taxa máxima do
+> painel, quadros datados na captura do PC com latência dividida (PC · rede · celular) no
+> painel, ritmo "menor latência" ou "suave", e rota pela LAN quando o link está no
+> Tailscale. No PC, `ii-wf-recorder` (wf-recorder com patches em `scripts/wf-recorder-ii`):
+> `idr` e bitrate sem reiniciar o encoder, captura em pipeline e saída inteira como saída
+> (o bug de região do Hyprland 0.57 que subia a CPU minuto a minuto).
+>
+> **Depois:** lembrar o encoder que funcionou para reinícios mais rápidos.
 
 ### 3.2 Celular como autenticador · **L**
 

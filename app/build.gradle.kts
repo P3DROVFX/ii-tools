@@ -41,6 +41,14 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = releaseSigning ?: signingConfigs.getByName("debug")
         }
+        // A debuggable build that installs beside the release app (its own package, its own
+        // pairing), for testing on a phone whose release build is signed elsewhere.
+        create("dev") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            matchingFallbacks += "debug"
+        }
     }
 
     compileOptions {
@@ -50,6 +58,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG: the stream's once-a-second logs only on debuggable builds.
+        buildConfig = true
     }
 
     packaging {

@@ -529,8 +529,14 @@
     <string name="second_max_bitrate">Max bitrate</string>
     <string name="second_dropped">%1$d dropped</string>
     <string name="second_live_quality">Stream quality</string>
+    <string name="second_pacing">Frame pacing</string>
+    <string name="second_pacing_latency">Lowest latency</string>
+    <string name="second_pacing_smooth">Smooth</string>
+    <string name="second_stats_latency">%1$d ms from the PC · %2$d fps</string>
+    <string name="second_stats_split">PC %1$d · network %2$d · phone %3$d ms · ping %4$d ms</string>
     <string name="second_resolution">Resolution</string>
     <string name="second_fps">Frames per second</string>
+    <string name="second_codec">Codec</string>
     <string name="second_scale">Scale on the PC</string>
     <string name="second_side">Beside the focused screen</string>
     <string name="second_side_left">Left</string>
