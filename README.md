@@ -46,12 +46,12 @@ its quick toggles, its load, and a card to stream the phone as the PC's micropho
 on the same network as the phone (or both on Tailscale). Google Play services are only
 used by the QR scanner button; without them, scan the code with the camera app.
 
-1. **Download** `ii-tools-1.0.0.apk` from the [latest release](https://github.com/P3DROVFX/ii-tools/releases/latest)
+1. **Download** `ii-tools-1.3.0.apk` from the [latest release](https://github.com/P3DROVFX/ii-tools/releases/latest)
    and open it on the phone (allow installing from your browser or file manager when asked).
    Every release is signed with the same key, so updates install over the old version.
    Its certificate's SHA-256 is
    `9A:1C:02:4A:41:31:DD:66:7F:6C:72:FD:95:99:47:BF:AA:25:1D:C9:7F:1F:E5:3C:7C:F1:8E:CC:94:B3:74:F1`
-   (`apksigner verify --print-certs ii-tools-1.0.0.apk`).
+   (`apksigner verify --print-certs ii-tools-1.3.0.apk`).
 2. **Turn the link on at the PC:** *Settings → ii tools*, switch the link on, then
    *Pair a phone*. A QR code appears. The link listens on port `47210` by default (TCP,
    and UDP to find the PC again when its address changes). A firewall that denies
@@ -87,6 +87,8 @@ without the ones you refuse; that feature just stays off.
 | `RECORD_AUDIO`, `CAMERA` | The phone as the PC's microphone and webcam, only while streaming (foreground service) |
 | `READ_MEDIA_*` | Screenshots and the phone's gallery for the PC |
 | `READ_CONTACTS` | Contacts with photos for the shell's people widgets |
+| `READ_CALENDAR` | The phone's calendars in the shell's Timetable; event dots on the date widgets |
+| `WRITE_CALENDAR` | Only if you let the PC create, change and delete the phone's events |
 | `READ_PHONE_STATE`, `ANSWER_PHONE_CALLS`, `CALL_PHONE` | Call state on the PC, answer or end a call, dial from the PC |
 | `MANAGE_EXTERNAL_STORAGE` | The PC browses the phone's files over SFTP |
 | `PACKAGE_USAGE_STATS`, `QUERY_ALL_PACKAGES` | The phone's screen time in the shell's usage app; names and icons of apps in live notifications |
@@ -101,11 +103,9 @@ without the ones you refuse; that feature just stays off.
 
 What's planned next, in no particular order:
 
-- **Wireless mirroring.** The phone's screen mirrored and extended over Wi-Fi, without a
-  cable or `adb reverse`, with an adaptive bitrate.
+- **New cards inside home screen.** More expressive and dedicated cards for other features.
+- **New modes integrated with the shell.** Starting with a screen saver.
 - **Opus for the microphone.** An option for weak networks.
-- **Widgets.** More home screen widgets ported from the shell, and the PC's state and
-  controls.
 
 The long version is in [ROADMAP.md](ROADMAP.md).
 
@@ -120,6 +120,31 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   scans it with Google's code scanner (no camera permission), or opens the same
   `iilink://pair?…` link. The PC's self-signed
   certificate is pinned by its SHA-256; the PC keeps only a hash of this phone's token.
+- **Several PCs:** pair as many PCs as you like (*Pair another PC* in the home's PC list
+  or in Settings); pairing one never unpairs another. All of them stay connected at
+  once. The home's title is the name of the PC it controls, with an arrow that opens
+  the list: the home, the tools, the tiles and widgets act on that PC only (Lock locks
+  that one). What the phone tells about itself (notifications, live updates, calls, its
+  media, battery, Do Not Disturb, screen time) goes to every connected PC, and an answer
+  (gallery, files, contacts, the webcam or microphone a PC asks for) goes back to the PC
+  that asked. The PC's media, lyrics, live activity and wallpaper shown on the phone are
+  the controlled PC's.
+- **Away from home (Tailscale):** turn on *Away from home* in the PC's *Settings → ii tools*
+  and the shell keeps Tailscale up and tells the phone its tailnet address (`hello.routes`),
+  so a pairing made at home works from any network, no re-pairing. Away from the PC's LAN
+  the app tries the tailnet first; on an away PC, *Connect over Tailscale* turns the
+  Tailscale app's VPN on (its `CONNECT_VPN` broadcast) and retries, and *Tailscale away
+  from home* (Settings, and the away home) does it by itself, turning it off again back
+  home. The status says *Connected via Tailscale*. Wake-on-LAN cannot cross networks.
+- **Linking PCs:** with two PCs paired and connected, *Link A and B* in the PC list
+  introduces them once (a one-time secret from one, handed by the phone to the other).
+  From then on the two shells talk directly, phone or not, and what you copy on one
+  reaches the other (*Settings → ii tools → Other PCs* on each PC: the link, the universal
+  clipboard, *Unlink*). Their shelves show on each other (files travel only when dragged or
+  opened), *Send to <PC>* on the shelf sends files, a web page playing on one continues on
+  the other, and the phone's *Wake* asks a connected PC to wake one that is off (the way to
+  wake a PC from away, over Tailscale). PCs can also link without the phone, with a 6-digit
+  code (*Settings → ii tools → Other PCs*).
 - **Lifetime:** the link stays open in the background (*Stay connected*, on by default),
   so the PC can reach the phone at any time; it needs the app let off battery
   optimisation (a guided step), or Doze cuts it. No foreground service for the link: the process lives
@@ -201,6 +226,19 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   the Phone tab and *Settings → ii tools*. Android only lets an app read a device's
   overall level, so separate buds and the case aren't available, and a device that
   doesn't report its battery over Bluetooth (most Wear OS watches) isn't listed.
+- **Calendar:** every calendar the phone syncs (Google, Samsung, Outlook, local) in the
+  shell's Timetable, widgets and calendar panels, without khal or vdirsyncer on the PC.
+  The PC asks for the dates it shows; the phone answers only when something changed and
+  pushes each change after, and the PC keeps the last list for when the phone is away.
+  Calendars you turn off in *Calendar* never leave the phone. With *Edit calendar*
+  allowed and *Let the PC edit events* on, the Timetable creates, moves, edits and
+  deletes phone events (one occurrence, this and the following, or the whole series),
+  and the account syncs them like edits made on the phone. Someone with khal and the
+  phone on the same Google account sees each event once: the phone sends each event's
+  iCalendar UID (rebuilt from Google's event id), which the shell matches against
+  khal's. On the PC, *Settings → ii tools → Phone calendar* (also in the Timetable's
+  settings) decides which calendars show, which copy wins, colours, declined
+  invitations and reminders.
 - **Do Not Disturb:** the shell's own (and modes chosen on the PC) silence the phone; the
   phone's turns on the shell's, or a mode. Only changes are sent, so turning it off by
   hand on either side sticks.

@@ -771,6 +771,92 @@ com H.264.
 > inicial* abre a home em modo de edição: arrastar pela alça (ou toque longo), remover,
 > *Adicionar cards*, restaurar o padrão. O card do PC fica fixo.
 
+### 5.22 Vários PCs · **M**
+
+> **Status (2026-11-16): implementado.** O app pareia quantos PCs quiser, sem desparear
+> nenhum, e mantém todos conectados ao mesmo tempo (um `PcLink` por PC no `LinkHub`, cada
+> um com seu socket, estado e tópicos). A home controla um: o título é o nome do PC, com
+> uma seta que abre a lista (bottom sheet) para trocar ou *Parear outro PC*; a mesma lista
+> está em Settings. A API pública do `LinkHub` é a do PC selecionado (telas, tiles, widget e
+> rotinas não mudaram). O que o celular conta de si (notificações, live, ligações, mídia,
+> bateria, DND, tempo de tela, caps) vai para todos; respostas (galeria, arquivos,
+> contatos, ícones do launcher, webcam e microfone pedidos pelo PC) voltam para quem
+> pediu. Mídia, letras, live activity e wallpaper do PC mostrados no celular são os do
+> selecionado, guardados por PC e trocados na hora. Nada mudou no protocolo nem no shell.
+> Pareamentos antigos migram sozinhos.
+
+### 5.23 Fora de casa pelo Tailscale · **S**
+
+> **Status (2026-11-16): implementado.** Shell: `iiTools.tailscale.enable` (tile *Away from
+> home*); o `IiLinkService` lê o Tailscale só em eventos (helper subindo, celular
+> conectando, switch), sobe um Tailscale logado e parado (`TailscaleService.ensureUp()`, sem
+> pkexec) e manda `hello.routes` (LAN + tailnet com nome MagicDNS). App: rotas guardadas por
+> PC (`PairedPc.tailnet`, migrando o `100.x` que o QR trazia), ordem por rede (fora da LAN
+> do PC com Tailscale ligado, tailnet primeiro), botão *Conectar pelo Tailscale* no PC
+> ausente (broadcast `CONNECT_VPN` do app Tailscale), modo automático *Tailscale fora de
+> casa* que liga longe e desliga ao voltar (só se foi o app que ligou), e volta para a LAN
+> quando o Wi-Fi de casa aparece. Falta: acordar o PC de longe (relay por outro PC pareado
+> na mesma LAN).
+
+### 5.24 Link entre PCs · **L**
+
+Os shells falam direto um com o outro, sem o celular no meio: o mesmo `ii_link` (TLS com
+certificado fixado, rotas LAN e Tailscale) ganha o papel de cliente. O celular só
+apresenta os PCs uma vez.
+
+**Etapa 1 — link direto + clipboard universal** · *implementada (2026-11-16)*, falta o teste com dois PCs reais
+
+- **Helper (`pclink.rs`):** pares de PC em `pcs.json` (fingerprint, nome, endereços, porta,
+  credencial para discar o outro e hash da credencial que o outro usa), sessão PC↔PC no
+  mesmo WebSocket (`pcPair`/`pcAuth` no primeiro frame), só o PC de fingerprint menor disca
+  de volta (backoff até 5 min, parado enquanto conectado ou com o link desligado), ping a
+  cada 60 s. Imagens do clipboard chegam em base64 e o helper as grava em disco: o QML só
+  recebe o caminho. Ops: `pcPairOpen`, `pcPairJoin`, `pcSend`, `pcUnpair`, `config.pcLink`.
+- **Pareamento pelo celular:** no modal *Seus PCs*, *Ligar A e B*. O app pede a B uma janela
+  de pareamento (`pcPairOpen` → `pcPairInfo`: segredo de uso único por 2 min, fingerprint,
+  endereços), entrega a A (`pcPairJoin`), A disca B, os dois trocam credenciais e
+  respondem `pcPairResult`. O `hello` passa a listar `pcLinks` (fingerprints ligados).
+- **Clipboard universal:** `iiTools.pcLink.clipboard`. Cada cópia nova (`Cliphist.entryAdded`)
+  vai aos PCs ligados (texto, ou imagem até 5 MiB); o que chega entra como cópia interna
+  (`markInternalCopy`), então não volta nem gera pingue-pongue. Popup "Copiado de <PC>".
+- **Settings → ii tools → Outros PCs:** link ligado/desligado, clipboard, lista com estado
+  e *Desligar*.
+
+**Etapa 2 — shelf compartilhado** · *implementada (2026-11-16)*: cada PC publica o shelf
+(nome, miniatura 192 px feita uma vez por item) aos PCs ligados; lá ele aparece como
+`pc:<fp>:<id>` em todas as superfícies do shelf, e o arquivo só viaja ao clicar ou arrastar
+(faixa de arquivos limitada no helper, até 4 GiB, mensagens com prioridade). Chips *Enviar
+para <PC>* no painel do shelf (soltar arquivos, ou tocar para o shelf inteiro): chega em
+Downloads e no shelf do outro.
+
+**Etapa 3 — extras** · *implementada (2026-11-16)*: handoff de mídia PC↔PC (botão no
+player do shell e IPC `continueOnPc`); `ipc sendToPc` para "Enviar para" de gerenciadores de
+arquivos; acordar um PC pelo outro (botão *Acordar* em Outros PCs) e o *Acordar* do celular
+pedindo o magic packet aos PCs conectados (`wakeFor`), o que faz WoL funcionar de longe pelo
+Tailscale; pareamento sem celular por código de 6 dígitos com descoberta na LAN e
+verificação da fingerprint. Ficou de fora: estado do outro PC (bateria, mídia) no shell.
+
+Falta para as três etapas: o teste com dois PCs reais.
+
+### 5.25 Agenda do celular no Timetable · **M**
+
+> **Status (2026-11-16): implementado; testado ao vivo com o S23: leitura, mescla com o
+> khal, lista guardada com o celular longe, erros e timeout de edição, e criar/mover/apagar
+> um evento numa agenda local. Falta no aparelho: os escopos de série (exceção "só esta",
+> corrigida depois do teste; e "esta e as seguintes", cujo UNTIL foi gravado mas o
+> provider ainda listava a última instância).** O app lê o provider de agenda do Android
+> (Google, Samsung, Outlook, local; instâncias já expandidas) só quando um PC pede a sua
+> janela (`get calendar`), responde só se mudou e empurra cada mudança depois
+> (`ContentObserver` só enquanto há janela pedida). O shell mescla com o khal no
+> `CalendarService` (`events` = khal + celular sem duplicatas), guarda a última lista para
+> o celular longe e escreve de volta (`calendarEdit`: criar, editar, apagar, com escopos de
+> recorrência). Duplicatas: o Google esconde o UID dos apps, mas o id do evento é o UID
+> (`<id>@google.com`, ou base32hex quando começa com `_`); com a conta real, os 344 eventos
+> repetidos casaram todos por UID. Usuário decide: no app, compartilhar, deixar o PC editar
+> e quais agendas saem do celular; no shell (Settings → ii tools e configurações do
+> Timetable), mostrar, escrever, esconder duplicados e qual cópia fica, cores, convites
+> recusados, lembretes no PC e quais agendas aparecem.
+
 ---
 
 ## Resumo
@@ -782,4 +868,4 @@ com H.264.
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable |

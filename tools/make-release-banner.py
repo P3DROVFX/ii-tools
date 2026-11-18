@@ -26,17 +26,13 @@ assets = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(assets)
 face = assets.face
 
-VERSION = "1.2.0"
-SUBTITLE = "Widget Drop"
+VERSION = "1.3.0"
+SUBTITLE = "Multi-Devices"
 HIGHLIGHTS = [
-    "11 Shell Widgets",
-    "Media Widgets for Any App",
-    "Weather & Date Widgets",
-    "In-App Updates",
-    "Volume Keys for the PC",
-    "Bluetooth Batteries on the PC",
-    "Wireless Mic Without a Tap",
-    "Edit Your Home",
+    "Multi PC Connections Support",
+    "Auto Tailscale Support",
+    "Calendar Sync from phone",
+    "2-PC Connection Link",
 ]
 FOOTER = "github.com/P3DROVFX/ii-tools"
 

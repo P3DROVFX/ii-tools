@@ -117,7 +117,10 @@ fun UpdateScreen(onBack: () -> Unit) {
                 UpdateHeroCard(
                     release = latest,
                     currentVersion = state.currentVersion,
-                    onDownload = { openExternalUrl(ctx, latest.apkUrl ?: latest.htmlUrl) },
+                    downloadProgress = state.downloadProgress,
+                    onDownload = {
+                        if (latest.apkUrl != null) AppUpdate.install(ctx, latest) else openExternalUrl(ctx, latest.htmlUrl)
+                    },
                     onViewGitHub = { openExternalUrl(ctx, latest.htmlUrl) },
                 )
             }
@@ -240,6 +243,7 @@ fun UpdateScreen(onBack: () -> Unit) {
 private fun UpdateHeroCard(
     release: ReleaseInfo,
     currentVersion: String,
+    downloadProgress: Float?,
     onDownload: () -> Unit,
     onViewGitHub: () -> Unit,
 ) {
@@ -294,8 +298,13 @@ private fun UpdateHeroCard(
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledPill(
-                    text = stringResource(R.string.update_download),
+                    text = if (downloadProgress != null) {
+                        stringResource(R.string.update_downloading, (downloadProgress * 100).toInt())
+                    } else {
+                        stringResource(R.string.update_download)
+                    },
                     onClick = onDownload,
+                    enabled = downloadProgress == null,
                     icon = R.drawable.rounded_download,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -556,6 +565,7 @@ internal fun updateErrorText(ctx: Context, state: UpdateState): String = when (s
     UpdateError.RATE_LIMITED -> ctx.getString(R.string.update_err_rate_limit)
     UpdateError.HTTP -> ctx.getString(R.string.update_err_http, state.lastHttpCode)
     UpdateError.PARSE -> ctx.getString(R.string.update_err_parse)
+    UpdateError.CHECKSUM -> ctx.getString(R.string.update_err_checksum)
     UpdateError.NETWORK, null -> ctx.getString(R.string.update_err_network)
 }
 

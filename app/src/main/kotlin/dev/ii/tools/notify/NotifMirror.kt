@@ -384,14 +384,15 @@ object NotifMirror {
 
     private fun queueIcon(ctx: Context, pkg: String) {
         val app = ctx.applicationContext
-        val sent = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(sentKey(), emptySet()).orEmpty()
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val missing = LinkHub.onlinePcs("notifs").any { pkg !in prefs.getStringSet(sentKey(it.id), emptySet()).orEmpty() }
         synchronized(iconsQueued) {
-            if (pkg in sent || !iconsQueued.add(pkg)) return
+            if (!missing || !iconsQueued.add(pkg)) return
         }
         iconQueue.trySend(pkg)
     }
 
-    private fun sentKey() = "$ICONS_SENT:${LinkHub.pc.value?.id.orEmpty()}"
+    private fun sentKey(pcId: String) = "$ICONS_SENT:$pcId"
 
     private suspend fun sendIcon(pkg: String) {
         val ctx = appCtx ?: listener ?: return
@@ -401,10 +402,13 @@ object NotifMirror {
                 ctx.packageManager.getApplicationIcon(pkg).toBitmap(ICON_SIZE, ICON_SIZE).compress(Bitmap.CompressFormat.PNG, 100, out)
                 out.toByteArray()
             }.getOrNull() ?: return
-            val why = LinkHub.upload("$pkg.png", png.size.toLong(), { png.inputStream() }, "appIcon", "", waitForLink = false) { }
-            if (why == null) {
-                val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                prefs.edit().putStringSet(sentKey(), prefs.getStringSet(sentKey(), emptySet()).orEmpty() + pkg).apply()
+            val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            // Every PC that mirrors notifications keeps its own copy.
+            for (pc in LinkHub.onlinePcs("notifs")) {
+                val key = sentKey(pc.id)
+                if (pkg in prefs.getStringSet(key, emptySet()).orEmpty()) continue
+                val why = LinkHub.upload("$pkg.png", png.size.toLong(), { png.inputStream() }, "appIcon", "", waitForLink = false, toPc = pc.fingerprint) { }
+                if (why == null) prefs.edit().putStringSet(key, prefs.getStringSet(key, emptySet()).orEmpty() + pkg).apply()
             }
         } finally {
             synchronized(iconsQueued) { iconsQueued.remove(pkg) }

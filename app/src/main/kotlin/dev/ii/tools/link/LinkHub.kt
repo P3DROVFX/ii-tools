@@ -13,7 +13,11 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -103,16 +107,74 @@ data class LinkFailure(val reason: FailReason, val hosts: List<String>, val port
 data class ShellAction(val id: String, val name: String, val icon: String, val toggle: Boolean)
 
 /** What the shell announced in its `hello`: what it can do right now. */
-data class ShellInfo(val name: String, val caps: Set<String>, val actions: List<ShellAction>)
+data class ShellInfo(
+    val name: String,
+    val caps: Set<String>,
+    val actions: List<ShellAction>,
+    /** Fingerprints of the PCs this one is linked with (PC link). */
+    val pcLinks: Set<String> = emptySet(),
+)
+
+/** A paired PC as the switcher lists it: its state, and whether the home controls it. */
+data class PcEntry(
+    val pc: PairedPc,
+    val status: LinkStatus,
+    val selected: Boolean,
+    /** Its shell can be linked with another PC right now (cap `pcLink`). */
+    val canLink: Boolean = false,
+    /** The PCs it is linked with already. */
+    val linked: Set<String> = emptySet(),
+)
 
 /**
- * The ii link (see the shell's scripts/iiLink/PROTOCOL.md): one TLS WebSocket to the
+ * One paired PC (or one being paired: [pc] is null until it answers) and its socket.
+ * Everything the shell told over that socket lives here, so two PCs never mix.
+ */
+internal class PcLink(pc: PairedPc?) {
+    val pc = MutableStateFlow(pc)
+    val status = MutableStateFlow<LinkStatus>(if (pc == null) LinkStatus.Pairing else LinkStatus.Idle)
+    val shell = MutableStateFlow<ShellInfo?>(null)
+    val active = MutableStateFlow<Set<String>>(emptySet())
+    val workspaces = MutableStateFlow<Workspaces?>(null)
+    val modes = MutableStateFlow<Modes?>(null)
+    val presets = MutableStateFlow<Presets?>(null)
+    val audio = MutableStateFlow<PcAudio?>(null)
+    val deck = MutableStateFlow<List<DeckAction>?>(null)
+    val apps = MutableStateFlow<List<PcApp>?>(null)
+    val perf = MutableStateFlow<PcPerf?>(null)
+    val focus = MutableStateFlow<DeckFocus?>(null)
+    val display = MutableStateFlow<PcDisplay?>(null)
+
+    @Volatile var session: Job? = null
+    @Volatile var socket: WebSocket? = null
+    @Volatile var unpairedByPc = false
+    @Volatile var incoming: Incoming? = null
+    @Volatile var lastFailure: LinkFailure? = null
+    /** After the PC could not be reached for a burst: no new attempt before this. */
+    @Volatile var quietUntil = 0L
+    val pending = ConcurrentHashMap<Int, CompletableDeferred<String?>>()
+    /** The last push of what only the controlled PC shows (its media, lyrics, live activity), replayed when it is picked. */
+    val shown = ConcurrentHashMap<String, JSONObject>()
+
+    val key: String get() = pc.value?.fingerprint.orEmpty()
+    fun has(cap: String): Boolean = socket != null && shell.value?.caps?.contains(cap) == true
+}
+
+/**
+ * The ii link (see the shell's scripts/iiLink/PROTOCOL.md): one TLS WebSocket to each
  * paired PC, open only while the app is in front (and for a short grace after), so an
  * idle phone holds no socket, thread or wakelock for it.
  *
- * The PC's certificate is self-signed; it is trusted only when its SHA-256 matches the
- * fingerprint from the pairing QR code.
+ * Several PCs can be paired and connected at once. The home and every tool control one
+ * of them, the selected one: the public state ([status], [shell], [audio]…) and the
+ * commands ([run], [send], [upload]…) are that PC's. What the phone tells about itself
+ * (notifications, calls, its media, battery, Do Not Disturb) goes to every connected PC,
+ * and an answer goes back to the PC that asked.
+ *
+ * Each PC's certificate is self-signed; it is trusted only when its SHA-256 matches the
+ * fingerprint from that PC's pairing QR code.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 object LinkHub {
     private const val PATH = "/iilink/1"
     private const val BACKGROUND_GRACE_MS = 30_000L
@@ -129,88 +191,127 @@ object LinkHub {
     private const val FILE_QUEUE = 2L * 1024 * 1024
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /** Follows the selected PC's flows on the emitting thread, so a read right after a change sees it. */
+    private val mirror = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 
-    private val _status = MutableStateFlow<LinkStatus>(LinkStatus.Unpaired)
-    val status: StateFlow<LinkStatus> = _status.asStateFlow()
+    /** The paired PCs, in pairing order. */
+    private val links = MutableStateFlow<List<PcLink>>(emptyList())
+    /** The PC the home controls; a PC being paired while its pairing runs. */
+    private val selected = MutableStateFlow<PcLink?>(null)
+    private val sel: PcLink? get() = selected.value
 
-    private val _pc = MutableStateFlow<PairedPc?>(null)
-    val pc: StateFlow<PairedPc?> = _pc.asStateFlow()
+    private fun <T> follow(initial: T, pick: (PcLink) -> StateFlow<T>): StateFlow<T> =
+        selected.flatMapLatest { it?.let(pick) ?: flowOf(initial) }.stateIn(mirror, SharingStarted.Eagerly, initial)
 
-    private val _shell = MutableStateFlow<ShellInfo?>(null)
-    val shell: StateFlow<ShellInfo?> = _shell.asStateFlow()
-
+    val status: StateFlow<LinkStatus> = follow(LinkStatus.Unpaired) { it.status }
+    val pc: StateFlow<PairedPc?> = follow(null) { it.pc }
+    val shell: StateFlow<ShellInfo?> = follow(null) { it.shell }
     /** The toggle actions that are on right now (the PC locked, media mode open…). */
-    private val _active = MutableStateFlow<Set<String>>(emptySet())
-    val active: StateFlow<Set<String>> = _active.asStateFlow()
+    val active: StateFlow<Set<String>> = follow(emptySet()) { it.active }
+    val workspaces: StateFlow<Workspaces?> = follow(null) { it.workspaces }
+    val modes: StateFlow<Modes?> = follow(null) { it.modes }
+    val presets: StateFlow<Presets?> = follow(null) { it.presets }
+    val audio: StateFlow<PcAudio?> = follow(null) { it.audio }
+    val deck: StateFlow<List<DeckAction>?> = follow(null) { it.deck }
+    val apps: StateFlow<List<PcApp>?> = follow(null) { it.apps }
+    val perf: StateFlow<PcPerf?> = follow(null) { it.perf }
+    /** The PC's brightness and night light, pushed only while the remote screen is open. */
+    val display: StateFlow<PcDisplay?> = follow(null) { it.display }
+    /** The PC's focused window, pushed only while a deck with app folders is on screen. */
+    val focus: StateFlow<DeckFocus?> = follow(null) { it.focus }
 
-    private val _workspaces = MutableStateFlow<Workspaces?>(null)
-    val workspaces: StateFlow<Workspaces?> = _workspaces.asStateFlow()
-    private val _modes = MutableStateFlow<Modes?>(null)
-    val modes: StateFlow<Modes?> = _modes.asStateFlow()
-    private val _presets = MutableStateFlow<Presets?>(null)
-    val presets: StateFlow<Presets?> = _presets.asStateFlow()
-    private val _audio = MutableStateFlow<PcAudio?>(null)
-    val audio: StateFlow<PcAudio?> = _audio.asStateFlow()
-    private val _deck = MutableStateFlow<List<DeckAction>?>(null)
-    val deck: StateFlow<List<DeckAction>?> = _deck.asStateFlow()
-    private val _apps = MutableStateFlow<List<PcApp>?>(null)
-    val apps: StateFlow<List<PcApp>?> = _apps.asStateFlow()
-    private val _perf = MutableStateFlow<PcPerf?>(null)
-    val perf: StateFlow<PcPerf?> = _perf.asStateFlow()
+    /** Every paired PC and its state, for the PC switcher. */
+    val machines: StateFlow<List<PcEntry>> = combine(links, selected) { l, s -> l to s }
+        .flatMapLatest { (l, s) ->
+            if (l.isEmpty()) flowOf(emptyList())
+            else combine(
+                l.map { link ->
+                    combine(link.pc, link.status, link.shell) { p, st, sh ->
+                        p?.let { PcEntry(it, st, link === s, sh?.caps?.contains("pcLink") == true && st is LinkStatus.Online, sh?.pcLinks.orEmpty()) }
+                    }
+                },
+            ) { it.filterNotNull() }
+        }
+        .stateIn(mirror, SharingStarted.Eagerly, emptyList())
+
+    /** The fingerprint of the PC the home controls, if one is paired. */
+    fun selectedKey(): String? = sel?.pc?.value?.fingerprint
+
+    fun hasPairedPc(): Boolean = links.value.isNotEmpty()
+
+    /** The connected PCs (those that announced [cap], if given), as paired. */
+    fun onlinePcs(cap: String? = null): List<PairedPc> =
+        online().filter { cap == null || it.has(cap) }.mapNotNull { it.pc.value }
+
+    private fun online(): List<PcLink> = links.value.filter { it.socket != null }
+
     @Volatile private var perfWanted = false
     @Volatile private var focusWanted = false
     @Volatile private var displayWanted = false
+    @Volatile private var clipHistoryWanted = false
 
-    private val _display = MutableStateFlow<PcDisplay?>(null)
-    /** The PC's brightness and night light, pushed only while the remote screen is open. */
-    val display: StateFlow<PcDisplay?> = _display.asStateFlow()
+    private fun sub(link: PcLink?, what: String, on: Boolean) {
+        link?.socket?.send(JSONObject().put("t", "sub").put("what", what).put("on", on).toString())
+    }
 
     fun subscribeDisplay(on: Boolean) {
         displayWanted = on
-        if (!on) _display.value = null
-        socket?.send(JSONObject().put("t", "sub").put("what", "display").put("on", on).toString())
+        if (!on) sel?.display?.value = null
+        sub(sel, "display", on)
     }
 
-    private val _focus = MutableStateFlow<DeckFocus?>(null)
-    /** The PC's focused window, pushed only while a deck with app folders is on screen. */
-    val focus: StateFlow<DeckFocus?> = _focus.asStateFlow()
-
-    fun supportsDeckFocus(): Boolean = socket != null && _shell.value?.caps?.contains("deckFocus") == true
+    fun supportsDeckFocus(): Boolean = sel?.has("deckFocus") == true
 
     /** The deck is on screen with folders bound to apps: the PC pushes `focus` only while it is. */
     fun subscribeFocus(on: Boolean) {
         focusWanted = on
-        if (!on) _focus.value = null
-        socket?.send(JSONObject().put("t", "sub").put("what", "focus").put("on", on).toString())
+        if (!on) sel?.focus?.value = null
+        sub(sel, "focus", on)
     }
-    @Volatile private var clipHistoryWanted = false
 
     /** The performance panel is on screen: the PC samples only while it is. */
     fun subscribePerf(on: Boolean) {
         perfWanted = on
-        if (!on) _perf.value = null
-        socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", on).toString())
+        if (!on) sel?.perf?.value = null
+        sub(sel, "perf", on)
     }
 
     /** The clipboard history section is on screen: the PC pushes `clipHistoryChanged` only while it is. */
     fun subscribeClipHistory(on: Boolean) {
         clipHistoryWanted = on
         if (on && supportsClipHistory()) {
-            socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", true).toString())
+            sub(sel, "clipHistory", true)
             ClipHistory.refresh()
         } else if (!on) {
-            socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", false).toString())
+            sub(sel, "clipHistory", false)
         }
     }
 
-    private lateinit var app: Context
-    private var session: Job? = null
-    private var stopJob: Job? = null
-    private var foreground = false
+    /** A panel open on [link]'s data asks it again (a reconnect, or the PC just picked). */
+    private fun resubscribe(link: PcLink) {
+        if (perfWanted) sub(link, "perf", true)
+        if (focusWanted) sub(link, "focus", true)
+        if (displayWanted) sub(link, "display", true)
+        if (clipHistoryWanted && link.has("clipHistory")) {
+            sub(link, "clipHistory", true)
+            ClipHistory.refresh()
+        }
+    }
 
-    @Volatile private var socket: WebSocket? = null
-    @Volatile private var unpairedByPc = false
-    private val pending = ConcurrentHashMap<Int, CompletableDeferred<String?>>()
+    private fun unsubscribe(link: PcLink) {
+        if (perfWanted) sub(link, "perf", false)
+        if (focusWanted) sub(link, "focus", false)
+        if (displayWanted) sub(link, "display", false)
+        if (clipHistoryWanted) sub(link, "clipHistory", false)
+        if (PcLyrics.isWatching) link.socket?.send(command(nextId.getAndIncrement(), "pcLyrics", JSONObject().put("a", "watch").put("on", false)))
+        link.perf.value = null
+        link.focus.value = null
+        link.display.value = null
+    }
+
+    private lateinit var app: Context
+    private var stopJob: Job? = null
+    @Volatile private var foreground = false
     private val nextId = AtomicInteger(1)
 
     // Shared pool and dispatcher; each PC gets a thin copy carrying its pinned trust.
@@ -231,13 +332,48 @@ object LinkHub {
         Symbols.init(app)
         AppIcons.init(app)
         ClipHistory.init(app)
-        scope.launch { Look.load(app) }
-        _pc.value = LinkPrefs.load(app)
-        _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Idle
+        links.value = LinkPrefs.load(app).map { PcLink(it) }
+        val saved = LinkPrefs.selected(app)
+        selected.value = links.value.firstOrNull { it.key == saved } ?: links.value.firstOrNull()
+        scope.launch { Look.select(app, selectedKey()) }
         watchNetwork()
         // Any start of the process (the notification listener binding at boot included)
         // brings the link up when the user wants it kept.
-        if (_pc.value != null && staysConnected()) hold(ALWAYS)
+        if (links.value.isNotEmpty() && staysConnected()) hold(ALWAYS)
+        LinkService.sync(app)
+    }
+
+    // ── Choosing the PC ───────────────────────────────────────────────────
+
+    /** The home (and every tool) controls the PC with this fingerprint from now on. */
+    fun select(fingerprint: String) {
+        val link = links.value.firstOrNull { it.key == fingerprint } ?: return
+        show(link)
+    }
+
+    /** Makes [link] the controlled PC: what only that PC shows is swapped for its own. */
+    private fun show(link: PcLink?) {
+        val old = sel
+        if (old === link) return
+        if (old != null) {
+            if (old.pc.value == null && old !== link) discardPairing(old) else unsubscribe(old)
+        }
+        selected.value = link
+        link?.pc?.value?.let { LinkPrefs.select(app, it.fingerprint) }
+        PcMedia.clear()
+        PcLyrics.onLinkLost()
+        ClipHistory.onLinkLost()
+        PcLive.update(app, link?.shown?.get("pcLive")?.optJSONArray("items") ?: org.json.JSONArray())
+        link?.shown?.get("pcMedia")?.let { PcMedia.update(app, it) }
+        link?.shown?.get("pcLyrics")?.let { PcLyrics.update(it) }
+        scope.launch { Look.select(app, link?.pc?.value?.fingerprint) }
+        if (link != null && link.shell.value != null) {
+            resubscribe(link)
+            PcLyrics.onShellHello()
+            dev.ii.tools.routines.ModeCatalog.request()
+            AppIcons.onLinkChanged()
+            Symbols.flush()
+        }
         LinkService.sync(app)
     }
 
@@ -246,7 +382,7 @@ object LinkHub {
     fun onForeground() {
         foreground = true
         stopJob?.cancel()
-        ensureSession()
+        ensureSessions()
         // A start refused while in the background (the listener's restart) succeeds now.
         LinkService.sync(app)
     }
@@ -261,7 +397,7 @@ object LinkHub {
         if (holds.isNotEmpty()) return
         stopJob = scope.launch {
             delay(after)
-            if (!foreground && holds.isEmpty()) endSession()
+            if (!foreground && holds.isEmpty()) links.value.forEach(::endSession)
         }
     }
 
@@ -275,7 +411,7 @@ object LinkHub {
     fun hold(reason: String) {
         if (holds.add(reason)) {
             stopJob?.cancel()
-            ensureSession()
+            ensureSessions()
         }
     }
 
@@ -285,45 +421,85 @@ object LinkHub {
 
     // ── Calls ─────────────────────────────────────────────────────────────
 
-    /** The call state changed: tell the PC, opening the link for it if needed. */
+    /** The call state changed: tell every PC, opening the link for it if needed. */
     fun reportCall(state: String, name: String) {
-        if (_pc.value == null) return
+        if (links.value.isEmpty()) return
         dev.ii.tools.routines.Routines.onCall(state)
-        socket?.send(JSONObject().put("t", "call").put("state", state).put("name", name).toString())
+        sendJson(JSONObject().put("t", "call").put("state", state).put("name", name))
         if (state == "idle") release("call") else hold("call")
     }
 
     // ── Notifications ─────────────────────────────────────────────────────
 
-    /** The link is up, whatever the PC takes. */
-    fun isConnected(): Boolean = socket != null
+    /** Some PC's link is up, whatever it takes. */
+    fun isConnected(): Boolean = online().isNotEmpty()
 
-    /** The PC takes notifications right now. */
-    fun isOnline(): Boolean = socket != null && _shell.value?.caps?.contains("notifs") == true
+    /** Some PC takes notifications right now. */
+    fun isOnline(): Boolean = anyHas("notifs")
 
-    /** The PC accepts the mirrored notification app filter right now. */
-    fun supportsNotifFilter(): Boolean = socket != null && _shell.value?.caps?.contains("notifFilter") == true
+    /** Some connected PC announced [cap]. */
+    fun anyHas(cap: String): Boolean = links.value.any { it.has(cap) }
 
-    /** The PC can resolve and send desktop app icons right now. */
-    fun supportsAppIcons(): Boolean = socket != null && _shell.value?.caps?.contains("appIcons") == true
-    fun supportsUsage(): Boolean = socket != null && _shell.value?.caps?.contains("usage") == true
-    fun supportsClipHistory(): Boolean = socket != null && _shell.value?.caps?.contains("clipHistory") == true
+    /** Some PC accepts the mirrored notification app filter right now. */
+    fun supportsNotifFilter(): Boolean = anyHas("notifFilter")
 
-    fun sendJson(m: JSONObject) {
-        socket?.send(m.toString())
+    /** The controlled PC can resolve and send desktop app icons right now. */
+    fun supportsAppIcons(): Boolean = sel?.has("appIcons") == true
+    fun supportsUsage(): Boolean = anyHas("usage")
+    fun supportsClipHistory(): Boolean = sel?.has("clipHistory") == true
+
+    /** What the phone tells about itself: every connected PC gets it. */
+    private val TO_ALL = setOf(
+        "notif", "notifGone", "notifs", "notifApps", "live", "liveGone", "media", "mediaGone",
+        "dnd", "status", "phoneUsage", "call", "caps",
+    )
+
+    /** Answers and sessions a PC starts: they go back to the PC that asked. */
+    private val TO_ASKER = setOf("gallery", "files", "camera", "mic", "contacts")
+
+    /** The last PC to speak on a topic of [TO_ASKER] (and `act`, `launcherIcons`, `mirror`). */
+    private val askers = ConcurrentHashMap<String, PcLink>()
+
+    /** The PC [topic] answers go to: the one that asked, while it is connected, else the controlled one. */
+    private fun asker(topic: String): PcLink? =
+        askers[topic]?.takeIf { it.socket != null && it in links.value } ?: sel
+
+    /** The phone starts a [topic] session itself (the camera, the microphone): it is the controlled PC's. */
+    fun claim(topic: String) {
+        val link = sel
+        if (link != null) askers[topic] = link else askers.remove(topic)
     }
 
+    /** The PC that [topic] answers go to announced [cap]. */
+    fun askerHas(topic: String, cap: String): Boolean = asker(topic)?.has(cap) == true
+
+    /** The name of the PC that last spoke on [topic], for a notification about it. */
+    fun askerName(topic: String): String = asker(topic)?.pc?.value?.name?.ifEmpty { null } ?: "PC"
+
+    fun sendJson(m: JSONObject) {
+        val t = m.optString("t")
+        val text = m.toString()
+        when (t) {
+            in TO_ALL -> online().forEach { it.socket?.send(text) }
+            in TO_ASKER -> asker(t)?.socket?.send(text)
+            else -> sel?.socket?.send(text)
+        }
+    }
+
+    /** Sends [m] to the connected PC with fingerprint [key]: answers that belong to one PC only. */
+    fun sendToPc(key: String, m: JSONObject): Boolean =
+        online().firstOrNull { it.key == key }?.socket?.send(m.toString()) == true
+
     private var burstJob: Job? = null
-    /** After the PC could not be reached for a burst: no new attempt before this. */
-    @Volatile private var quietUntil = 0L
 
     /**
-     * A notification (or a live update) wants the PC: bring the link up, or keep it,
+     * A notification (or a live update) wants the PCs: bring the link up, or keep it,
      * until [BURST_MS] after the last one. A PC away from the phone is not retried for
      * every notification: one failed attempt quiets bursts for [QUIET_MS].
      */
     fun notifBurst() {
-        if (_pc.value == null || (!foreground && System.currentTimeMillis() < quietUntil)) return
+        val now = System.currentTimeMillis()
+        if (links.value.isEmpty() || (!foreground && links.value.all { now < it.quietUntil })) return
         hold("notifs")
         burstJob?.cancel()
         burstJob = scope.launch {
@@ -333,19 +509,19 @@ object LinkHub {
     }
 
     private val readyCallbacks = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
-    /** Runs [block] now if the PC takes notifications, else on the next link that does. */
+    /** Runs [block] now if a PC takes notifications, else on the next link that does. */
     fun onLinkReady(block: () -> Unit) {
         if (isOnline()) block() else readyCallbacks += block
     }
 
-    /** What this phone can do for the PC, sent on connect and when it changes. */
-    fun announceCaps() {
+    private fun capsMessage(): String {
         val caps = org.json.JSONArray()
         if (CallWatcher.running.value) caps.put("calls")
         if (NotifMirror.running.value) caps.put("notifs")
         if (ClipSync.receives(app)) caps.put("clip")
         if (ShotSync.receives(app)) caps.put("shots")
         PhoneData.caps(app).forEach { caps.put(it) }
+        dev.ii.tools.calendar.PhoneCalendar.caps(app).forEach { caps.put(it) }
         DndSync.caps(app).forEach { caps.put(it) }
         PcLive.caps(app).forEach { caps.put(it) }
         PhoneMedia.caps(app).forEach { caps.put(it) }
@@ -361,67 +537,124 @@ object LinkHub {
         dev.ii.tools.camera.Webcam.caps(app).forEach { caps.put(it) }
         dev.ii.tools.mic.Mic.caps(app).forEach { caps.put(it) }
         MirrorRadio.caps(app).forEach { caps.put(it) }
-        socket?.send(JSONObject().put("t", "caps").put("caps", caps).toString())
+        return JSONObject().put("t", "caps").put("caps", caps).toString()
     }
 
-    /** Wakes the PC (Wake-on-LAN), then keeps trying to reach it while it boots. */
+    /** What this phone can do for the PCs, sent on connect and when it changes. */
+    fun announceCaps() {
+        if (!::app.isInitialized) return
+        val m = capsMessage()
+        online().forEach { it.socket?.send(m) }
+    }
+
+    /**
+     * Wakes the controlled PC (Wake-on-LAN), then keeps trying to reach it while it boots.
+     * The phone's own packet only reaches a LAN it is on; every other connected PC that
+     * can relay (on that LAN, reached over Tailscale…) sends one too.
+     */
     suspend fun wake(): Boolean {
-        val sent = Wake.send(app)
+        val link = sel ?: return false
+        val targets = Wake.targetsOf(app, link.key)
+        var relayed = false
+        if (targets.length() > 0) {
+            val ask = JSONObject().put("t", "wakeFor").put("targets", targets).toString()
+            online().filter { it !== link && it.has("wakeRelay") }.forEach { relayed = it.socket?.send(ask) == true || relayed }
+        }
+        val sent = Wake.send(app, link.key) || relayed
         if (sent) {
             networkEpoch.value++
-            if (session?.isActive != true) retry()
+            if (link.session?.isActive != true) retry()
         }
         return sent
     }
 
-    /** Try again now, skipping whatever backoff is running. */
+    /** Try the controlled PC again now, skipping whatever backoff is running. */
     fun retry() {
-        endSession()
-        _status.value = if (_pc.value == null) LinkStatus.Unpaired else LinkStatus.Connecting
-        if (foreground) ensureSession() else _status.value = LinkStatus.Idle.takeIf { _pc.value != null } ?: LinkStatus.Unpaired
+        val link = sel ?: return
+        if (link.pc.value == null) return cancelPairing()
+        endSession(link)
+        link.status.value = LinkStatus.Connecting
+        if (foreground) ensureSession(link) else link.status.value = LinkStatus.Idle
     }
 
-    private fun ensureSession() {
-        if (session?.isActive == true || _pc.value == null) return
-        session = scope.launch { runSession() }
+    private fun ensureSessions() = links.value.forEach(::ensureSession)
+
+    private fun ensureSession(link: PcLink) {
+        if (link.session?.isActive == true || link.pc.value == null) return
+        // Only notifications want it, from the background, and this PC was just away.
+        if (!foreground && System.currentTimeMillis() < link.quietUntil && holds.all { it == "notifs" }) return
+        link.session = scope.launch { runSession(link) }
     }
 
-    private fun endSession() {
-        session?.cancel()
-        session = null
-        socket?.close(1000, null)
-        socket = null
-        clearShell()
-        if (_pc.value != null && _status.value !is LinkStatus.Offline) _status.value = LinkStatus.Idle
+    private fun endSession(link: PcLink) {
+        link.session?.cancel()
+        link.session = null
+        link.socket?.close(1000, null)
+        link.socket = null
+        clearShell(link)
+        if (link.pc.value != null && link.status.value !is LinkStatus.Offline) link.status.value = LinkStatus.Idle
     }
 
     // ── Pairing ───────────────────────────────────────────────────────────
 
+    /** The PC being paired, shown on the home while it runs; and the one to go back to if it fails. */
+    @Volatile private var pairing: PcLink? = null
+    @Volatile private var beforePairing: PcLink? = null
+
+    /** Pairs one more PC (or the same one again), which the home then controls. */
     fun pair(uri: PairingUri) {
-        session?.cancel()
-        socket?.close(1000, null)
-        session = scope.launch { runPairing(uri) }
+        pairing?.let(::discardPairing)
+        val link = PcLink(null)
+        pairing = link
+        beforePairing = sel?.takeIf { it.pc.value != null } ?: beforePairing
+        show(link)
+        link.session = scope.launch { runPairing(link, uri) }
     }
 
-    /** Forgets the PC here, and asks it to forget this phone too when it can hear us. */
-    fun forget() {
-        socket?.send(JSONObject().put("t", "unpair").toString())
+    private fun discardPairing(link: PcLink) {
+        link.session?.cancel()
+        link.session = null
+        if (pairing === link) pairing = null
+    }
+
+    /** A pairing that failed is let go: back to the PC controlled before it. */
+    fun cancelPairing() {
+        val link = pairing ?: return
+        discardPairing(link)
+        if (sel === link) show(beforePairing?.takeIf { it in links.value } ?: links.value.firstOrNull())
+        beforePairing = null
+    }
+
+    /** Forgets the controlled PC (or [fingerprint]) here, and asks it to forget this phone too when it can hear us. */
+    fun forget(fingerprint: String? = null) {
+        val link = (fingerprint?.let { f -> links.value.firstOrNull { it.key == f } } ?: sel) ?: return
+        if (link.pc.value == null) return cancelPairing()
+        link.socket?.send(JSONObject().put("t", "unpair").toString())
         scope.launch {
             delay(300)
-            forgetLocally()
+            forgetLocally(link)
         }
     }
 
-    private fun forgetLocally() {
-        session?.cancel()
-        session = null
-        socket?.close(1000, null)
-        socket = null
-        LinkPrefs.clear(app)
-        holds.clear()
-        _pc.value = null
-        clearShell()
-        _status.value = LinkStatus.Unpaired
+    @Synchronized
+    private fun forgetLocally(link: PcLink) {
+        val key = link.key
+        link.session?.cancel()
+        link.session = null
+        link.socket?.close(1000, null)
+        link.socket = null
+        links.value = links.value - link
+        LinkPrefs.save(app, links.value.mapNotNull { it.pc.value })
+        Wake.forget(app, key)
+        scope.launch { Look.forget(app, key) }
+        askers.entries.removeIf { it.value === link }
+        clearShell(link)
+        link.status.value = LinkStatus.Unpaired
+        if (sel === link) {
+            show(links.value.firstOrNull())
+            if (sel == null) LinkPrefs.select(app, null)
+        }
+        if (links.value.isEmpty()) holds.clear()
         LinkService.sync(app)
     }
 
@@ -432,16 +665,23 @@ object LinkHub {
     fun onPermissionGranted() {
         val uri = pendingPairing
         pendingPairing = null
-        if (uri != null) pair(uri) else retry()
+        if (uri != null) return pair(uri)
+        links.value.forEach { link ->
+            endSession(link)
+            if (foreground) {
+                link.status.value = LinkStatus.Connecting
+                ensureSession(link)
+            }
+        }
     }
 
-    private suspend fun runPairing(uri: PairingUri) {
+    private suspend fun runPairing(link: PcLink, uri: PairingUri) {
         if (!hasNetworkPermission(app)) {
             pendingPairing = uri
-            _status.value = LinkStatus.Offline(LinkProblem.NO_PERMISSION)
+            link.status.value = LinkStatus.Offline(LinkProblem.NO_PERMISSION)
             return
         }
-        _status.value = LinkStatus.Pairing
+        link.status.value = LinkStatus.Pairing
         val client = clientFor(uri.fingerprint)
         val hello = JSONObject()
             .put("t", "pair")
@@ -450,7 +690,7 @@ object LinkHub {
             .put("model", Build.MODEL)
         val tried = mutableListOf<Session>()
         for (host in uri.hosts) {
-            val s = open(client, host, uri.port)
+            val s = open(client, host, uri.port, link)
             tried += s
             s.ws.send(hello.toString())
             val reply = withTimeoutOrNull(6_000) { s.first.await() }
@@ -461,64 +701,83 @@ object LinkHub {
                         id = reply.getString("id"),
                         token = reply.getString("token"),
                         fingerprint = uri.fingerprint,
-                        hosts = listOf(host) + uri.hosts.filter { it != host },
+                        hosts = (listOf(host) + uri.hosts.filter { it != host }).filter { !Tailnet.isTailnet(it) },
                         port = uri.port,
                         name = reply.optString("name").ifEmpty { uri.pcName },
+                        tailnet = uri.hosts.filter { Tailnet.isTailnet(it) },
                     )
-                    LinkPrefs.save(app, pc)
-                    _pc.value = pc
+                    synchronized(this) {
+                        // Pairing a PC again replaces its old pairing.
+                        links.value.firstOrNull { it.key == pc.fingerprint }?.let { old ->
+                            old.session?.cancel()
+                            old.socket?.close(1000, null)
+                            old.socket = null
+                            clearShell(old)
+                            askers.entries.removeIf { it.value === old }
+                            links.value = links.value - old
+                        }
+                        link.pc.value = pc
+                        link.status.value = LinkStatus.Connecting
+                        if (pairing === link) pairing = null
+                        beforePairing = null
+                        links.value = links.value + link
+                        LinkPrefs.save(app, links.value.mapNotNull { it.pc.value })
+                        if (sel === link) LinkPrefs.select(app, pc.fingerprint)
+                    }
                     if (staysConnected()) holds.add(ALWAYS)
                     LinkService.sync(app)
-                    runSession()
+                    runSession(link)
                     return
                 }
                 "authErr" -> {
-                    _status.value = LinkStatus.Offline(LinkProblem.PAIRING_FAILED)
+                    link.status.value = LinkStatus.Offline(LinkProblem.PAIRING_FAILED)
                     return
                 }
             }
         }
-        _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE, failure(tried, uri.hosts, uri.port))
+        link.status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE, failure(tried, uri.hosts, uri.port))
     }
 
     // ── Session ───────────────────────────────────────────────────────────
 
     private enum class Outcome { ENDED, UNREACHABLE, REJECTED, UNPAIRED }
 
-    private suspend fun runSession() {
+    private suspend fun runSession(link: PcLink) {
         var failures = 0
         while (currentCoroutineContext().isActive) {
-            val pc = _pc.value ?: return
+            val pc = link.pc.value ?: return
+            if (link !in links.value) return
             if (!hasNetworkPermission(app)) {
-                _status.value = LinkStatus.Offline(LinkProblem.NO_PERMISSION)
+                link.status.value = LinkStatus.Offline(LinkProblem.NO_PERMISSION)
                 return
             }
-            if (_status.value !is LinkStatus.Online) _status.value = LinkStatus.Connecting
-            when (connectOnce(pc)) {
+            if (link.status.value !is LinkStatus.Online) link.status.value = LinkStatus.Connecting
+            when (connectOnce(link, pc)) {
                 Outcome.ENDED -> failures = 0
                 Outcome.REJECTED -> {
-                    _status.value = LinkStatus.Offline(LinkProblem.REJECTED)
+                    link.status.value = LinkStatus.Offline(LinkProblem.REJECTED)
                     return
                 }
                 Outcome.UNPAIRED -> {
-                    forgetLocally()
+                    forgetLocally(link)
                     return
                 }
                 Outcome.UNREACHABLE -> {
                     // The PC may have a new address: ask the LAN before backing off.
                     val found = discover(pc)
                     if (found != null && found != pc.hosts.firstOrNull()) {
-                        remember(pc, found)
+                        remember(link, found)
                         continue
                     }
+                    // Away from its LAN: Tailscale, if the user lets the app turn it on.
+                    if (autoTailnet(pc)) continue
                     failures++
-                    _status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE, lastFailure)
+                    link.status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE, link.lastFailure)
                     // Only notifications wanted it, from the background: the PC is not
                     // around, so stop here instead of retrying for every notification.
                     if (!foreground && holds.isNotEmpty() && holds.all { it == "notifs" }) {
-                        quietUntil = System.currentTimeMillis() + QUIET_MS
-                        holds.remove("notifs")
-                        session = null
+                        link.quietUntil = System.currentTimeMillis() + QUIET_MS
+                        link.session = null
                         return
                     }
                 }
@@ -538,14 +797,14 @@ object LinkHub {
     private val networkEpoch = MutableStateFlow(0)
 
     /**
-     * Keep the link open in the background, so the PC can reach the phone at any time
-     * (its live updates, Do Not Disturb, screenshots, the clipboard). On by default.
+     * Keep the link open in the background, so the PCs can reach the phone at any time
+     * (their live updates, Do Not Disturb, screenshots, the clipboard). On by default.
      */
     fun staysConnected(): Boolean = app.getSharedPreferences(STAY_PREFS, Context.MODE_PRIVATE).getBoolean(STAY, true)
 
     fun setStaysConnected(on: Boolean) {
         app.getSharedPreferences(STAY_PREFS, Context.MODE_PRIVATE).edit().putBoolean(STAY, on).apply()
-        if (on && _pc.value != null) hold(ALWAYS) else release(ALWAYS)
+        if (on && links.value.isNotEmpty()) hold(ALWAYS) else release(ALWAYS)
         LinkService.sync(app)
     }
 
@@ -558,45 +817,70 @@ object LinkHub {
         cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: android.net.Network) {
                 networkEpoch.value++
+                scope.launch {
+                    // Addresses settle a moment after the network does.
+                    delay(1_500)
+                    onNetworkChanged()
+                }
+            }
+
+            override fun onLost(network: android.net.Network) {
+                scope.launch {
+                    delay(1_500)
+                    onNetworkChanged()
+                }
+            }
+        })
+        // Under a VPN the default network stays the VPN when Wi-Fi changes: Wi-Fi itself
+        // tells when the phone comes home (or leaves).
+        val wifi = android.net.NetworkRequest.Builder().addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI).build()
+        cm.registerNetworkCallback(wifi, object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                networkEpoch.value++
+                scope.launch {
+                    delay(1_500)
+                    onNetworkChanged()
+                }
             }
         })
     }
 
-    private suspend fun connectOnce(pc: PairedPc): Outcome {
+    private suspend fun connectOnce(link: PcLink, pc: PairedPc): Outcome {
         val client = clientFor(pc.fingerprint)
         val auth = JSONObject().put("t", "auth").put("id", pc.id).put("token", pc.token).toString()
         val tried = mutableListOf<Session>()
-        for (host in pc.hosts) {
-            val s = open(client, host, pc.port)
+        val hosts = candidates(pc)
+        for (host in hosts) {
+            val s = open(client, host, pc.port, link)
             tried += s
             s.ws.send(auth)
             val reply = withTimeoutOrNull(5_000) { s.first.await() }
             when (reply?.optString("t")) {
                 "authOk" -> {
-                    if (host != pc.hosts.first()) remember(pc, host)
-                    unpairedByPc = false
-                    socket = s.ws
-                    _status.value = LinkStatus.Online(host)
-                    Symbols.flush()
-                    announceCaps()
+                    if (host != pc.hosts.firstOrNull()) remember(link, host)
+                    link.unpairedByPc = false
+                    link.socket = s.ws
+                    link.status.value = LinkStatus.Online(host)
+                    if (link === sel) Symbols.flush()
+                    s.ws.send(capsMessage())
                     CallWatcher.current()?.let { (state, name) ->
                         s.ws.send(JSONObject().put("t", "call").put("state", state).put("name", name).toString())
                     }
                     try {
                         s.closed.await()
                     } finally {
-                        if (socket === s.ws) socket = null
+                        if (link.socket === s.ws) link.socket = null
                         s.ws.close(1000, null)
-                        clearShell()
-                        PcLive.linkLost(app)
-                        incoming?.discard()
-                        incoming = null
-                        // Live updates go back to the relay copy while the link is down.
+                        clearShell(link)
+                        if (link === sel) PcLive.linkLost(app)
+                        link.incoming?.discard()
+                        link.incoming = null
+                        // Live updates go back to the relay copy while no link is up.
                         LiveHub.listener?.onLinkChanged()
-                        pending.values.forEach { it.complete("offline") }
-                        pending.clear()
+                        link.pending.values.forEach { it.complete("offline") }
+                        link.pending.clear()
                     }
-                    return if (unpairedByPc) Outcome.UNPAIRED else Outcome.ENDED
+                    return if (link.unpairedByPc) Outcome.UNPAIRED else Outcome.ENDED
                 }
                 "authErr" -> {
                     s.ws.cancel()
@@ -605,65 +889,149 @@ object LinkHub {
                 else -> s.ws.cancel()
             }
         }
-        lastFailure = failure(tried, pc.hosts, pc.port)
+        link.lastFailure = failure(tried, hosts, pc.port)
         return Outcome.UNREACHABLE
     }
 
-    /** What the shell told us lasts only as long as the socket it came over. */
-    private fun clearShell() {
-        _shell.value = null
-        _active.value = emptySet()
-        _workspaces.value = null
-        _modes.value = null
-        _presets.value = null
-        _audio.value = null
-        _deck.value = null
-        _focus.value = null
-        _display.value = null
-        _apps.value = null
-        PcMedia.clear()
-        PcLyrics.onLinkLost()
-        FileServer.stop()
-        Gallery.onLinkLost(app)
-        ClipHistory.onLinkLost()
-        PhoneUsage.onLinkDisconnected()
-        PhoneData.onLinkDisconnected()
-        dev.ii.tools.camera.Webcam.onLinkLost()
-        dev.ii.tools.mic.Mic.onLinkLost()
-        MirrorRadio.onLinkLost()
+    /** What a shell told us lasts only as long as the socket it came over. */
+    private fun clearShell(link: PcLink) {
+        link.shell.value = null
+        link.active.value = emptySet()
+        link.workspaces.value = null
+        link.modes.value = null
+        link.presets.value = null
+        link.audio.value = null
+        link.deck.value = null
+        link.focus.value = null
+        link.display.value = null
+        link.apps.value = null
+        link.perf.value = null
+        link.shown.clear()
+        if (link === sel) {
+            PcMedia.clear()
+            PcLyrics.onLinkLost()
+            ClipHistory.onLinkLost()
+        }
+        fun owns(topic: String) = (askers[topic] ?: sel) === link
+        val alone = online().none { it !== link }
+        if (owns("files")) FileServer.stop()
+        if (owns("gallery") || alone) Gallery.onLinkLost(app)
+        if (owns("camera")) dev.ii.tools.camera.Webcam.onLinkLost()
+        if (owns("mic")) dev.ii.tools.mic.Mic.onLinkLost()
+        if (owns("mirror")) MirrorRadio.onLinkLost()
+        dev.ii.tools.calendar.PhoneCalendar.onLinkLost(link.key)
+        if (alone) {
+            PhoneUsage.onLinkDisconnected()
+            PhoneData.onLinkDisconnected()
+        }
     }
 
-    private fun remember(pc: PairedPc, host: String) {
-        val updated = pc.copy(hosts = listOf(host) + pc.hosts.filter { it != host })
-        LinkPrefs.save(app, updated)
-        _pc.value = updated
+    /**
+     * The addresses to try, in order. On the PC's LAN, its LAN addresses (and the tailnet
+     * one after them); away from it with Tailscale up, the tailnet first, so the phone does
+     * not wait out a timeout per LAN address that cannot answer here.
+     */
+    private fun candidates(pc: PairedPc): List<String> {
+        if (pc.tailnet.isEmpty() || !Tailnet.isUp(app)) return pc.hosts
+        return if (Tailnet.onLanOf(app, pc.hosts)) pc.hosts + pc.tailnet else pc.tailnet + pc.hosts
+    }
+
+    /** The link to the controlled PC goes over Tailscale right now. */
+    fun viaTailnet(): Boolean = Tailnet.isTailnet((status.value as? LinkStatus.Online)?.host)
+
+    /** The controlled PC can be reached over Tailscale (its shell announced a tailnet address). */
+    fun hasTailnet(): Boolean = sel?.pc?.value?.tailnet?.isNotEmpty() == true
+
+    /**
+     * The button on an away PC: turns the Tailscale app's VPN on, then tries again. Null
+     * once it is up, else why not ("missing", "failed").
+     */
+    suspend fun connectTailnet(): String? {
+        if (!Tailnet.installed(app)) return "missing"
+        if (!Tailnet.connect(app)) return "failed"
+        networkEpoch.value++
+        retry()
+        return null
+    }
+
+    /** Away from the PC's LAN with the automatic switch on: bring Tailscale up for it. */
+    private suspend fun autoTailnet(pc: PairedPc): Boolean {
+        if (pc.tailnet.isEmpty() || !Tailnet.auto(app) || !Tailnet.installed(app) || Tailnet.isUp(app)) return false
+        if (Tailnet.onLanOf(app, pc.hosts)) return false
+        return Tailnet.connect(app)
+    }
+
+    /**
+     * The network changed. Back on a PC's LAN, a link still on the tailnet moves to the
+     * LAN, and a VPN this app turned on goes off once nothing uses it.
+     */
+    private fun onNetworkChanged() {
+        if (!Tailnet.isUp(app)) {
+            if (Tailnet.ours(app)) Tailnet.disconnectIfOurs(app)
+            return
+        }
+        links.value.forEach { link ->
+            val pc = link.pc.value ?: return@forEach
+            val host = (link.status.value as? LinkStatus.Online)?.host
+            if (Tailnet.isTailnet(host) && Tailnet.onLanOf(app, pc.hosts)) {
+                endSession(link)
+                if (foreground || holds.isNotEmpty()) ensureSession(link)
+            }
+        }
+        if (Tailnet.ours(app) && links.value.none { l -> l.pc.value?.let { pc -> !Tailnet.onLanOf(app, pc.hosts) && pc.tailnet.isNotEmpty() && l.session?.isActive == true } == true }) {
+            Tailnet.disconnectIfOurs(app)
+        }
+    }
+
+    /** `hello.routes`: where the PC can be reached now. Its LAN list and its tailnet ones, kept with the pairing. */
+    private fun learnRoutes(link: PcLink, routes: org.json.JSONArray) {
+        val pc = link.pc.value ?: return
+        val lan = mutableListOf<String>()
+        val tail = mutableListOf<String>()
+        for (i in 0 until routes.length()) {
+            val r = routes.optJSONObject(i) ?: continue
+            val addr = r.optString("addr").ifEmpty { null } ?: continue
+            if (r.optString("kind") == "tailscale" || Tailnet.isTailnet(addr)) tail += addr else lan += addr
+        }
+        // The address that answered stays first; one the PC no longer has goes.
+        val hosts = (pc.hosts.filter { it in lan || it == "127.0.0.1" } + lan).distinct().ifEmpty { pc.hosts }
+        val updated = pc.copy(hosts = hosts, tailnet = tail.distinct())
+        if (updated == pc) return
+        link.pc.value = updated
+        LinkPrefs.save(app, links.value.mapNotNull { it.pc.value })
+    }
+
+    private fun remember(link: PcLink, host: String) {
+        if (Tailnet.isTailnet(host)) return
+        val pc = link.pc.value ?: return
+        link.pc.value = pc.copy(hosts = listOf(host) + pc.hosts.filter { it != host })
+        LinkPrefs.save(app, links.value.mapNotNull { it.pc.value })
     }
 
     // ── Files from the PC ─────────────────────────────────────────────────
 
-    @Volatile private var incoming: Incoming? = null
-
-    private fun startFile(header: JSONObject) {
-        incoming?.discard()
-        val inc = Incoming(java.io.File(app.cacheDir, "incoming"), header)
+    private fun startFile(link: PcLink, header: JSONObject) {
+        link.incoming?.discard()
+        val inc = Incoming(java.io.File(app.cacheDir, "incoming/" + link.key.take(12)), header)
         if (!inc.valid) {
             inc.discard()
-            socket?.send(JSONObject().put("t", "err").put("id", inc.id).put("code", "too_large").toString())
+            link.socket?.send(JSONObject().put("t", "err").put("id", inc.id).put("code", "too_large").toString())
             return
         }
-        incoming = inc
+        link.incoming = inc
     }
 
-    private fun receiveChunk(bytes: ByteArray) {
-        val inc = incoming ?: return
+    private fun receiveChunk(link: PcLink, bytes: ByteArray) {
+        val inc = link.incoming ?: return
         val whole = runCatching { inc.write(bytes) }.getOrElse {
             inc.discard()
-            incoming = null
+            link.incoming = null
             return
         }
         if (!whole) return
-        incoming = null
+        link.incoming = null
         scope.launch {
+            if (inc.purpose == "share" || inc.purpose == "screenshot") askers["act"] = link
             val ok = when (inc.purpose) {
                 "screenshot" -> ShotSync.savePcShot(app, inc.file, inc.name)
                 "share" -> PcActions.saveDownload(app, inc.file, inc.name)
@@ -674,13 +1042,22 @@ object LinkHub {
                 else -> false
             }
             inc.file.delete()
-            socket?.send(JSONObject().put("t", if (ok) "ok" else "err").put("id", inc.id).apply { if (!ok) put("code", "write") }.toString())
+            link.socket?.send(JSONObject().put("t", if (ok) "ok" else "err").put("id", inc.id).apply { if (!ok) put("code", "write") }.toString())
         }
     }
 
-    private fun handle(m: JSONObject) {
-        when (m.optString("t")) {
-            "file" -> startFile(m)
+    private fun handle(link: PcLink, m: JSONObject) {
+        val t = m.optString("t")
+        val selected = link === sel
+        when (t) {
+            in TO_ASKER, "act", "mirror" -> askers[t] = link
+            "get" -> when (m.optString("what")) {
+                "contacts", "photos" -> askers["contacts"] = link
+                "launcherIcons" -> askers["launcherIcons"] = link
+            }
+        }
+        when (t) {
+            "file" -> startFile(link, m)
             "hello" -> {
                 val actions = m.optJSONArray("actions")
                 val list = buildList {
@@ -689,33 +1066,39 @@ object LinkHub {
                         add(ShellAction(a.optString("id"), a.optString("name"), a.optString("icon"), a.optBoolean("toggle")))
                     }
                 }
-                Wake.remember(app, m.optJSONArray("wake"))
+                Wake.remember(app, link.key, m.optJSONArray("wake"))
+                // A shell from before routes says nothing: what the QR code carried stays.
+                m.optJSONArray("routes")?.let { learnRoutes(link, it) }
                 val caps = m.optJSONArray("caps")
-                _shell.value = ShellInfo(
+                val pcLinks = m.optJSONArray("pcLinks")
+                link.shell.value = ShellInfo(
                     name = m.optString("name"),
                     caps = buildSet { if (caps != null) for (i in 0 until caps.length()) add(caps.optString(i)) },
                     actions = list,
+                    pcLinks = buildSet { if (pcLinks != null) for (i in 0 until pcLinks.length()) add(pcLinks.optString(i)) },
                 )
-                if (_shell.value?.caps?.contains("phoneData") == true) PhoneData.onLinkConnected(app)
-                if (_shell.value?.caps?.contains("dnd") == true) DndSync.report()
-                if (_shell.value?.caps?.contains("media") == true) PhoneMedia.sendAll()
-                dev.ii.tools.routines.ModeCatalog.request()
+                // A PC that renamed itself shows the new name in the switcher.
+                val name = m.optString("name")
+                link.pc.value?.takeIf { name.isNotEmpty() && it.name != name }?.let {
+                    link.pc.value = it.copy(name = name)
+                    LinkPrefs.save(app, links.value.mapNotNull { l -> l.pc.value })
+                }
+                if (link.has("phoneData")) PhoneData.onLinkConnected(app)
+                if (link.has("dnd")) DndSync.report()
+                if (link.has("media")) PhoneMedia.sendAll()
                 PhoneUsage.onShellHello(app)
                 NotifMirror.onShellHello(app)
-                AppIcons.onLinkChanged()
                 Gallery.syncObserver(app)
-                // A panel open across a reconnect asks again.
-                if (perfWanted) socket?.send(JSONObject().put("t", "sub").put("what", "perf").put("on", true).toString())
-                if (focusWanted) socket?.send(JSONObject().put("t", "sub").put("what", "focus").put("on", true).toString())
-                if (displayWanted) socket?.send(JSONObject().put("t", "sub").put("what", "display").put("on", true).toString())
-                if (clipHistoryWanted && supportsClipHistory()) {
-                    socket?.send(JSONObject().put("t", "sub").put("what", "clipHistory").put("on", true).toString())
-                    ClipHistory.refresh()
+                if (selected) {
+                    dev.ii.tools.routines.ModeCatalog.request()
+                    AppIcons.onLinkChanged()
+                    // A panel open across a reconnect asks again.
+                    resubscribe(link)
+                    PcLyrics.onShellHello()
                 }
-                PcLyrics.onShellHello()
                 // The PC takes notifications: give it the whole list, and the live
                 // updates their link path.
-                if (isOnline()) {
+                if (link.has("notifs")) {
                     NotifMirror.sendAll()
                     LiveHub.listener?.onLinkChanged()
                     readyCallbacks.forEach { it() }
@@ -724,28 +1107,28 @@ object LinkHub {
             }
             "state" -> {
                 val on = m.optJSONArray("on")
-                _active.value = buildSet { if (on != null) for (i in 0 until on.length()) add(on.optString(i)) }
+                link.active.value = buildSet { if (on != null) for (i in 0 until on.length()) add(on.optString(i)) }
             }
-            "workspaces" -> _workspaces.value = Topics.workspaces(m)
-            "modes" -> _modes.value = Topics.modes(m)
-            "presets" -> _presets.value = Topics.presets(m)
-            "audio" -> _audio.value = Topics.audio(m)
-            "deck" -> _deck.value = DeckTopics.deck(m)
-            "focus" -> if (focusWanted) _focus.value = DeckTopics.focus(m)
-            "display" -> if (displayWanted) _display.value = DeckTopics.display(m)
-            "apps" -> _apps.value = DeckTopics.apps(m)
-            "perf" -> if (perfWanted) _perf.value = PcPerf.from(m)
+            "workspaces" -> link.workspaces.value = Topics.workspaces(m)
+            "modes" -> link.modes.value = Topics.modes(m)
+            "presets" -> link.presets.value = Topics.presets(m)
+            "audio" -> link.audio.value = Topics.audio(m)
+            "deck" -> link.deck.value = DeckTopics.deck(m)
+            "focus" -> if (focusWanted && selected) link.focus.value = DeckTopics.focus(m)
+            "display" -> if (displayWanted && selected) link.display.value = DeckTopics.display(m)
+            "apps" -> link.apps.value = DeckTopics.apps(m)
+            "perf" -> if (perfWanted && selected) link.perf.value = PcPerf.from(m)
             "icons" -> Symbols.put(DeckTopics.paths(m))
             "appIcon" -> AppIcons.put(m.optString("name"), m.optString("png"))
-            "ok" -> pending.remove(m.optInt("id"))?.complete(null)
+            "ok" -> link.pending.remove(m.optInt("id"))?.complete(null)
             "err" -> {
-                if (m.has("id")) pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
+                if (m.has("id")) link.pending.remove(m.optInt("id"))?.complete(m.optString("code").ifEmpty { "failed" })
                 val what = m.optString("what")
-                if (what == "clipHistory" || what == "clipThumbs") {
+                if (selected && (what == "clipHistory" || what == "clipThumbs")) {
                     ClipHistory.onError(m.optString("code").ifEmpty { "failed" })
                 }
             }
-            "unpaired" -> unpairedByPc = true
+            "unpaired" -> link.unpairedByPc = true
             "phone" -> CallWatcher.command(m.optString("a"), m.optString("arg").ifEmpty { null })
             "get" -> when (m.optString("what")) {
                 "contacts" -> PhoneData.onContactsAsked(m.optString("have"))
@@ -753,52 +1136,107 @@ object LinkHub {
                 "launcherIcons" -> m.optJSONArray("pkgs")?.let { k -> LauncherIcons.want(app, List(k.length()) { k.optString(it) }) }
                 "photos" -> m.optJSONArray("keys")?.let { k -> PhoneData.onPhotosAsked(List(k.length()) { k.optString(it) }) }
                 "phoneUsage" -> PhoneUsage.onGet(app, m.optString("since"))
+                "calendar" -> dev.ii.tools.calendar.PhoneCalendar.onAsked(app, link.key, m)
             }
+            "calendarEdit" -> dev.ii.tools.calendar.PhoneCalendar.onEdit(app, link.key, m)
             "notifAct" -> NotifMirror.command(m)
             "notifFilter" -> NotifMirror.onFilterMessage(app, m)
             "clip" -> ClipSync.receive(app, m)
-            "clipHistory" -> ClipHistory.onHistoryReceived(m)
-            "clipThumb" -> ClipHistory.onThumbReceived(m.optString("id"), m.optString("png"))
-            "clipHistoryChanged" -> ClipHistory.onChanged()
+            "clipHistory" -> if (selected) ClipHistory.onHistoryReceived(m)
+            "clipThumb" -> if (selected) ClipHistory.onThumbReceived(m.optString("id"), m.optString("png"))
+            "clipHistoryChanged" -> if (selected) ClipHistory.onChanged()
             "act" -> PcActions.handle(app, m)
             "mediaCmd" -> PhoneMedia.command(m)
-            "pcMedia" -> PcMedia.update(app, m)
-            "pcLyrics" -> PcLyrics.update(m)
+            // What only the controlled PC shows: kept for when it is picked.
+            "pcMedia", "pcLyrics", "pcLive" -> {
+                link.shown[t] = m
+                if (selected) when (t) {
+                    "pcMedia" -> PcMedia.update(app, m)
+                    "pcLyrics" -> PcLyrics.update(m)
+                    else -> PcLive.update(app, m.optJSONArray("items"))
+                }
+            }
             "handoff" -> dev.ii.tools.media.Handoff.onPc(app, m)
-            "modeActions" -> dev.ii.tools.routines.ModeCatalog.onMessage(app, m)
+            "modeActions" -> if (selected) dev.ii.tools.routines.ModeCatalog.onMessage(app, m)
             "files" -> FileServer.command(app, m)
             "gallery" -> Gallery.onMessage(app, m)
-            "pad" -> dev.ii.tools.touchpad.Touchpad.onReply(m)
-            "draw" -> dev.ii.tools.draw.DrawPad.onMessage(m)
-            "present" -> dev.ii.tools.present.Presenter.onMessage(m)
-            "screen" -> dev.ii.tools.screen.SecondScreen.onMessage(m)
+            "pad" -> if (selected) dev.ii.tools.touchpad.Touchpad.onReply(m)
+            "draw" -> if (selected) dev.ii.tools.draw.DrawPad.onMessage(m)
+            "present" -> if (selected) dev.ii.tools.present.Presenter.onMessage(m)
+            "screen" -> if (selected) dev.ii.tools.screen.SecondScreen.onMessage(m)
             "camera" -> dev.ii.tools.camera.Webcam.onMessage(app, m)
             "mic" -> dev.ii.tools.mic.Mic.onMessage(app, m)
             "dnd" -> DndSync.apply(m.optBoolean("on"))
             "mirror" -> MirrorRadio.onMirror(
                 app,
                 m.optBoolean("on"),
-                (_status.value as? LinkStatus.Online)?.host,
-                _pc.value?.port ?: 0,
-                _shell.value?.caps?.contains("mirrorRadio") == true,
+                (link.status.value as? LinkStatus.Online)?.host,
+                link.pc.value?.port ?: 0,
+                link.shell.value?.caps?.contains("mirrorRadio") == true,
             )
-            "pcLive" -> PcLive.update(app, m.optJSONArray("items"))
-            "look" -> Look.update(app, m.optString("wall"))
+            "look" -> Look.update(app, link.key, m.optString("wall"))
+            "pcPairInfo", "pcPairResult" -> pcReplies.remove(m.optInt("id"))?.complete(m)
         }
+    }
+
+    // ── Linking two PCs ───────────────────────────────────────────────────
+
+    private val pcReplies = ConcurrentHashMap<Int, CompletableDeferred<JSONObject>>()
+
+    private suspend fun ask(link: PcLink, m: JSONObject, wait: Long): JSONObject? {
+        val ws = link.socket ?: return null
+        val id = nextId.getAndIncrement()
+        val reply = CompletableDeferred<JSONObject>()
+        pcReplies[id] = reply
+        try {
+            if (!ws.send(m.put("id", id).toString())) return null
+            return withTimeoutOrNull(wait) { reply.await() }
+        } finally {
+            pcReplies.remove(id)
+        }
+    }
+
+    /**
+     * Introduces two paired PCs to each other, once: [b] opens a pairing window and hands
+     * over a one-time secret, [a] dials it with that secret. From then on they talk
+     * directly (the shell's PC link), phone or not. Null once linked, else why not.
+     */
+    suspend fun linkPcs(a: String, b: String): String? {
+        val linkA = links.value.firstOrNull { it.key == a } ?: return "offline"
+        val linkB = links.value.firstOrNull { it.key == b } ?: return "offline"
+        if (!linkA.has("pcLink") || !linkB.has("pcLink")) return "unsupported"
+        val info = ask(linkB, JSONObject().put("t", "pcPairOpen"), REPLY_TIMEOUT_MS) ?: return "timeout"
+        info.optString("err").ifEmpty { null }?.let { return it }
+        // Where the phone reaches B now goes first: the PCs most likely share that network.
+        val pcB = linkB.pc.value ?: return "offline"
+        val reached = (linkB.status.value as? LinkStatus.Online)?.host?.takeIf { !Tailnet.isTailnet(it) }
+        val announced = info.optJSONArray("hosts")?.let { h -> List(h.length()) { h.optString(it) } }.orEmpty()
+        val hosts = (listOfNotNull(reached) + announced + pcB.hosts + pcB.tailnet).filter { it.isNotEmpty() && it != "127.0.0.1" }.distinct()
+        val join = JSONObject()
+            .put("t", "pcPairJoin")
+            .put("fp", info.optString("fp"))
+            .put("port", info.optInt("port", pcB.port))
+            .put("secret", info.optString("secret"))
+            .put("name", info.optString("name"))
+            .put("hosts", org.json.JSONArray(hosts))
+        val result = ask(linkA, join, 25_000) ?: return "timeout"
+        return if (result.optBoolean("ok")) null else result.optString("code").ifEmpty { "failed" }
     }
 
     // ── Commands ──────────────────────────────────────────────────────────
 
-    /** Asks the shell to run [actionId]: null once it confirms, else why not ("locked"…). */
-    suspend fun run(actionId: String, arg: Any? = null): String? {
-        val ws = socket ?: return "offline"
+    /** Asks the controlled PC's shell to run [actionId]: null once it confirms, else why not ("locked"…). */
+    suspend fun run(actionId: String, arg: Any? = null): String? = run(sel, actionId, arg)
+
+    private suspend fun run(link: PcLink?, actionId: String, arg: Any?): String? {
+        val ws = link?.socket ?: return "offline"
         val id = nextId.getAndIncrement()
         val reply = CompletableDeferred<String?>()
-        pending[id] = reply
+        link.pending[id] = reply
         ws.send(command(id, actionId, arg))
         // Wrapped: a null reply means "done", which a bare withTimeoutOrNull would confuse with a timeout.
         val outcome = withTimeoutOrNull(REPLY_TIMEOUT_MS) { Reply(reply.await()) }
-        pending.remove(id)
+        link.pending.remove(id)
         return if (outcome == null) "timeout" else outcome.code
     }
 
@@ -806,17 +1244,17 @@ object LinkHub {
 
     /**
      * Runs [actionId] from outside the app (a Quick Settings tile, a widget): brings the
-     * link up if needed, waits for the shell's hello, runs it, and lets the link go.
+     * link up if needed, waits for the controlled PC's hello, runs it, and lets the link go.
      */
     suspend fun runWhenReady(actionId: String, arg: Any? = null): String? {
-        if (_pc.value == null) return "unpaired"
+        val link = sel?.takeIf { it.pc.value != null } ?: return "unpaired"
         hold("remote")
         try {
             val ready = withTimeoutOrNull(8_000) {
-                status.first { it is LinkStatus.Online }
-                shell.first { it != null }
+                link.status.first { it is LinkStatus.Online }
+                link.shell.first { it != null }
             }
-            return if (ready == null) "offline" else run(actionId, arg)
+            return if (ready == null) "offline" else run(link, actionId, arg)
         } finally {
             release("remote")
         }
@@ -827,16 +1265,25 @@ object LinkHub {
      * the pushed topic is the answer.
      */
     fun send(actionId: String, arg: Any? = null) {
-        socket?.send(command(nextId.getAndIncrement(), actionId, arg))
+        sel?.socket?.send(command(nextId.getAndIncrement(), actionId, arg))
     }
 
     private val uploadMutex = Mutex()
+
+    /** Where a file for [purpose] goes: answers to the PC that asked, the rest to the controlled PC. */
+    private fun uploadTarget(purpose: String): PcLink? = when (purpose) {
+        "galleryThumb", "galleryFull" -> asker("gallery")
+        "contactPhoto" -> asker("contacts")
+        "launcherIcon" -> asker("launcherIcons")
+        else -> sel
+    }
 
     /**
      * Sends a file for [purpose] (PROTOCOL.md, "Files"): a header, then binary frames,
      * paced by OkHttp's send queue so a large photo never sits whole in memory. Waits a
      * moment for the link when the app was just opened by a share. Null once the shell
-     * has done what the file was for, else why not.
+     * has done what the file was for, else why not. [toPc] (a fingerprint) sends it to
+     * that PC instead of the one [purpose] picks.
      */
     suspend fun upload(
         name: String,
@@ -845,15 +1292,18 @@ object LinkHub {
         purpose: String,
         target: String,
         waitForLink: Boolean = true,
+        toPc: String? = null,
         onProgress: (Float) -> Unit,
     ): String? = withContext(Dispatchers.IO) {
         uploadMutex.withLock {
-            if (!waitForLink && socket == null) return@withLock "offline"
-            if (withTimeoutOrNull(15_000) { status.first { it is LinkStatus.Online } } == null) return@withLock "offline"
-            val ws = socket ?: return@withLock "offline"
+            val link = (if (toPc != null) links.value.firstOrNull { it.key == toPc } else uploadTarget(purpose))
+                ?: return@withLock "offline"
+            if (!waitForLink && link.socket == null) return@withLock "offline"
+            if (withTimeoutOrNull(15_000) { link.status.first { it is LinkStatus.Online } } == null) return@withLock "offline"
+            val ws = link.socket ?: return@withLock "offline"
             val id = nextId.getAndIncrement()
             val reply = CompletableDeferred<String?>()
-            pending[id] = reply
+            link.pending[id] = reply
             try {
                 val header = JSONObject().put("t", "file").put("id", id).put("name", name).put("size", size)
                     .put("purpose", purpose).put("target", target)
@@ -875,25 +1325,25 @@ object LinkHub {
                 val outcome = withTimeoutOrNull(60_000) { Reply(reply.await()) }
                 if (outcome == null) "timeout" else outcome.code
             } finally {
-                pending.remove(id)
+                link.pending.remove(id)
             }
         }
     }
 
-    /** The PC's installed apps; they arrive in [apps]. */
+    /** The controlled PC's installed apps; they arrive in [apps]. */
     fun requestApps() {
-        socket?.send(JSONObject().put("t", "get").put("what", "apps").toString())
+        sel?.socket?.send(JSONObject().put("t", "get").put("what", "apps").toString())
     }
 
-    /** Outlines of Material Symbols the app does not carry; they arrive in [Symbols]. */
+    /** Outlines of Material Symbols the app does not carry (any PC draws them); they arrive in [Symbols]. */
     internal fun requestSymbols(names: Collection<String>): Boolean {
-        val ws = socket ?: return false
+        val ws = sel?.socket ?: online().firstOrNull()?.socket ?: return false
         return ws.send(JSONObject().put("t", "icons").put("names", org.json.JSONArray(names)).toString())
     }
 
     /** Desktop app icons rendered to 96x96 PNG on the PC; they arrive in [AppIcons]. */
     internal fun requestAppIcons(names: Collection<String>): Boolean {
-        val ws = socket ?: return false
+        val ws = sel?.socket ?: return false
         return ws.send(JSONObject().put("t", "get").put("what", "appIcons").put("icons", org.json.JSONArray(names)).toString())
     }
 
@@ -946,16 +1396,16 @@ object LinkHub {
     private fun failure(sessions: List<Session>, hosts: List<String>, port: Int): LinkFailure =
         LinkFailure(sessions.map { it.reason() }.minOrNull() ?: FailReason.TIMEOUT, hosts, port)
 
-    /** Why the last connection attempt found no PC, for [LinkStatus.Offline]. */
-    @Volatile private var lastFailure: LinkFailure? = null
-
     /**
-     * A second WebSocket to the PC the link is on, at [path] (the webcam's video): same
-     * host, port and pinned certificate, so it needs no other port, route or trust.
+     * A second WebSocket to a PC the link is on, at [path] (the webcam's video): same
+     * host, port and pinned certificate, so it needs no other port, route or trust. It
+     * goes to the PC that asked for [topic] (the camera, the microphone), else to the
+     * controlled one.
      */
-    fun openSide(path: String, listener: WebSocketListener, viaHost: String? = null): WebSocket? {
-        val pc = _pc.value ?: return null
-        val host = viaHost ?: (_status.value as? LinkStatus.Online)?.host ?: return null
+    fun openSide(path: String, listener: WebSocketListener, viaHost: String? = null, topic: String? = null): WebSocket? {
+        val link = (if (topic != null) asker(topic) else sel) ?: return null
+        val pc = link.pc.value ?: return null
+        val host = viaHost ?: (link.status.value as? LinkStatus.Online)?.host ?: return null
         // Video: every write goes out at once (Nagle would hold a frame's tail back for
         // the PC's delayed ACK, a 40 ms hitch).
         val client = clientFor(pc.fingerprint).newBuilder()
@@ -966,7 +1416,7 @@ object LinkHub {
         return client.newWebSocket(Request.Builder().url("https://$host6:${pc.port}$path").build(), listener)
     }
 
-    private fun open(client: OkHttpClient, host: String, port: Int): Session {
+    private fun open(client: OkHttpClient, host: String, port: Int, link: PcLink): Session {
         val first = CompletableDeferred<JSONObject?>()
         val closed = CompletableDeferred<Unit>()
         val attempt = Session(first, closed)
@@ -977,11 +1427,11 @@ object LinkHub {
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val m = runCatching { JSONObject(text) }.getOrNull() ?: return
-                if (!first.isCompleted) first.complete(m) else handle(m)
+                if (!first.isCompleted) first.complete(m) else handle(link, m)
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
-                receiveChunk(bytes.toByteArray())
+                receiveChunk(link, bytes.toByteArray())
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {

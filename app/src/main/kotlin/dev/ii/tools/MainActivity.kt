@@ -38,6 +38,7 @@ import dev.ii.tools.ui.NotifsScreen
 import dev.ii.tools.ui.PcLinkScreen
 import dev.ii.tools.ui.PerfScreen
 import dev.ii.tools.ui.PhoneDataScreen
+import dev.ii.tools.ui.CalendarScreen
 import dev.ii.tools.ui.RemoteScreen
 import dev.ii.tools.ui.ShareScreen
 import dev.ii.tools.ui.ShotsScreen
@@ -83,6 +84,7 @@ private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
     Dest.SHOTS -> ShotsActivity::class.java
     Dest.GALLERY -> GalleryActivity::class.java
     Dest.PHONE_DATA -> PhoneDataActivity::class.java
+    Dest.CALENDAR -> CalendarActivity::class.java
     Dest.PC_LINK -> PcLinkActivity::class.java
     Dest.CALLS -> CallsActivity::class.java
     Dest.ROUTINES -> RoutinesActivity::class.java
@@ -315,6 +317,11 @@ class GalleryActivity : ScreenActivity() {
 class PhoneDataActivity : ScreenActivity() {
     @Composable
     override fun Screen() = PhoneDataScreen(onBack = ::finish)
+}
+
+class CalendarActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = CalendarScreen(onBack = ::finish)
 }
 
 class PcLinkActivity : ScreenActivity() {

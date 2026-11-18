@@ -48,7 +48,7 @@ class LinkService : Service() {
         if (scope == null) {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main).also { s ->
                 s.launch {
-                    combine(LinkHub.status, LinkHub.pc) { st, _ -> st }.distinctUntilChanged().collect { st ->
+                    combine(LinkHub.status, LinkHub.machines) { st, _ -> st to onlineNames() }.distinctUntilChanged().collect { (st, _) ->
                         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(st))
                     }
                 }
@@ -66,12 +66,14 @@ class LinkService : Service() {
                 setShowBadge(false)
             },
         )
-        val pc = LinkHub.pc.value?.name?.ifEmpty { null } ?: "PC"
+        // Every PC that is connected, else the one the home controls.
+        val online = onlineNames()
+        val pc = online.ifEmpty { null }?.joinToString(", ") ?: LinkHub.pc.value?.name?.ifEmpty { null } ?: "PC"
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, LinkService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.rounded_computer)
-            .setContentTitle(getString(if (st is LinkStatus.Online) R.string.link_service_online else R.string.link_service_waiting, pc))
+            .setContentTitle(getString(if (online.isNotEmpty()) R.string.link_service_online else R.string.link_service_waiting, pc))
             .setContentText(getString(R.string.link_service_hide))
             .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, getString(R.string.link_service_stop), stop).build())
@@ -81,6 +83,9 @@ class LinkService : Service() {
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
     }
+
+    private fun onlineNames(): List<String> =
+        LinkHub.machines.value.filter { it.status is LinkStatus.Online }.map { it.pc.name.ifEmpty { "PC" } }
 
     override fun onDestroy() {
         scope?.cancel()
@@ -97,7 +102,7 @@ class LinkService : Service() {
         fun sync(ctx: Context) {
             val app = ctx.applicationContext
             val intent = Intent(app, LinkService::class.java)
-            if (LinkHub.pc.value != null && LinkHub.staysConnected()) {
+            if (LinkHub.hasPairedPc() && LinkHub.staysConnected()) {
                 runCatching { app.startForegroundService(intent) }
             } else {
                 app.stopService(intent)

@@ -422,6 +422,7 @@ private fun WebcamToolbar(
                         }
                         canStart -> {
                             haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                            LinkHub.claim("camera")
                             Webcam.start()
                         }
                         else -> haptics.performHapticFeedback(HapticFeedbackType.Reject)

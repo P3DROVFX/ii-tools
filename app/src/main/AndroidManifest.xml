@@ -24,6 +24,8 @@
     <!-- ii link: the socket to the paired PC on the LAN (Android 17 gates the LAN
          behind ACCESS_LOCAL_NETWORK, a runtime permission). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- In-app updater: hands the downloaded release APK to the system installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- Staying connected in the background: Doze would cut the link otherwise. -->
@@ -38,8 +40,10 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- Phone data (Fase 2.4): contacts with photos and Bluetooth peripheral battery for the PC. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <!-- Optional: event dots on the date widgets and the phone's place for the weather widgets. -->
+    <!-- Phone calendar for the shell's Timetable, and event dots on the date widgets. -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- Optional: the PC creates and edits the phone's events. -->
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- The PC browses the phone's storage (SFTP), as with KDE Connect. -->
@@ -189,6 +193,10 @@
 
         <activity
             android:name=".PhoneDataActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".CalendarActivity"
             android:exported="false" />
 
         <activity

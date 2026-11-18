@@ -85,6 +85,7 @@ import dev.ii.tools.update.AppUpdate
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import dev.ii.tools.calendar.PhoneCalendar
 
 /** What the settings show, re-read whenever the app comes back (permissions change in Android's own settings). */
 private data class SettingsState(
@@ -153,24 +154,6 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     var clipRecv by remember { mutableStateOf(ClipSync.receives(ctx)) }
     var clipHistory by remember { mutableStateOf(ClipHistory.isEnabled(ctx)) }
     var mirrorRadio by remember { mutableStateOf(MirrorRadio.isEnabled(ctx)) }
-    LifecycleResumeEffect(Unit) {
-        val next = read()
-        if (next.usageAccess != s.usageAccess)
-            PhoneUsage.onPermissionChanged(ctx)
-        s = next
-        gallery = Gallery.isEnabled(ctx)
-        notifs = NotifMirror.isEnabled(ctx)
-        usageEnabled = PhoneUsage.isEnabled(ctx)
-        clipAuto = ClipSync.autoSend(ctx)
-        clipRecv = ClipSync.receives(ctx)
-        clipHistory = ClipHistory.isEnabled(ctx)
-        mirrorRadio = MirrorRadio.isEnabled(ctx)
-        Gallery.onPermissionChanged(ctx)
-        NotifMirror.load(ctx)
-        FavoritePreset.load(ctx)
-        onPauseOrDispose { }
-    }
-
     // The switches, each over its feature's own preference.
     var stays by remember { mutableStateOf(LinkHub.staysConnected()) }
     var phoneMedia by remember { mutableStateOf(PhoneMedia.isEnabled(ctx)) }
@@ -213,16 +196,54 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     val askCalendar = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         calendarOk = ok
         if (ok) dev.ii.tools.widgets.ShellWidget.refresh(ctx, *dev.ii.tools.widgets.DateData.WIDGETS)
+        PhoneCalendar.onPermissionChanged(ctx)
+    }
+    // The phone's calendar for the PC: the same preferences as the Calendar screen.
+    var calWrite by remember { mutableStateOf(PhoneCalendar.canWrite(ctx)) }
+    var calShare by remember { mutableStateOf(PhoneCalendar.isEnabled(ctx)) }
+    var calEdits by remember { mutableStateOf(PhoneCalendar.editsAllowed(ctx)) }
+    val askCalendarWrite = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        calWrite = ok
+        PhoneCalendar.onPermissionChanged(ctx)
     }
     val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         locationOk = ok
         if (ok) dev.ii.tools.widgets.WeatherWidget.refetch(ctx)
     }
+    LifecycleResumeEffect(Unit) {
+        val next = read()
+        if (next.usageAccess != s.usageAccess)
+            PhoneUsage.onPermissionChanged(ctx)
+        val nextCalRead = granted(Manifest.permission.READ_CALENDAR)
+        val nextCalWrite = PhoneCalendar.canWrite(ctx)
+        if (nextCalRead != calendarOk || nextCalWrite != calWrite) {
+            calendarOk = nextCalRead
+            calWrite = nextCalWrite
+            PhoneCalendar.onPermissionChanged(ctx)
+        }
+        locationOk = granted(Manifest.permission.ACCESS_COARSE_LOCATION)
+        calShare = PhoneCalendar.isEnabled(ctx)
+        calEdits = PhoneCalendar.editsAllowed(ctx)
+        s = next
+        gallery = Gallery.isEnabled(ctx)
+        notifs = NotifMirror.isEnabled(ctx)
+        usageEnabled = PhoneUsage.isEnabled(ctx)
+        clipAuto = ClipSync.autoSend(ctx)
+        clipRecv = ClipSync.receives(ctx)
+        clipHistory = ClipHistory.isEnabled(ctx)
+        mirrorRadio = MirrorRadio.isEnabled(ctx)
+        Gallery.onPermissionChanged(ctx)
+        NotifMirror.load(ctx)
+        FavoritePreset.load(ctx)
+        onPauseOrDispose { }
+    }
     val listenerSettings = { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
 
     var confirmForget by remember { mutableStateOf(false) }
+    var switching by remember { mutableStateOf(false) }
+    val machines by LinkHub.machines.collectAsStateWithLifecycle()
     val missing = listOf(
-        s.listener, s.post, s.phone, s.contacts, s.bluetooth, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, s.overlay, network.granted, cameraPerm.granted,
+        s.listener, s.post, s.phone, s.contacts, s.bluetooth, calendarOk, calWrite, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, s.overlay, network.granted, cameraPerm.granted,
     ).count { !it }
 
     ToolScaffold(
@@ -236,6 +257,20 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         } else {
             item { PcCard(current, status, onForget = { confirmForget = true }) }
         }
+        // Every paired PC, and pairing one more: the same sheet as the home's title.
+        if (machines.isNotEmpty()) {
+            item {
+                CardGroup {
+                    ToolRow(
+                        title = stringResource(R.string.pcs_title),
+                        summary = stringResource(R.string.pcs_count, machines.size, machines.count { it.status is LinkStatus.Online }),
+                        icon = R.drawable.rounded_devices,
+                        onClick = { switching = true },
+                        trailing = { Icon(painterResource(R.drawable.rounded_keyboard_arrow_down), null) },
+                    )
+                }
+            }
+        }
 
         item { GroupHeader(stringResource(R.string.settings_connection)) }
         item {
@@ -248,6 +283,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     mirrorRadio = it
                     MirrorRadio.setEnabled(ctx, it)
                 }, R.drawable.rounded_speed, summary = stringResource(R.string.mirror_radio_body))
+                TailnetAutoRow()
                 PermissionRow(
                     stringResource(R.string.link_battery), stringResource(R.string.settings_battery_body), R.drawable.rounded_battery_full, s.battery,
                 ) {
@@ -267,6 +303,12 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 PermissionRow(stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_body), R.drawable.rounded_call, s.phone) { askPhone.launch(CallWatcher.PERMISSIONS) }
                 PermissionRow(stringResource(R.string.perm_contacts), stringResource(R.string.perm_contacts_body), R.drawable.rounded_contacts, s.contacts) { askContacts.launch(PhoneData.CONTACTS) }
                 PermissionRow(stringResource(R.string.perm_bluetooth), stringResource(R.string.perm_bluetooth_body), R.drawable.rounded_bluetooth, s.bluetooth) { askBluetooth.launch(PhoneData.BLUETOOTH) }
+                PermissionRow(stringResource(R.string.cal_perm_read), stringResource(R.string.cal_perm_read_body), R.drawable.rounded_calendar_month, calendarOk) {
+                    askCalendar.launch(PhoneCalendar.READ)
+                }
+                PermissionRow(stringResource(R.string.cal_perm_write), stringResource(R.string.cal_perm_write_body), R.drawable.rounded_edit_calendar, calWrite) {
+                    askCalendarWrite.launch(PhoneCalendar.WRITE)
+                }
                 PermissionRow(stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_body), R.drawable.rounded_photo_library, s.photos) { askPhotos.launch(ShotSync.PERMISSION) }
                 PermissionRow(stringResource(R.string.perm_gallery), stringResource(R.string.perm_gallery_body), R.drawable.rounded_photo_library, s.gallery) { askGallery.launch(Gallery.PERMISSIONS) }
                 PermissionRow(stringResource(R.string.perm_files), stringResource(R.string.perm_files_body), R.drawable.rounded_folder_open, s.files) {
@@ -328,6 +370,14 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     data = it
                     PhoneData.setEnabled(ctx, it)
                 }, R.drawable.rounded_battery_full, summary = stringResource(R.string.settings_data_body))
+                SwitchRow(stringResource(R.string.cal_share), calShare, {
+                    calShare = it
+                    PhoneCalendar.setEnabled(ctx, it)
+                }, R.drawable.rounded_event_available, enabled = calendarOk, summary = if (!calendarOk) stringResource(R.string.cal_status_perm) else null)
+                SwitchRow(stringResource(R.string.cal_edits), calEdits, {
+                    calEdits = it
+                    PhoneCalendar.setEditsAllowed(ctx, it)
+                }, R.drawable.rounded_edit_calendar, enabled = calShare && calendarOk && calWrite, summary = if (!calWrite) stringResource(R.string.cal_needs_write) else stringResource(R.string.cal_edits_body))
                 SwitchRow(stringResource(R.string.usage_share), usageEnabled, {
                     usageEnabled = it
                     PhoneUsage.setEnabled(ctx, it)
@@ -516,6 +566,15 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
     }
 
     if (confirmForget) ForgetSheet(onDismiss = { confirmForget = false })
+    if (switching) {
+        PcSwitcherSheet(
+            onDismiss = { switching = false },
+            onPairNew = {
+                switching = false
+                scanner.scan()
+            },
+        )
+    }
 }
 
 /** The paired PC: its state, its addresses, and the ways to reach it or let it go. */
@@ -542,7 +601,7 @@ private fun PcCard(pc: PairedPc, status: LinkStatus, onForget: () -> Unit) {
                         when {
                             woke == true -> stringResource(R.string.wake_sent)
                             woke == false -> stringResource(R.string.wake_failed)
-                            status is LinkStatus.Online -> stringResource(R.string.status_online) + " · " + status.host
+                            status is LinkStatus.Online -> onlineLabel(status.host)
                             status is LinkStatus.Offline -> problemText(status.problem, status.failure)
                             else -> statusLabel(status)
                         },
@@ -552,7 +611,7 @@ private fun PcCard(pc: PairedPc, status: LinkStatus, onForget: () -> Unit) {
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(painterResource(R.drawable.rounded_lan), stringResource(R.string.link_address), Modifier.size(18.dp))
-                Text(pc.hosts.joinToString(" · ") { "$it:${pc.port}" }, style = Expressive.digitsSoft(16.sp), maxLines = 2)
+                Text((pc.hosts + pc.tailnet).joinToString(" · ") { "$it:${pc.port}" }, style = Expressive.digitsSoft(16.sp), maxLines = 3)
             }
             if (!online) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -561,6 +620,7 @@ private fun PcCard(pc: PairedPc, status: LinkStatus, onForget: () -> Unit) {
                     }
                     DashedPill(stringResource(R.string.retry), onClick = { LinkHub.retry() }, icon = R.drawable.rounded_refresh, modifier = Modifier.weight(1f))
                 }
+                TailnetButton(Modifier.fillMaxWidth())
             }
             FilledPill(
                 stringResource(R.string.forget_pc), onClick = onForget, icon = R.drawable.rounded_link_off,

@@ -117,7 +117,7 @@ object PhoneMedia {
     }
 
     private fun send(pkg: String) {
-        if (!LinkHub.isConnected() || LinkHub.shell.value?.caps?.contains("media") != true) return
+        if (!LinkHub.isConnected() || !LinkHub.anyHas("media")) return
         val controller = sessions[pkg] ?: return
         val c = ctx ?: return
         val meta = controller.metadata

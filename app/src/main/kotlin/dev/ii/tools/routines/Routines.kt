@@ -254,7 +254,7 @@ object Routines {
         "pc" -> LinkHub.runWhenReady("modeAction", JSONObject().put("type", s.id).put("value", s.value ?: JSONObject.NULL))
         "cmd" -> LinkHub.runWhenReady(s.id)
         "preset" -> LinkHub.runWhenReady("preset", s.id)
-        "wake" -> if (Wake.send(c.applicationContext)) null else "no_target"
+        "wake" -> if (Wake.send(c.applicationContext, LinkHub.selectedKey())) null else "no_target"
         "phone" -> {
             val m = (s.value as? JSONObject)?.let { JSONObject(it.toString()) } ?: JSONObject()
             PhoneControl.perform(c.applicationContext, m.put("kind", s.id))

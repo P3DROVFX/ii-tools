@@ -245,7 +245,7 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item(key = "bar") {
-                    HomeBar(paired = pc != null, onOpen = onOpen)
+                    HomeBar(pc = pc, scanner = scanner, onOpen = onOpen)
                 }
                 val latestUpdate = update.latest
                 if (update.visibleOnHome && latestUpdate != null) {
@@ -269,12 +269,23 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeBar(paired: Boolean, onOpen: (Dest) -> Unit) {
+private fun HomeBar(pc: PairedPc?, scanner: PairScanner, onOpen: (Dest) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    val machines by LinkHub.machines.collectAsStateWithLifecycle()
+    var switching by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.app_name), style = Expressive.xwide(28.sp), modifier = Modifier.weight(1f))
-        if (paired) {
+        // Paired, the title is the PC the home controls, and it switches to the others.
+        if (machines.isEmpty()) {
+            Text(stringResource(R.string.app_name), style = Expressive.xwide(28.sp), modifier = Modifier.weight(1f))
+        } else {
+            PcSwitcherTitle(
+                name = pc?.name?.ifEmpty { null } ?: stringResource(R.string.app_name),
+                onClick = { switching = true },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (pc != null) {
             BarButton(R.drawable.rounded_content_paste_go, stringResource(R.string.clip_send)) {
                 scope.launch {
                     val msg = when (ClipSync.sendCurrent(ctx)) {
@@ -287,6 +298,15 @@ private fun HomeBar(paired: Boolean, onOpen: (Dest) -> Unit) {
             }
         }
         BarButton(R.drawable.rounded_settings, stringResource(R.string.settings_title)) { onOpen(Dest.SETTINGS) }
+    }
+    if (switching) {
+        PcSwitcherSheet(
+            onDismiss = { switching = false },
+            onPairNew = {
+                switching = false
+                scanner.scan()
+            },
+        )
     }
 }
 
@@ -419,7 +439,7 @@ private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
             ) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(cs.primary))
                 Text(
-                    listOfNotNull(stringResource(R.string.status_online), (status as? LinkStatus.Online)?.host).joinToString(" · "),
+                    onlineLabel((status as? LinkStatus.Online)?.host),
                     style = Expressive.title(14.sp),
                     color = cs.onSurface,
                     maxLines = 1,
@@ -1152,6 +1172,7 @@ private fun LoadColumn(value: String, unit: String, label: String, fraction: Flo
 private fun LazyListScope.away(pc: PairedPc, status: LinkStatus, onOpen: (Dest) -> Unit) {
     item(key = "awayHero") { AwayHero(pc, status) }
     item(key = "awayTiles") { AwayTiles(onOpen) }
+    item(key = "awayTailnet") { CardGroup { TailnetAutoRow() } }
     item(key = "toolsHeader") { SectionHeader(stringResource(R.string.tools_title), stringResource(R.string.tools_all)) { onOpen(Dest.TOOLS) } }
     item(key = "tools") { ToolsStrip(onOpen) }
 }
@@ -1192,6 +1213,8 @@ private fun AwayHero(pc: PairedPc, status: LinkStatus) {
                 }
                 DashedPill(stringResource(R.string.retry), onClick = { LinkHub.retry() }, icon = R.drawable.rounded_refresh, height = 60.dp, modifier = Modifier.weight(1f))
             }
+            // Away from its LAN: the same PC over Tailscale, when its shell allows it.
+            TailnetButton(Modifier.fillMaxWidth().padding(top = 8.dp))
         }
     }
 }

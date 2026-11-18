@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.3.0
+
+- **Several PCs:** pair more than one PC without unpairing any. They all stay connected;
+  the home's title is the controlled PC's name, and its arrow switches to another one or
+  pairs a new one. The phone's notifications, calls and media reach every PC.
+- **Away from home over Tailscale:** with *Away from home* on in the PC's Settings → ii
+  tools, the app reaches the PC from any network: a *Connect over Tailscale* button when
+  the PC is away, or *Tailscale away from home* to turn it on and off by itself.
+- **Linked PCs and a universal clipboard:** *Link A and B* in the PC list introduces two
+  PCs to each other once; then they talk directly, without the phone, and what you copy
+  on one reaches the other. Each PC's shelf shows on the others (the file comes over when
+  dragged or opened), *Send to <PC>* sends files, a web page playing continues on the other
+  PC, PCs can link with a 6-digit code without the phone, and *Wake* asks a connected PC to
+  wake one that is off, so it works from away over Tailscale.
+- **Phone calendar on the PC:** every calendar the phone syncs (Google, Samsung, Outlook,
+  local) in the shell's Timetable, widgets and calendar panels, without khal or vdirsyncer
+  on the PC, and deduplicated when both are used. Choose which calendars leave the phone;
+  with *Edit calendar* allowed and *Let the PC edit events* on, the Timetable creates,
+  moves, edits and deletes phone events too.
+
 ## 1.2.0
 
 - **Shell widgets on the home screen:** Poster, Deck, Halo and Cover media, Bloom clock,
