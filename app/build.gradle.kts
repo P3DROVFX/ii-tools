@@ -21,8 +21,8 @@ android {
         applicationId = "dev.ii.tools"
         minSdk = 31 // Material You dynamic colour
         targetSdk = 37
-        versionCode = 10300 // major * 10000 + minor * 100 + patch
-        versionName = "1.3.0"
+        versionCode = 10400 // major * 10000 + minor * 100 + patch
+        versionName = "1.4.0"
     }
 
     val releaseSigning = signing("storeFile", "II_KEYSTORE_FILE")?.let { file ->

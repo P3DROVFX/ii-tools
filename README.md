@@ -46,12 +46,12 @@ its quick toggles, its load, and a card to stream the phone as the PC's micropho
 on the same network as the phone (or both on Tailscale). Google Play services are only
 used by the QR scanner button; without them, scan the code with the camera app.
 
-1. **Download** `ii-tools-1.3.0.apk` from the [latest release](https://github.com/P3DROVFX/ii-tools/releases/latest)
+1. **Download** `ii-tools-<version>.apk` from the [latest release](https://github.com/P3DROVFX/ii-tools/releases/latest)
    and open it on the phone (allow installing from your browser or file manager when asked).
    Every release is signed with the same key, so updates install over the old version.
    Its certificate's SHA-256 is
    `9A:1C:02:4A:41:31:DD:66:7F:6C:72:FD:95:99:47:BF:AA:25:1D:C9:7F:1F:E5:3C:7C:F1:8E:CC:94:B3:74:F1`
-   (`apksigner verify --print-certs ii-tools-1.3.0.apk`).
+   (`apksigner verify --print-certs ii-tools-<version>.apk`).
 2. **Turn the link on at the PC:** *Settings → ii tools*, switch the link on, then
    *Pair a phone*. A QR code appears. The link listens on port `47210` by default (TCP,
    and UDP to find the PC again when its address changes). A firewall that denies
@@ -406,6 +406,11 @@ A signed release comes from `./gradlew assembleRelease`, with the key in `keysto
 (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; gitignored) or in the
 `II_KEYSTORE_FILE`, `II_KEYSTORE_PASSWORD`, `II_KEY_ALIAS` and `II_KEY_PASSWORD` environment
 variables. Without a key it is signed with the debug one, so anyone can build it.
+
+Releases are made by CI (`.github/workflows/release.yml`): bump `versionName` and
+`versionCode`, write `.github/releases/<version>.md` (its README has the format), push to
+`master`. It builds the APK with the release key, checks the certificate, draws the banner
+(`tools/make-release-banner.py`), tags `v<version>` and publishes the release.
     adb shell cmd notification allow_listener dev.ii.tools/dev.ii.tools.live.LiveListener
     adb shell pm grant dev.ii.tools android.permission.ACCESS_LOCAL_NETWORK
 
