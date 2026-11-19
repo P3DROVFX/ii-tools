@@ -860,6 +860,13 @@
     <string name="home_touchpad_hint">Mova, toque e role aqui</string>
     <string name="home_presets_applying">Aplicando… o shell recarrega</string>
     <string name="home_deck_empty">Seu deck está vazio. Adicione teclas no Deck.</string>
+    <string name="shell_stats">Estatísticas detalhadas com Shizuku</string>
+    <string name="shell_stats_body">Uso de CPU, temperaturas dos sensores, GPU, os apps que mais gastam e a saúde da bateria no painel Stats do PC</string>
+    <string name="shell_stats_missing">Instale o Shizuku para mostrar uso de CPU, temperaturas dos sensores e GPU no PC</string>
+    <string name="shell_stats_stopped">Inicie o Shizuku (depuração sem fio) para mostrar uso de CPU, temperaturas dos sensores e GPU</string>
+    <string name="shell_stats_ask">Deixe o ii tools usar o Shizuku para uso de CPU, temperaturas dos sensores e GPU</string>
+    <string name="shell_stats_install">Instalar</string>
+    <string name="shell_stats_open">Abrir</string>
     <plurals name="home_ws_windows">
         <item quantity="one">%d janela aberta</item>
         <item quantity="other">%d janelas abertas</item>

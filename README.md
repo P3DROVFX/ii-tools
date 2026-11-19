@@ -105,7 +105,6 @@ without the ones you refuse; that feature just stays off.
 
 What's planned next, in no particular order:
 
-- **The phone's load on the PC.** RAM, storage, thermal state and network in the shell's Phone tab.
 - **New modes integrated with the shell.** Starting with a screen saver.
 - **Opus for the microphone.** An option for weak networks.
 
@@ -228,6 +227,17 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   the Phone tab and *Settings → ii tools*. Android only lets an app read a device's
   overall level, so separate buds and the case aren't available, and a device that
   doesn't report its battery over Bluetooth (most Wear OS watches) isn't listed.
+- **The phone's load on the PC:** a *Stats* tab in the Phone tab's bottom group shows
+  RAM (with the last minute), storage, the thermal state, the battery's heat and power,
+  network throughput and each core's clock where the phone exposes it. The phone samples
+  every 2 s only while that panel is on screen, and nothing otherwise. Overall CPU use and
+  per-sensor temperatures are closed to apps since Android 8; with
+  [Shizuku](https://shizuku.rikka.app/) running and allowed (*Detailed stats with Shizuku*,
+  in Settings and Phone data) the panel adds them: CPU use per core, the GPU's, sensor
+  temperatures (skin, CPU, GPU, RAM, modem, USB), the busiest apps, battery health and
+  storage by type. A shell-user process (`:stats`) reads them from files, never spawning a
+  command per sample (only `dumpsys` once a minute), and lives only while the PC watches
+  (about 70 MB PSS, ~0% CPU on a Galaxy S23).
 - **Calendar:** every calendar the phone syncs (Google, Samsung, Outlook, local) in the
   shell's Timetable, widgets and calendar panels, without khal or vdirsyncer on the PC.
   The PC asks for the dates it shows; the phone answers only when something changed and
@@ -450,6 +460,7 @@ ii tools stands on other people's work:
 | [Sefirah](https://github.com/shrimqy/Sefirah-Android) | The media session code (`media/`) | GPL-3.0 |
 | [OkHttp](https://square.github.io/okhttp/) | The WebSocket and certificate pinning | Apache-2.0 |
 | [Apache MINA SSHD](https://mina.apache.org/sshd-project/) | The SFTP server the PC browses the phone with | Apache-2.0 |
+| [Shizuku API](https://github.com/RikkaApps/Shizuku-API) | Optional shell-level stats (CPU use, sensor temperatures, GPU) | Apache-2.0 |
 | [Jetpack Compose and Material 3](https://developer.android.com/jetpack/compose) | The UI, in Material 3 Expressive | Apache-2.0 |
 | [Material Symbols](https://github.com/google/material-design-icons) | Every icon (`rounded_*`) | Apache-2.0 |
 | [Google Sans Flex](https://fonts.google.com/specimen/Google+Sans+Flex) | The typeface (`res/font`), © Google LLC | SIL OFL 1.1 |

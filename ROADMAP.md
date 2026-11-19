@@ -880,7 +880,23 @@ Falta para as três etapas: o teste com dois PCs reais.
 > Deck (as 8 primeiras teclas fora de pastas, ao vivo como o deck) e Energia (a linha de
 > reiniciar/desligar do Remote, com confirmação). Sem mudança no shell nem no protocolo.
 
-### 5.27 Desempenho do celular no PC · **S** · *planejado*
+### 5.27 Desempenho do celular no PC · **S**
+
+> **Status (2026-11-19): implementado, falta o teste visual.** Aba *Stats* no bottom group da
+> aba Phone (`PhoneStatsPanel.qml`), só quando o celular anuncia `phonePerf`. App:
+> `phonedata/PhonePerf.kt`, amostra a cada 2 s só enquanto um PC assiste (`sub phonePerf`),
+> parte do switch *Dados do celular*. No S23 o `cpufreq` é legível: o painel mostra o clock
+> de cada núcleo. Testado ao vivo pelo IPC `iiLink phonePerf on|off`.
+>
+> **Shizuku (2026-11-19): implementado e testado no S23.** Com o Shizuku rodando e
+> liberado, um user service (`shell/ShellStatsService.kt`, processo `:stats` como `shell`,
+> AIDL `IShellStats`) lê `/proc/stat` (uso por núcleo), as thermal zones agrupadas (CPU,
+> GPU, RAM, modem, NPU), `gpu_busy_percentage` (Adreno; caminhos Mali também), os processos
+> mais ativos por `/proc/<pid>/stat` a cada 10 s (com o nome do app), e a cada minuto
+> `dumpsys battery` (saúde, Samsung), `diskstats` (armazenamento por tipo) e
+> `thermalservice` (pele, USB). Vai como bloco `shell` no `phonePerf`. O serviço só existe
+> enquanto um PC assiste (~70 MB PSS, 0% CPU). Switch *Estatísticas detalhadas com
+> Shizuku* em Settings e em Dados do celular, com os passos (instalar, abrir, permitir).
 
 O inverso do 2.9: o celular manda a própria carga para a aba Phone da sidebar. O que o
 Android 12+ deixa um app comum ler, sem root nem ADB:
@@ -913,4 +929,4 @@ e campos novos no gatilho `phone` dos Modes (ex.: armazenamento < 10%).
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable · cards de controle na home · desempenho do celular no PC (planejado) |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable · cards de controle na home · desempenho do celular no PC |

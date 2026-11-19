@@ -521,6 +521,7 @@ object LinkHub {
         if (ClipSync.receives(app)) caps.put("clip")
         if (ShotSync.receives(app)) caps.put("shots")
         PhoneData.caps(app).forEach { caps.put(it) }
+        dev.ii.tools.phonedata.PhonePerf.caps(app).forEach { caps.put(it) }
         dev.ii.tools.calendar.PhoneCalendar.caps(app).forEach { caps.put(it) }
         DndSync.caps(app).forEach { caps.put(it) }
         PcLive.caps(app).forEach { caps.put(it) }
@@ -920,6 +921,7 @@ object LinkHub {
         if (owns("mic")) dev.ii.tools.mic.Mic.onLinkLost()
         if (owns("mirror")) MirrorRadio.onLinkLost()
         dev.ii.tools.calendar.PhoneCalendar.onLinkLost(link.key)
+        dev.ii.tools.phonedata.PhonePerf.onLinkLost(link.key)
         if (alone) {
             PhoneUsage.onLinkDisconnected()
             PhoneData.onLinkDisconnected()
@@ -1129,6 +1131,8 @@ object LinkHub {
                 }
             }
             "unpaired" -> link.unpairedByPc = true
+            // The PC's Phone tab shows this phone's load: sampled only while it watches.
+            "sub" -> if (m.optString("what") == "phonePerf") dev.ii.tools.phonedata.PhonePerf.watch(app, link.key, m.optBoolean("on"))
             "phone" -> CallWatcher.command(m.optString("a"), m.optString("arg").ifEmpty { null })
             "get" -> when (m.optString("what")) {
                 "contacts" -> PhoneData.onContactsAsked(m.optString("have"))

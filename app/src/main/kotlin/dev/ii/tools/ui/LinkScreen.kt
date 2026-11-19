@@ -370,6 +370,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     data = it
                     PhoneData.setEnabled(ctx, it)
                 }, R.drawable.rounded_battery_full, summary = stringResource(R.string.settings_data_body))
+                ShellStatsRow(enabled = data)
                 SwitchRow(stringResource(R.string.cal_share), calShare, {
                     calShare = it
                     PhoneCalendar.setEnabled(ctx, it)

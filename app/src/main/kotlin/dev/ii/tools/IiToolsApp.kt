@@ -19,6 +19,7 @@ class IiToolsApp : Application() {
         Thread { dev.ii.tools.widgets.WidgetPreviews.publishIfNew(this) }.start()
         dev.ii.tools.camera.Webcam.init(this)
         dev.ii.tools.mic.Mic.init(this)
+        dev.ii.tools.shell.ShellAccess.init(this)
         // The link follows the app as a whole, not one screen: moving between activities
         // must not drop it, leaving the app (after LinkHub's grace) does.
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

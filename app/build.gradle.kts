@@ -58,6 +58,8 @@ android {
 
     buildFeatures {
         compose = true
+        // The Shizuku user service's interface (shell/IShellStats.aidl).
+        aidl = true
         // BuildConfig.DEBUG: the stream's once-a-second logs only on debuggable builds.
         buildConfig = true
     }
@@ -82,5 +84,7 @@ dependencies {
     implementation(libs.play.services.code.scanner)
     implementation(libs.apache.sshd.core)
     implementation(libs.apache.sshd.sftp)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     debugImplementation(libs.compose.ui.tooling)
 }
