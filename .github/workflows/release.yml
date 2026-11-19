@@ -100,12 +100,15 @@ jobs:
           got=""
           for bt in $(ls -d "$ANDROID_HOME"/build-tools/* | sort -Vr); do
             out=$("$bt/apksigner" verify --print-certs "$apk" 2>&1) || { echo "$bt: $out" | tail -n 3; continue; }
-            got=$(echo "$out" | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-f]+)$/\1/p')
+            # Every signer's certificate, however this version labels it ("Signer #1", or
+            # "Signer (minSdkVersion=…)" for a scheme per SDK range): all must be the release key.
+            got=$(echo "$out" | sed -nE 's/^Signer.* certificate SHA-256 digest: ([0-9a-f]+)$/\1/p' | sort -u | paste -sd,)
             echo "checked with $bt"
             break
           done
           if [[ "$got" != "$CERT_SHA256" ]]; then
-            echo "::error::the APK is signed by $got, not the release key ($CERT_SHA256)"
+            echo "$out"
+            echo "::error::the APK is signed by '$got', not the release key ($CERT_SHA256)"
             exit 1
           fi
 
