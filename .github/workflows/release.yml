@@ -88,9 +88,9 @@ jobs:
           got=""
           for bt in $(ls -d "$ANDROID_HOME"/build-tools/* | sort -Vr); do
             out=$("$bt/apksigner" verify --print-certs "$apk" 2>&1) || { echo "$bt: $out" | tail -n 3; continue; }
-            # Every signer's certificate, however this version labels it ("Signer #1", or
-            # "Signer (minSdkVersion=…)" for a scheme per SDK range): all must be the release key.
-            got=$(echo "$out" | sed -nE 's/^Signer.* certificate SHA-256 digest: ([0-9a-f]+)$/\1/p' | sort -u | paste -sd,)
+            # Every signer's certificate, however this version labels the line ("Signer #1",
+            # "Signer (minSdkVersion=…)", "V2 Signer:"): all must be the release key.
+            got=$(echo "$out" | sed -nE 's/^.*certificate SHA-256 digest: ([0-9a-f]{64})$/\1/p' | sort -u | paste -sd,)
             echo "checked with $bt"
             break
           done
