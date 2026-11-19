@@ -1,21 +1,18 @@
-# A release for every new version, with no hands on it: bump versionName (and versionCode) in
-# app/build.gradle.kts, write .github/releases/<version>.md, push to master. This builds the
-# signed APK, draws the banner, tags v<version> and publishes the release with both.
+# A release from a tag, with no other hands on it: bump versionName (and versionCode) in
+# app/build.gradle.kts, write .github/releases/<version>.md, commit, then tag and push it:
 #
-# A push whose version already has its tag does nothing, so ordinary commits pass through.
-# Secrets: II_KEYSTORE_BASE64 (the release keystore, base64), II_KEYSTORE_PASSWORD,
-# II_KEY_ALIAS, II_KEY_PASSWORD. Without them, or with an APK signed by any other key, it
-# stops before publishing: a release under another key could not update installed apps.
+#   git tag v1.4.0 && git push origin v1.4.0
+#
+# This builds the signed APK, draws the banner and publishes the release with both. The tag
+# must match versionName. Secrets: II_KEYSTORE_BASE64 (the release keystore, base64),
+# II_KEYSTORE_PASSWORD, II_KEY_ALIAS, II_KEY_PASSWORD. Without them, or with an APK signed by
+# any other key, it stops before publishing: a release under another key could not update
+# installed apps.
 name: Release
 
 on:
   push:
-    branches: [master]
-    paths:
-      - app/build.gradle.kts
-      - .github/releases/**
-      - .github/workflows/release.yml
-  workflow_dispatch:
+    tags: ["v*"]
 
 permissions:
   contents: write
@@ -33,27 +30,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - name: Version
         id: v
         run: |
-          version=$(sed -nE 's/^\s*versionName\s*=\s*"([^"]+)".*/\1/p' app/build.gradle.kts)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
-            echo "v$version is already released: nothing to do."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [[ ! -f ".github/releases/$version.md" ]]; then
-            echo "::error::versionName is $version but .github/releases/$version.md is missing"
+          version="${GITHUB_REF_NAME#v}"
+          gradle=$(sed -nE 's/^\s*versionName\s*=\s*"([^"]+)".*/\1/p' app/build.gradle.kts)
+          if [[ "$version" != "$gradle" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME but versionName is $gradle: tag the commit that bumps it"
             exit 1
           fi
-          echo "skip=false" >> "$GITHUB_OUTPUT"
+          if [[ ! -f ".github/releases/$version.md" ]]; then
+            echo "::error::.github/releases/$version.md is missing"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Signing key
-        if: steps.v.outputs.skip == 'false'
         env:
           KEYSTORE: ${{ secrets.II_KEYSTORE_BASE64 }}
         run: |
@@ -64,7 +57,6 @@ jobs:
           echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.jks"
 
       - uses: actions/setup-java@v5
-        if: steps.v.outputs.skip == 'false'
         with:
           distribution: temurin
           # As the local builds: the newest build tools' apksigner needs it.
@@ -73,15 +65,12 @@ jobs:
       # The runner's own SDK (ANDROID_HOME): its sdkmanager takes the licences, and AGP fetches
       # the platform and build tools it needs.
       - name: Android SDK
-        if: steps.v.outputs.skip == 'false'
         run: |
           echo "$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin | sort -V | tail -1)" >> "$GITHUB_PATH"
 
       - uses: gradle/actions/setup-gradle@v5
-        if: steps.v.outputs.skip == 'false'
 
       - name: Build the APK
-        if: steps.v.outputs.skip == 'false'
         env:
           II_KEYSTORE_FILE: ${{ runner.temp }}/release.jks
           II_KEYSTORE_PASSWORD: ${{ secrets.II_KEYSTORE_PASSWORD }}
@@ -93,7 +82,6 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "ii-tools-${{ steps.v.outputs.version }}.apk"
 
       - name: Check the signature
-        if: steps.v.outputs.skip == 'false'
         run: |
           apk="ii-tools-${{ steps.v.outputs.version }}.apk"
           # The newest build tools whose apksigner runs here; its errors stay in the log.
@@ -113,18 +101,15 @@ jobs:
           fi
 
       - uses: actions/setup-python@v6
-        if: steps.v.outputs.skip == 'false'
         with:
           python-version: "3.12"
 
       - name: Draw the banner
-        if: steps.v.outputs.skip == 'false'
         run: |
           pip install --quiet numpy pillow
           python3 tools/make-release-banner.py --out "ii-tools-${{ steps.v.outputs.version }}-banner.png"
 
       - name: Publish
-        if: steps.v.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           V: ${{ steps.v.outputs.version }}
@@ -143,7 +128,7 @@ jobs:
             echo "Signing certificate SHA-256: \`$cert\`"
           } > notes.md
           gh release create "v$V" \
-            --target "$GITHUB_SHA" \
+            --verify-tag \
             --title "ii tools $V" \
             --notes-file notes.md \
             "ii-tools-$V.apk" "ii-tools-$V-banner.png"

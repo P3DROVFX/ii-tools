@@ -407,10 +407,11 @@ A signed release comes from `./gradlew assembleRelease`, with the key in `keysto
 `II_KEYSTORE_FILE`, `II_KEYSTORE_PASSWORD`, `II_KEY_ALIAS` and `II_KEY_PASSWORD` environment
 variables. Without a key it is signed with the debug one, so anyone can build it.
 
-Releases are made by CI (`.github/workflows/release.yml`): bump `versionName` and
-`versionCode`, write `.github/releases/<version>.md` (its README has the format), push to
-`master`. It builds the APK with the release key, checks the certificate, draws the banner
-(`tools/make-release-banner.py`), tags `v<version>` and publishes the release.
+Releases are made by CI from a tag (`.github/workflows/release.yml`): bump `versionName` and
+`versionCode`, write `.github/releases/<version>.md` (its README has the format), commit, then
+`git tag v<version> && git push origin v<version>`. It builds the APK with the release key,
+checks the certificate, draws the banner (`tools/make-release-banner.py`) and publishes the
+release. Pushes to `master` never release.
     adb shell cmd notification allow_listener dev.ii.tools/dev.ii.tools.live.LiveListener
     adb shell pm grant dev.ii.tools android.permission.ACCESS_LOCAL_NETWORK
 

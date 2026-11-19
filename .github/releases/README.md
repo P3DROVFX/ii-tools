@@ -1,8 +1,9 @@
 # Release notes
 
 One file per version, `<version>.md`, named as `versionName` in `app/build.gradle.kts`.
-Pushing both to `master` releases it (`.github/workflows/release.yml`): signed APK, banner,
-tag and GitHub release, nothing by hand.
+Commit it with the version bump, then push a tag `v<version>` on that commit
+(`git tag v1.4.0 && git push origin v1.4.0`): `.github/workflows/release.yml` builds the signed
+APK and the banner and publishes the release. Pushes without a tag never release.
 
 Above the first `---`: the banner's words (`tools/make-release-banner.py`), a subtitle and
 up to four short highlights. Below it: the release text, in Markdown. The workflow adds the
