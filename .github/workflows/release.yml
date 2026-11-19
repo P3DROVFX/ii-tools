@@ -67,7 +67,8 @@ jobs:
         if: steps.v.outputs.skip == 'false'
         with:
           distribution: temurin
-          java-version: 21
+          # As the local builds: the newest build tools' apksigner needs it.
+          java-version: 25
 
       # The runner's own SDK (ANDROID_HOME): its sdkmanager takes the licences, and AGP fetches
       # the platform and build tools it needs.
@@ -94,9 +95,15 @@ jobs:
       - name: Check the signature
         if: steps.v.outputs.skip == 'false'
         run: |
-          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
-          got=$("$apksigner" verify --print-certs "ii-tools-${{ steps.v.outputs.version }}.apk" 2>/dev/null \
-            | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-f]+)$/\1/p')
+          apk="ii-tools-${{ steps.v.outputs.version }}.apk"
+          # The newest build tools whose apksigner runs here; its errors stay in the log.
+          got=""
+          for bt in $(ls -d "$ANDROID_HOME"/build-tools/* | sort -Vr); do
+            out=$("$bt/apksigner" verify --print-certs "$apk" 2>&1) || { echo "$bt: $out" | tail -n 3; continue; }
+            got=$(echo "$out" | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-f]+)$/\1/p')
+            echo "checked with $bt"
+            break
+          done
           if [[ "$got" != "$CERT_SHA256" ]]; then
             echo "::error::the APK is signed by $got, not the release key ($CERT_SHA256)"
             exit 1
