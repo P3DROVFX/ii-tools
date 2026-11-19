@@ -866,6 +866,42 @@ Falta para as três etapas: o teste com dois PCs reais.
 > Timetable), mostrar, escrever, esconder duplicados e qual cópia fica, cores, convites
 > recusados, lembretes no PC e quais agendas aparecem.
 
+
+### 5.26 Cards de controle na home · **S**
+
+> **Status (2026-11-19): implementado, falta o teste visual.** Sete cards novos no registro
+> `HomeCards` (`ui/HomeControls.kt`), todos com `defaultVisible = false`: entram pelo
+> *Adicionar cards* do editor, sem mudar a home de quem já usa. Áreas de trabalho (a atual
+> num scallop, 1–10 com um ponto por janela), Modos e rotinas (modos do shell como toggles,
+> as rotinas do celular com *rodar agora*), Presets (tons secundários, aplicar com
+> loading), Touchpad (pad de 196 dp e botões; o touchpad virtual do PC só nasce no
+> primeiro toque e cai quando a home pausa), Apresentador (Próximo grande, Anterior,
+> Iniciar/Preto/Fim; o teclado virtual também só no primeiro toque; laser na tela cheia),
+> Deck (as 8 primeiras teclas fora de pastas, ao vivo como o deck) e Energia (a linha de
+> reiniciar/desligar do Remote, com confirmação). Sem mudança no shell nem no protocolo.
+
+### 5.27 Desempenho do celular no PC · **S** · *planejado*
+
+O inverso do 2.9: o celular manda a própria carga para a aba Phone da sidebar. O que o
+Android 12+ deixa um app comum ler, sem root nem ADB:
+
+| Dado | Fonte | Viável |
+| --- | --- | --- |
+| RAM usada/total, memória baixa | `ActivityManager.getMemoryInfo` | sim |
+| Armazenamento livre/total | `StatFs(Environment.getDataDirectory())` | sim |
+| Temperatura da bateria | `ACTION_BATTERY_CHANGED` (já vai no `status`) | sim |
+| Estado térmico e folga | `PowerManager.currentThermalStatus` (29+), `getThermalHeadroom` (30+) | sim |
+| Taxa de rede | `TrafficStats.getTotalRx/TxBytes` | sim |
+| Uptime | `SystemClock.elapsedRealtime` | sim |
+| Uso de CPU do sistema | `/proc/stat` | **não**: bloqueado desde o Android 8 |
+| Temperatura de CPU/GPU em °C | `/sys/class/thermal`, `HardwarePropertiesManager` | **não**: SELinux / só device owner |
+| Frequência dos núcleos | `/sys/devices/system/cpu/*/cpufreq` | depende do fabricante, testar no S23 |
+
+Protocolo: tópico `phonePerf` no sentido inverso, o shell manda `sub phonePerf` só enquanto
+a aba Phone está aberta e o celular amostra a cada 2 s; RAM e armazenamento podem ir no
+`status` já existente, quando mudam mais de 1%. No shell: uma linha de medidores na aba Phone
+e campos novos no gatilho `phone` dos Modes (ex.: armazenamento < 10%).
+
 ---
 
 ## Resumo
@@ -877,4 +913,4 @@ Falta para as três etapas: o teste com dois PCs reais.
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable · cards de controle na home · desempenho do celular no PC (planejado) |

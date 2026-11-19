@@ -839,6 +839,25 @@
     <string name="home_card_perf_desc">Live CPU, GPU and RAM usage</string>
     <string name="home_card_mic_desc">Use the phone as the PC’s microphone</string>
     <string name="home_card_clip_desc">Latest item from the PC’s clipboard history</string>
+    <string name="home_card_workspaces_desc">Jump between the PC\'s workspaces, with a dot per window</string>
+    <string name="home_card_modes">Modes &amp; routines</string>
+    <string name="home_card_modes_desc">The shell\'s modes and your routines, one tap each</string>
+    <string name="home_card_presets_desc">Apply a saved look to the shell</string>
+    <string name="home_card_touchpad_desc">A small touchpad and mouse buttons right on the home</string>
+    <string name="home_card_presenter_desc">Slide clicker: previous, next, start and black screen</string>
+    <string name="home_card_deck_desc">The first keys of your deck</string>
+    <string name="home_card_power_desc">Restart or shut down the PC</string>
+    <string name="home_modes_none">No mode on</string>
+    <string name="home_routines_empty">No routines yet</string>
+    <string name="home_routine_ran">Done</string>
+    <string name="home_open_full">Open full screen</string>
+    <string name="home_touchpad_hint">Move, tap and scroll here</string>
+    <string name="home_presets_applying">Applying… the shell reloads</string>
+    <string name="home_deck_empty">Your deck is empty. Add keys in Deck.</string>
+    <plurals name="home_ws_windows">
+        <item quantity="one">%d window open</item>
+        <item quantity="other">%d windows open</item>
+    </plurals>
 
     <!-- Shell widgets on the home screen -->
     <string name="wd_date">Date</string>

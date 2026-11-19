@@ -403,6 +403,13 @@ private fun LazyListScope.dashboard(
             HomeCards.MIC -> item(key = HomeCards.MIC) { MicCard(onOpen) }
             // Last by default: the PC's clipboard history, its list in a bottom sheet.
             HomeCards.CLIP -> if (clipHistory) item(key = HomeCards.CLIP) { ClipHistoryCard(onOpen) }
+            HomeCards.WORKSPACES -> if ("remote" in shell.caps) item(key = HomeCards.WORKSPACES) { WorkspacesCard(onOpen) }
+            HomeCards.MODES -> item(key = HomeCards.MODES) { ModesCard(onOpen) }
+            HomeCards.PRESETS -> if ("remote" in shell.caps) item(key = HomeCards.PRESETS) { PresetsCard(onOpen) }
+            HomeCards.TOUCHPAD -> item(key = HomeCards.TOUCHPAD) { TouchpadCard("touchpad" in shell.caps, onOpen) }
+            HomeCards.PRESENTER -> item(key = HomeCards.PRESENTER) { PresenterCard("present" in shell.caps, onOpen) }
+            HomeCards.DECK -> item(key = HomeCards.DECK) { DeckCard(onOpen) }
+            HomeCards.POWER -> if ("power" in shell.caps) item(key = HomeCards.POWER) { PowerCard() }
         }
     }
 }
@@ -1462,6 +1469,8 @@ private fun EditCardContent(
     val player by PcMedia.player.collectAsStateWithLifecycle()
     val audio by LinkHub.audio.collectAsStateWithLifecycle()
     val liveItems by PcLive.items.collectAsStateWithLifecycle()
+    val workspaces by LinkHub.workspaces.collectAsStateWithLifecycle()
+    val presets by LinkHub.presets.collectAsStateWithLifecycle()
 
     when (card.id) {
         HomeCards.HERO -> {
@@ -1511,6 +1520,24 @@ private fun EditCardContent(
             else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
         HomeCards.MIC -> MicCard(onOpen)
+        HomeCards.WORKSPACES -> {
+            val hasCap = activeOnline && "remote" in shell!!.caps
+            if (hasCap && workspaces != null) WorkspacesCard(onOpen)
+            else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
+        }
+        HomeCards.MODES -> ModesCard(onOpen)
+        HomeCards.PRESETS -> {
+            val hasCap = activeOnline && "remote" in shell!!.caps
+            if (hasCap && presets?.list?.isNotEmpty() == true) PresetsCard(onOpen)
+            else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
+        }
+        HomeCards.TOUCHPAD -> TouchpadCard(activeOnline && "touchpad" in shell!!.caps, onOpen)
+        HomeCards.PRESENTER -> PresenterCard(activeOnline && "present" in shell!!.caps, onOpen)
+        HomeCards.DECK -> DeckCard(onOpen)
+        HomeCards.POWER -> {
+            val hasCap = activeOnline && "power" in shell!!.caps
+            if (hasCap) PowerCard() else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
+        }
         HomeCards.CLIP -> {
             if (activeOnline && clipHistory) ClipHistoryCard(onOpen)
             else EditCardPlaceholder(

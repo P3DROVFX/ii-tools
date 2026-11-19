@@ -845,6 +845,26 @@
     <string name="home_card_perf_desc">Uso de CPU, GPU e RAM ao vivo</string>
     <string name="home_card_mic_desc">Usar o celular como microfone do PC</string>
     <string name="home_card_clip_desc">Último item do histórico de transferência do PC</string>
+    <string name="home_card_workspaces_desc">Pule entre as áreas de trabalho do PC, com um ponto por janela</string>
+    <string name="home_card_modes">Modos e rotinas</string>
+    <string name="home_card_modes_desc">Os modos do shell e as suas rotinas, um toque cada</string>
+    <string name="home_card_presets_desc">Aplique um visual salvo ao shell</string>
+    <string name="home_card_touchpad_desc">Um touchpad pequeno e os botões do mouse direto na home</string>
+    <string name="home_card_presenter_desc">Passador de slides: anterior, próximo, iniciar e tela preta</string>
+    <string name="home_card_deck_desc">As primeiras teclas do seu deck</string>
+    <string name="home_card_power_desc">Reiniciar ou desligar o PC</string>
+    <string name="home_modes_none">Nenhum modo ativo</string>
+    <string name="home_routines_empty">Nenhuma rotina ainda</string>
+    <string name="home_routine_ran">Feito</string>
+    <string name="home_open_full">Abrir em tela cheia</string>
+    <string name="home_touchpad_hint">Mova, toque e role aqui</string>
+    <string name="home_presets_applying">Aplicando… o shell recarrega</string>
+    <string name="home_deck_empty">Seu deck está vazio. Adicione teclas no Deck.</string>
+    <plurals name="home_ws_windows">
+        <item quantity="one">%d janela aberta</item>
+        <item quantity="other">%d janelas abertas</item>
+        <item quantity="many">%d janelas abertas</item>
+    </plurals>
 
     <!-- Shell widgets on the home screen -->
     <string name="wd_date">Data</string>

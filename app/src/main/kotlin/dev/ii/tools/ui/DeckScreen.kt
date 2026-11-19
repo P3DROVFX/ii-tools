@@ -676,10 +676,10 @@ private fun DeckPage(
     }
 }
 
-private data class KeyView(val label: String, val icon: String, val available: Boolean)
+internal data class KeyView(val label: String, val icon: String, val available: Boolean)
 
 /** What a key reads as now: the live catalog when it has the key, else what it was saved as. */
-private fun keyView(k: DeckKey, catalog: Map<String, DeckAction>, modes: List<Pair<String, String>>?, presets: List<String>?): KeyView =
+internal fun keyView(k: DeckKey, catalog: Map<String, DeckAction>, modes: List<Pair<String, String>>?, presets: List<String>?): KeyView =
     when (k.kind) {
         "action" -> catalog[k.ref]?.let { KeyView(it.name, it.icon, true) } ?: KeyView(k.label, k.icon, false)
         "mode" -> KeyView(modes?.firstOrNull { it.first == k.ref }?.second ?: k.label, k.icon, modes?.any { it.first == k.ref } != false)
@@ -743,7 +743,7 @@ private fun DeckTile(
 
 /** Icon over label; a workspace shows its number, an app its icon (falling back to initial). */
 @Composable
-private fun KeyFace(slot: DeckKey, label: String, icon: String, modifier: Modifier) {
+internal fun KeyFace(slot: DeckKey, label: String, icon: String, modifier: Modifier) {
     Column(
         modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,

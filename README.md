@@ -34,7 +34,9 @@ Kotlin + Jetpack Compose, Material 3 Expressive with Material You dynamic colour
 Google Sans Flex (the ii shell's face). The home is a dashboard of the PC: its card (the
 lock, its state), what plays on it, its volume with output and input as split buttons
 (the device list opens in a bottom sheet), what it is doing live, the tools used most,
-its quick toggles, its load, and a card to stream the phone as the PC's microphone. Every tool is in *Tools*, every permission and switch in
+its quick toggles, its load, and a card to stream the phone as the PC's microphone. *Settings → Edit
+home screen* reorders and removes cards and adds the optional ones: workspaces, modes and
+routines, presets, a small touchpad, the slide clicker, the deck's first keys and power. Every tool is in *Tools*, every permission and switch in
 *Settings* (where pairing lives too); each screen is its own activity (`Dest` →
 `MainActivity`).
 
@@ -103,7 +105,7 @@ without the ones you refuse; that feature just stays off.
 
 What's planned next, in no particular order:
 
-- **New cards inside home screen.** More expressive and dedicated cards for other features.
+- **The phone's load on the PC.** RAM, storage, thermal state and network in the shell's Phone tab.
 - **New modes integrated with the shell.** Starting with a screen saver.
 - **Opus for the microphone.** An option for weak networks.
 
