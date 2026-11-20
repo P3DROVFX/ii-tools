@@ -104,7 +104,8 @@ without the ones you refuse; that feature just stays off.
 
 What's planned next, in no particular order:
 
-- **New modes integrated with the shell.** Starting with a screen saver.
+- **Focus and timers.** The PC's pomodoro, timers, stopwatch and alarms in the shell's clock app design, started and controlled from the phone.
+- **Voice and meeting console.** The Discord call (who is talking, mute, deafen, each person's volume) or the PC's mic outside a call, Discord's volume and the camera in use.
 - **Opus for the microphone.** An option for weak networks.
 
 The long version is in [ROADMAP.md](ROADMAP.md).
@@ -270,9 +271,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **Wake the PC:** the shell gives the phone its adapters' MAC addresses; *Wake the PC*
   (in Connect to PC, or the Quick Settings tile) sends the Wake-on-LAN magic packet. The
   PC needs Wake-on-LAN on in its firmware and adapter.
-- **Performance:** the PC's CPU, GPU, memory and frame rate (MangoHud), a sample a
-  second, only while the screen is open; the PC samples only then. The screen stays on,
-  four cards side by side with the phone lying down.
+- **Performance:** the shell's game overlay HUD on the phone: frame rate with its average,
+  lows, frame-time graph and stutters (MangoHud), CPU and RAM, GPU and VRAM, network and
+  battery, and the game, resolution, driver and power profile. It draws the rows, style and
+  palette set for the HUD on the PC. Held sideways it fills the screen; a sample a second,
+  only while the screen is open (the PC samples only then), and the screen stays on.
 - **Phone media on the PC:** each app playing on the phone appears on the PC as an MPRIS
   player (title, artist, cover, position), so the shell's media widgets, island, lock
   screen and media keys control it, as with KDE Connect.

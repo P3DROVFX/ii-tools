@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.4.2
 
+- **Game HUD on the phone:** the Performance screen draws the shell's game overlay HUD:
+  the frame rate with its average, lows, frame-time graph and stutters, CPU and RAM, GPU
+  and VRAM, network and battery, and chips for the game, resolution, driver, session and
+  power profile. It follows the rows, style and palette set for the HUD on the PC, and
+  fills the screen held sideways.
 - **Lighter on battery and memory:** with the screen off the phone is no longer woken
   for workspaces, volume, toggles or PC copies (the latest arrives when the screen comes
   on); a reconnect no longer downloads the PC's wallpaper again; no connection attempts

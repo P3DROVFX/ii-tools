@@ -930,6 +930,86 @@ a aba Phone está aberta e o celular amostra a cada 2 s; RAM e armazenamento pod
 `status` já existente, quando mudam mais de 1%. No shell: uma linha de medidores na aba Phone
 e campos novos no gatilho `phone` dos Modes (ex.: armazenamento < 10%).
 
+### 5.28 HUD de jogo no celular · **S**
+
+> **Status (2026-11-20): concluído e testado no S23.** O `perf` leva
+> tudo que o HUD mostra (`power` com o fallback do MangoHud, `net`, `battery`, `game` e as
+> configurações do HUD em `hud`). A tela Desempenho (`ui/PerfScreen.kt`) desenha os tiles do
+> `PerfMonitorContent`: FPS herói com média e lows, gráfico de frametime, limite e
+> travadas; CPU com RAM, GPU com VRAM, rede e bateria; chips de jogo, resolução, driver,
+> sessão, perfil de energia e GameMode. Segue as linhas, o estilo (`bars`/`graph`) e a
+> paleta (`accent`/`container`/`mono`) do HUD do PC. Deitado: tela cheia, barras escondidas,
+> FPS, CPU e GPU em colunas de altura total. Em pé: a coluna do HUD. Sem brilho forçado
+> (o HUD precisa ser lido durante o jogo). Ainda não: esconder o HUD do overlay enquanto o
+> celular mostra, a tecla do deck e o tile.
+
+O HUD de desempenho do overlay de jogo (`modules/ii/overlay/perfMonitor`) desenhado no
+celular deitado, e não mais por cima do jogo. Evolução da 2.9: os dados já chegam pelo
+tópico `perf` (o mesmo `PerfSampler`, com o FPS do MangoHud, 1 Hz, só durante a
+assinatura). Muda o desenho da tela.
+
+- **App:** a tela Desempenho deitada vira o HUD. Tela cheia em paisagem, barras escondidas,
+  tela acesa com brilho baixo. Mesma estrutura do `PerfMonitorContent.qml`: tile herói de
+  FPS no topo e um tile por assunto (cabeçalho com nome e valor principal, linha de
+  progresso ou histórico, linha de memória, legendas sobre os valores: temperatura, clock,
+  potência), nenhum texto dentro de barra, números na face `digits`. Estilos `bars` e
+  `graph`, com o histórico guardado no próprio celular a partir das amostras de 1 Hz. As
+  cores vêm do esquema do app.
+- **Shell:** o sampler não muda. Cada campo que o HUD mostra e o `perf` ainda não leva
+  (conferir com o `PerfMonitorContent`) entra no payload, só durante a assinatura. Opcional:
+  esconder o HUD do overlay enquanto um celular mostra o dele (`iiTools.perf.hideOverlay`, na
+  página ii tools).
+- **Entrada:** pela tela Desempenho, por uma tecla do deck e por um tile. Com o `gamemode`
+  ligado, a tela já abre no HUD.
+
+### 5.29 Foco e timers no celular · **S–M**
+
+Pomodoro, timers, cronômetro e alarmes do PC numa tela do celular com o desenho do clock app
+do shell (`modules/ii/clock`: `PomodoroTab`, `TimerTab`, `StopwatchTab`, `ClockProgressRing`).
+Fica de pé ou deitado ao lado do teclado, com a tela acesa.
+
+- **Dados:** o `pcLive` já leva o que está correndo (`timer`, `stopwatch`, `alarm`,
+  `progress`, com início, fim e restante em ms de época): o celular conta sozinho, sem tráfego
+  por segundo. Hoje o pomodoro manda a fase só no `title` traduzido: o item ganha `phase`
+  (`focus`/`break`/`longBreak`), `cycle` e `cycles`.
+- **Controle:** o `cmd live` hoje só pausa e retoma, para a gravação e adia o alarme. Faltam
+  iniciar o pomodoro, um timer (com duração) e o cronômetro, zerar, pular a fase do pomodoro
+  e marcar volta. São comandos novos que chamam o `TimerService` e o `AlarmService` direto,
+  sem processo.
+- **Tela:** o anel de progresso do `ClockProgressRing`, a fase e o ciclo do pomodoro, as
+  voltas do cronômetro, vários timers como os `TimerCard`. Vibração opcional na troca de fase.
+  Sem nada correndo, os atalhos do clock app (timers salvos e o pomodoro) iniciam com um
+  toque (`get timers`, pedido só com a tela aberta).
+
+### 5.30 Console de voz e reunião · **M**
+
+Uma tela só para a call: o Discord quando há call, o microfone do PC quando não há, e a
+câmera em uso. Controla a reunião sem tirar o foco do jogo ou do app aberto no PC.
+
+- **Na call do Discord** (`DiscordVoice`, pelo RPC oficial ou pelo companion do Vesktop):
+  canal, participantes com avatar, quem fala agora aceso (`speaking`), mutar e ensurdecer em
+  botões grandes, voz ou push-to-talk, volume por pessoa (0–200 %, `setUserVolume`), mutar só
+  para você (`setUserLocalMute`) e os avisos de entrada e saída. É o mesmo conjunto do widget
+  Discord do overlay de jogo.
+- **Fora de call:** o botão de mic vira o mute do microfone padrão do PC (`audio.in` e o
+  comando `mute` que já existem), com a troca de entrada pelo `default`.
+- **Volume do Discord:** o stream do app (Discord ou Vesktop) já vem em `audio.apps`: slider
+  no comando `volume` existente, junto da saída atual.
+- **Como está a call:** tempo na call e o que usa câmera, microfone e tela agora
+  (`Privacy.items`, com o app).
+- **Câmera em uso** (começa com spike): ligar e desligar o vídeo do Discord pelo companion do
+  Vesktop (pelo RPC oficial não há comando de vídeo; confirmar). Para outros apps, testar
+  encerrar o uso pelo nó da câmera no PipeWire sem derrubar o app. Quando a câmera é a do
+  próprio ii tools (4.6), o controle é direto: pausar, lente e lanterna.
+- **Protocolo:** cap `voice`, tópico assinado só com a tela aberta. O roster vai inteiro só
+  quando muda: `{channel, since, self: {mute, deaf, mode}, users: [{id, name, avatar,
+  volume, localMute}], privacy: [{kind, app}]}`. Quem está falando muda várias vezes por
+  segundo e vai à parte (`voiceSpeak`, só os ids, coalescido a ~10/s). Os avatares vão como
+  arquivo uma vez por imagem, com `have` como o `pcMediaArt`. Comando `voice` com
+  `{a: mute|deaf|mode|userVolume|userMute|video}`.
+- **Settings:** `iiTools.voice.enable` na página ii tools; no app, tile em Ferramentas, a tela
+  e o switch também em Settings.
+
 ---
 
 ## Resumo
@@ -941,4 +1021,4 @@ e campos novos no gatilho `phone` dos Modes (ex.: armazenamento < 10%).
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable · cards de controle na home · desempenho do celular no PC |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable · cards de controle na home · desempenho do celular no PC · HUD de jogo · foco e timers · console de voz e reunião |
