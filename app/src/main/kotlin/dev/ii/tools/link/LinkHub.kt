@@ -316,7 +316,7 @@ object LinkHub {
 
     // Shared pool and dispatcher; each PC gets a thin copy carrying its pinned trust.
     private val baseClient by lazy {
-        OkHttpClient.Builder()
+        Http.base.newBuilder()
             .connectTimeout(4, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.SECONDS)
             // Kept open in the background now: a ping a minute is enough for the PC to
@@ -329,6 +329,7 @@ object LinkHub {
     fun init(ctx: Context) {
         if (::app.isInitialized) return
         app = ctx.applicationContext
+        LinkStats.init(app)
         Symbols.init(app)
         AppIcons.init(app)
         ClipHistory.init(app)
@@ -337,6 +338,7 @@ object LinkHub {
         selected.value = links.value.firstOrNull { it.key == saved } ?: links.value.firstOrNull()
         scope.launch { Look.select(app, selectedKey()) }
         watchNetwork()
+        watchScreen()
         // Any start of the process (the notification listener binding at boot included)
         // brings the link up when the user wants it kept.
         if (links.value.isNotEmpty() && staysConnected()) hold(ALWAYS)
@@ -391,6 +393,37 @@ object LinkHub {
         foreground = false
         scheduleStop(BACKGROUND_GRACE_MS)
     }
+
+    /** Some screen of the app is in front (a dialog may be opened from here). */
+    fun inForeground(): Boolean = foreground
+
+    // ── Quiet while the screen is off ─────────────────────────────────────
+
+    /**
+     * The screen is off: the shells hold what only a screen shows (workspaces, audio, the
+     * deck, the clipboard…) and send the latest when it lights up, instead of waking the
+     * phone for each change. Calls, notifications and actions still come at once.
+     */
+    @Volatile private var screenOff = false
+
+    private fun watchScreen() {
+        screenOff = app.getSystemService(android.os.PowerManager::class.java)?.isInteractive == false
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.content.Intent.ACTION_SCREEN_OFF)
+            addAction(android.content.Intent.ACTION_SCREEN_ON)
+        }
+        app.registerReceiver(object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: android.content.Intent) {
+                val off = intent.action == android.content.Intent.ACTION_SCREEN_OFF
+                if (off == screenOff) return
+                screenOff = off
+                val m = quietMessage()
+                online().filter { it.has("quiet") }.forEach { it.socket?.send(m) }
+            }
+        }, filter)
+    }
+
+    private fun quietMessage(): String = JSONObject().put("t", "quiet").put("on", screenOff).toString()
 
     private fun scheduleStop(after: Long) {
         stopJob?.cancel()
@@ -538,7 +571,13 @@ object LinkHub {
         dev.ii.tools.camera.Webcam.caps(app).forEach { caps.put(it) }
         dev.ii.tools.mic.Mic.caps(app).forEach { caps.put(it) }
         MirrorRadio.caps(app).forEach { caps.put(it) }
-        return JSONObject().put("t", "caps").put("caps", caps).toString()
+        // The images kept from earlier connections: the shell sends only what is new.
+        val have = JSONObject()
+        fun has(kind: String, names: List<String>) { if (names.isNotEmpty()) have.put(kind, org.json.JSONArray(names)) }
+        has("look", Look.have(app))
+        has("wallSync", WallSync.have(app))
+        has("pcMediaArt", PcMedia.haveArt(app))
+        return JSONObject().put("t", "caps").put("caps", caps).put("have", have).toString()
     }
 
     /** What this phone can do for the PCs, sent on connect and when it changes. */
@@ -752,6 +791,18 @@ object LinkHub {
                 link.status.value = LinkStatus.Offline(LinkProblem.NO_PERMISSION)
                 return
             }
+            // Nothing here can reach this PC (mobile data, no tailnet): trying only wakes the
+            // radio every few minutes. The next network change (Wi-Fi, Tailscale) tries again.
+            if (!reachableFromHere(pc)) {
+                link.status.value = LinkStatus.Offline(LinkProblem.UNREACHABLE, link.lastFailure)
+                if (!foreground && holds.isNotEmpty() && holds.all { it == "notifs" }) {
+                    link.session = null
+                    return
+                }
+                val epoch = networkEpoch.value
+                networkEpoch.first { it != epoch }
+                continue
+            }
             if (link.status.value !is LinkStatus.Online) link.status.value = LinkStatus.Connecting
             when (connectOnce(link, pc)) {
                 Outcome.ENDED -> failures = 0
@@ -793,6 +844,39 @@ object LinkHub {
     }
 
     // ── Staying connected ─────────────────────────────────────────────────
+
+    /**
+     * Some route to [pc] exists: a Wi-Fi or Ethernet network (its LAN, or one where discovery
+     * may find it), its tailnet (up, or brought up on its own), a loopback or public address.
+     */
+    private fun reachableFromHere(pc: PairedPc): Boolean {
+        if (pc.hosts.any { !isPrivateAddr(it) }) return true
+        if (pc.tailnet.isNotEmpty() && (Tailnet.isUp(app) || (Tailnet.auto(app) && Tailnet.installed(app)))) return true
+        val cm = app.getSystemService(android.net.ConnectivityManager::class.java) ?: return true
+        @Suppress("DEPRECATION")
+        return cm.allNetworks.any { n ->
+            val caps = cm.getNetworkCapabilities(n) ?: return@any false
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_USB)
+        }
+    }
+
+    /**
+     * A LAN or tailnet address literal: IPv4 10/8, 172.16/12, 192.168/16, 100.64/10,
+     * 169.254/16; IPv6 link-local fe80::/10 and unique-local fc00::/7.
+     */
+    private fun isPrivateAddr(host: String): Boolean {
+        if (':' in host) {
+            val h = host.trim('[', ']').lowercase()
+            return h.startsWith("fe8") || h.startsWith("fe9") || h.startsWith("fea") || h.startsWith("feb") ||
+                h.startsWith("fc") || h.startsWith("fd")
+        }
+        val p = host.split('.').mapNotNull { it.toIntOrNull() }
+        if (p.size != 4) return false
+        return p[0] == 10 || (p[0] == 172 && p[1] in 16..31) || (p[0] == 192 && p[1] == 168) ||
+            (p[0] == 100 && p[1] in 64..127) || (p[0] == 169 && p[1] == 254)
+    }
 
     /** Bumped when the default network changes, to cut a reconnect wait short. */
     private val networkEpoch = MutableStateFlow(0)
@@ -859,6 +943,8 @@ object LinkHub {
             when (reply?.optString("t")) {
                 "authOk" -> {
                     if (host != pc.hosts.firstOrNull()) remember(link, host)
+                    val upAt = android.os.SystemClock.elapsedRealtime()
+                    LinkStats.connected(pc.name.ifEmpty { "PC" }, host)
                     link.unpairedByPc = false
                     link.socket = s.ws
                     link.status.value = LinkStatus.Online(host)
@@ -870,6 +956,12 @@ object LinkHub {
                     try {
                         s.closed.await()
                     } finally {
+                        val why = when {
+                            !currentCoroutineContext().isActive -> "local"
+                            s.error != null -> s.error!!.let { e -> e.javaClass.simpleName + (e.message?.let { ": ${it.take(60)}" } ?: "") }
+                            else -> "closed ${s.closeCode}"
+                        }
+                        LinkStats.dropped(pc.name.ifEmpty { "PC" }, why, android.os.SystemClock.elapsedRealtime() - upAt)
                         if (link.socket === s.ws) link.socket = null
                         s.ws.close(1000, null)
                         clearShell(link)
@@ -1069,6 +1161,10 @@ object LinkHub {
                     }
                 }
                 Wake.remember(app, link.key, m.optJSONArray("wake"))
+                // Connected with the screen off (a reconnect in the pocket): quiet from the start.
+                if (screenOff && m.optJSONArray("caps")?.let { c -> (0 until c.length()).any { c.optString(it) == "quiet" } } == true) {
+                    link.socket?.send(quietMessage())
+                }
                 // A shell from before routes says nothing: what the QR code carried stays.
                 m.optJSONArray("routes")?.let { learnRoutes(link, it) }
                 val caps = m.optJSONArray("caps")
@@ -1370,6 +1466,7 @@ object LinkHub {
         @Volatile var error: Throwable? = null
         @Volatile var httpCode = 0
         @Volatile var opened = false
+        @Volatile var closeCode = 0
 
         fun reason(): FailReason {
             if (httpCode != 0) return FailReason.PROTOCOL
@@ -1443,6 +1540,7 @@ object LinkHub {
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                attempt.closeCode = code
                 first.complete(null)
                 closed.complete(Unit)
             }

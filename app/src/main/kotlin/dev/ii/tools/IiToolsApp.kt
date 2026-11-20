@@ -30,4 +30,18 @@ class IiToolsApp : Application() {
             override fun onStop(owner: LifecycleOwner) = LinkHub.onBackground()
         })
     }
+
+    /**
+     * The app left the screen (or memory runs short): what only a screen shows goes, so
+     * the process the link keeps alive holds no decoded images. The PC wallpaper behind
+     * the home card lets go by itself (Look) when no screen collects it.
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_UI_HIDDEN) {
+            dev.ii.tools.link.AppIcons.trim()
+            dev.ii.tools.clip.ClipHistory.trim()
+            dev.ii.tools.live.LiveHub.listener?.trim()
+        }
+    }
 }

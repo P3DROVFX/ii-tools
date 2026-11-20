@@ -97,7 +97,6 @@ without the ones you refuse; that feature just stays off.
 | `ACCESS_LOCAL_NETWORK`, `INTERNET`, `ACCESS_NETWORK_STATE` | The link to the PC; leaving and arriving home as Routines triggers |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `WAKE_LOCK` | Keeping the link up in Doze; holding Wi-Fi awake while a stream runs |
 | `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS` | Its own notifications and Android 16 Live Updates |
-| `SET_WALLPAPER` | Only when *Use the PC's wallpaper* is on |
 | `SYSTEM_ALERT_WINDOW` (Display over other apps) | Only to let the PC turn on the microphone while the phone is in the background; nothing is drawn |
 | `BLUETOOTH_CONNECT` | The battery of the phone's connected Bluetooth devices, for the PC |
 
@@ -148,11 +147,22 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   code (*Settings → ii tools → Other PCs*).
 - **Lifetime:** the link stays open in the background (*Stay connected*, on by default),
   so the PC can reach the phone at any time; it needs the app let off battery
-  optimisation (a guided step), or Doze cuts it. No foreground service for the link: the process lives
-  through the notification listener (the microphone and webcam use one, only while they stream). A ping a minute; away from the PC it retries every
-  few minutes, and at once when the network changes. Turned off, the link is open only
-  while the app is in front (plus 30 s) or for a burst of notifications. If the PC's
-  address changed, the app finds it again with a UDP broadcast on the link's port.
+  optimisation (a guided step), or Doze cuts it. A silent `connectedDevice` foreground
+  service keeps the process from the low-memory killer while it is on. A ping a minute;
+  away from the PC it retries every few minutes on Wi-Fi, not at all on mobile data with
+  no tailnet (the next network change tries again), and at once when the network changes.
+  Turned off, the link is open only while the app is in front (plus 30 s) or for a burst
+  of notifications. If the PC's address changed, the app finds it again with a UDP
+  broadcast on the link's port.
+- **Light on battery:** with the phone's screen off the shell holds what only a screen
+  shows (workspaces, audio, the deck, toggles, the clipboard) and sends the latest when it
+  comes on (`quiet`); calls, notifications, live activity and the PC's media still arrive
+  at once. On connect the phone lists the images it already has (`caps.have`), so a
+  reconnect does not bring the wallpaper again. Images for screens (the PC's wallpaper on
+  the home) are decoded only while a screen shows them. Connects and drops are counted:
+  `adb shell dumpsys activity service dev.ii.tools/.link.LinkService` (and
+  `tools/measure.sh`, which also reports memory and battery; `--fresh` measures the app
+  restarted without a screen).
 - **Remote control:** lock, lock + always-on display, always-on display, media mode,
   scratchpad. Each is a toggle that shows the shell's real state (`state`), whatever
   changed it: a lock from a keybind lights the tile up too. Unlocking is refused on
@@ -325,9 +335,12 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   notification, and a notification when the PC locks while it plays. The PC's player is
   paused when the page opens. *Handoff* has its own switch. The other way, a phone app that gives
   its track a web page (or a Spotify URI) gets *Continue on PC* in the shell's phone tab.
-- **PC wallpaper on the phone (off by default):** *Use the PC's wallpaper* sets the PC's
-  wallpaper as the home and lock wallpaper (`SET_WALLPAPER`, a normal permission), centre-cropped
-  from a 3840 px original, again whenever the PC's changes. Material You follows the picture.
+- **PC wallpaper on the phone (off by default):** with *Use the PC's wallpaper* on, a new
+  PC wallpaper (a 3840 px original) opens the phone's own wallpaper app with it (One UI's
+  *Set as wallpaper*, else the launcher's or the system's cropper): crop it and choose
+  home, lock or both there, so the system, its colour palette and other apps all see the
+  change. From the background a notification opens it; *Apply the PC's wallpaper* on the
+  Wallpaper screen opens it again.
 - **Screen time and clipboard history:** the phone's screen time (usage access) appears in the
   PC's usage app (*PC / Phone / All*) and bedtime record, on by default once usage access is
   allowed; the PC's clipboard history can be browsed on the phone to pull an old copy.

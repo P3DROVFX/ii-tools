@@ -29,6 +29,18 @@ O shell e o app têm de continuar leves. Uma integração que o usuário não us
 | Dependências mínimas | Helper nativo único (Rust), runtime `current_thread`, sem Python residente. | OkHttp (WebSocket + pinning) e `org.json` (já vem no Android). Nada de Ktor, Retrofit, Gson ou ML Kit embarcado. |
 | Release enxuto | — | R8 + shrink de recursos, Baseline Profile, estado estável no Compose (`@Immutable`, `derivedStateOf`) para evitar recomposição. |
 
+> **Revisão de RAM e bateria (2026-11-19):** medido no S23 (1.4.1): 86 MB de PSS + 44 MB em
+> swap depois de abrir a UI, 40–58 MB num processo que nunca abriu tela; 39 mAh e 100 MB de
+> Wi-Fi em 16 h. Feito: `caps.have` (sem reenviar o wallpaper a cada reconexão), `quiet`
+> com a tela apagada, sem tentar conectar pelos dados móveis sem tailnet, `LinkStats` (conexões
+> e quedas no `dumpsys`), notificação de mídia do PC só quando muda, `Chronometer` nos widgets
+> de mídia, um alarme não-wakeup para o clima, `Look` decodificado só com tela, lentes da câmera
+> em cache, caches de UI soltos no `onTrimMemory`, um OkHttp só, release `profileable`.
+> **Descartado:** UI num processo próprio (`:ui`). Devolveria o que Compose/HWUI deixam no
+> heap nativo, mas custa uma segunda base do ART e IPC para todo estado que as telas leem, e
+> os apps de referência (Essentials) usam um processo só. Também descartado: limitar as threads
+> das coroutines (as ociosas morrem sozinhas em 60 s).
+
 **Orçamentos** (medidos na Fase 0 e checados a cada fase):
 
 - Helper do link: **≤ 8 MB de RSS**, **0 wakeups** com nada mudando, além do keepalive.

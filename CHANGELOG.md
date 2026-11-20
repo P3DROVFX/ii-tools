@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **Lighter on battery and memory:** with the screen off the phone is no longer woken
+  for workspaces, volume, toggles or PC copies (the latest arrives when the screen comes
+  on); a reconnect no longer downloads the PC's wallpaper again; no connection attempts
+  over mobile data when the PC cannot be reached from there; the PC's media notification
+  is posted only when what it shows changes; the media widgets' clock is counted by the
+  launcher and their seek line steps about a hundred times per track instead of every
+  second; the weather widgets share one alarm that does not wake the phone; the PC's
+  wallpaper behind the home card and other screen-only images are let go when the app
+  leaves the screen.
+- **PC wallpaper through the phone's wallpaper app:** *Use the PC's wallpaper* now opens
+  the phone's own wallpaper dialog (One UI's *Set as wallpaper*), so the system and other
+  apps see the change; from the background a notification opens it.
+
 ## 1.3.0
 
 - **Several PCs:** pair more than one PC without unpairing any. They all stay connected;
