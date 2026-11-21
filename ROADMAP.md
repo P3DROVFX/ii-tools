@@ -964,6 +964,15 @@ assinatura). Muda o desenho da tela.
 
 ### 5.29 Foco e timers no celular · **S–M**
 
+> **Status (2026-11-20): implementado** (shell e app); verificado no S23 via IPC/link.
+> `pcLive` ganhou `phase`, `cycle` e `cycles` no pomodoro, e `laps`, `paused` e
+> `elapsedMs` no cronômetro; `get timers` traz presets salvos e durações do pomodoro só
+> com a tela aberta; `cmd focus` controla pomodoro, timers, cronômetro e alarme tocando
+> direto no `TimerService`/`AlarmService` (cap `focus`, toggle `iiTools.focus.enable`).
+> No app: `FocusScreen` (anel `ClockProgressRing`, pontos de ciclo, cartões de timer,
+> cronômetro com voltas, alarme tocando, teclado/presets no estado ocioso, paisagem
+> lado a lado com tela acesa, vibração opcional na troca de fase) e `FocusCard` na home.
+
 Pomodoro, timers, cronômetro e alarmes do PC numa tela do celular com o desenho do clock app
 do shell (`modules/ii/clock`: `PomodoroTab`, `TimerTab`, `StopwatchTab`, `ClockProgressRing`).
 Fica de pé ou deitado ao lado do teclado, com a tela acesa.
@@ -982,6 +991,16 @@ Fica de pé ou deitado ao lado do teclado, com a tela acesa.
   toque (`get timers`, pedido só com a tela aberta).
 
 ### 5.30 Console de voz e reunião · **M**
+
+> **Status (2026-11-20): implementado** (shell e app); compilado em debug/release, shell verificada via IPC.
+> Cap `voice` (`iiTools.voice.enable`), tópico `voice` assinado só com a tela aberta (`Privacy.externalWanted`
+> sob demanda), `voiceSpeak` separado coalescido a ~10/s, avatares em cache com `caps.have.voiceAvatar`,
+> `voiceEvent` para entrada/saída, resumo leve `voiceSummary` para o card da home e `cmd voice`
+> (`mute`, `deaf`, `mode`, `userVolume`, `userMute`, `connect`, `authorize`). Spike de vídeo:
+> o RPC oficial do Discord não tem comando de vídeo e o companion do Vesktop ainda não expõe
+> `video`, então `self.canVideo` vai `false` (não fingido; botão oculto no app) e `video`
+> responde `unsupported`. No app: `VoiceScreen` (retrato e paisagem, tela acesa), `VoiceCard`
+> na home, tile em Ferramentas e switch em Configurações e na própria tela.
 
 Uma tela só para a call: o Discord quando há call, o microfone do PC quando não há, e a
 câmera em uso. Controla a reunião sem tirar o foco do jogo ou do app aberto no PC.

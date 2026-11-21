@@ -49,6 +49,8 @@ object HomeCards {
     const val DISPLAY = "display"
     const val WEBCAM = "webcam"
     const val PERF = "perf"
+    const val FOCUS = "focus"
+    const val VOICE = "voice"
     const val MIC = "mic"
     const val CLIP = "clip"
     const val WORKSPACES = "workspaces"
@@ -72,6 +74,8 @@ object HomeCards {
         HomeCardDef(DISPLAY, R.string.remote_display, R.string.home_card_display_desc, R.drawable.rounded_brightness_6),
         HomeCardDef(WEBCAM, R.string.webcam_title, R.string.home_card_webcam_desc, R.drawable.rounded_videocam),
         HomeCardDef(PERF, R.string.home_pc_load, R.string.home_card_perf_desc, R.drawable.rounded_speed),
+        HomeCardDef(FOCUS, R.string.focus_title, R.string.home_card_focus_desc, R.drawable.rounded_hourglass_top),
+        HomeCardDef(VOICE, R.string.voice_title, R.string.home_card_voice_desc, R.drawable.rounded_record_voice_over),
         HomeCardDef(MIC, R.string.mic_title, R.string.home_card_mic_desc, R.drawable.rounded_mic),
         HomeCardDef(CLIP, R.string.home_clip_title, R.string.home_card_clip_desc, R.drawable.rounded_content_paste),
         // Control cards: off by default so the home stays short; added from the editor.

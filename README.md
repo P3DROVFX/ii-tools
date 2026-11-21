@@ -104,8 +104,6 @@ without the ones you refuse; that feature just stays off.
 
 What's planned next, in no particular order:
 
-- **Focus and timers.** The PC's pomodoro, timers, stopwatch and alarms in the shell's clock app design, started and controlled from the phone.
-- **Voice and meeting console.** The Discord call (who is talking, mute, deafen, each person's volume) or the PC's mic outside a call, Discord's volume and the camera in use.
 - **Opus for the microphone.** An option for weak networks.
 
 The long version is in [ROADMAP.md](ROADMAP.md).
@@ -268,6 +266,17 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
 - **PC activity:** the screen recording, the pomodoro, the stopwatch, countdowns, a
   ringing alarm and progress as Android 16 Live Updates, with their buttons (stop, pause,
   snooze). Timers count down on the phone by themselves.
+- **Focus and timers:** the shell's clock app on the phone (in portrait, or sideways as a
+  desk stand with the screen kept awake): pomodoro with phase badge, wavy ring and cycle
+  dots (plus optional vibration when a phase changes), countdown timers with `+1:00`,
+  pause/resume and reset, stopwatch with laps (fastest and slowest marked), ringing alarm
+  controls, and one-tap shortcuts for the PC's saved timer presets and a duration keypad.
+  Timers count locally from epoch timestamps with no per-second link traffic.
+- **Voice and meeting console:** control Discord/Vesktop calls from the phone (channel,
+  elapsed time, mute, deafen, voice activity vs push-to-talk, speaking roster with cached
+  avatars, per-person 0–200% volume and local mute, join/leave notices), mute or switch
+  the PC's default mic outside a call, adjust Discord's stream volume and output device,
+  and see active camera, mic, and screen sensors (`Privacy`).
 - **Wake the PC:** the shell gives the phone its adapters' MAC addresses; *Wake the PC*
   (in Connect to PC, or the Quick Settings tile) sends the Wake-on-LAN magic packet. The
   PC needs Wake-on-LAN on in its firmware and adapter.

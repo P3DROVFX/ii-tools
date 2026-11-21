@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Voice and meeting console:** control Discord/Vesktop calls (mute, deafen, voice activity vs
+  push-to-talk, speaking roster with cached avatars, per-user volume 0–200% and mute for me,
+  join/leave notices), mute or switch the PC's microphone outside a call, adjust Discord's app
+  volume and output device, and see active camera/mic/screen sensors (`Privacy`), with a
+  landscape layout and a home summary card.
+- **Focus and timers:** control the PC's pomodoro, countdown timers, stopwatch and ringing
+  alarms from the phone in the shell's clock app design, with the wavy progress ring,
+  cycle dots, stopwatch laps, one-tap saved presets, a duration keypad, optional vibration
+  on phase changes and a landscape desk-stand layout that keeps the screen on.
+
 ## 1.4.2
 
 - **Game HUD on the phone:** the Performance screen draws the shell's game overlay HUD:

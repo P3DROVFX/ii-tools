@@ -225,6 +225,16 @@
             android:exported="false" />
 
         <activity
+            android:name=".FocusActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="false" />
+
+        <activity
+            android:name=".VoiceActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="false" />
+
+        <activity
             android:name=".ToolsActivity"
             android:exported="false" />
 

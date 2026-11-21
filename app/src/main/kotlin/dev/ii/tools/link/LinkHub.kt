@@ -42,6 +42,13 @@ import dev.ii.tools.shots.ShotSync
 import dev.ii.tools.live.LiveHub
 import dev.ii.tools.notify.NotifMirror
 import dev.ii.tools.phonedata.LauncherIcons
+import dev.ii.tools.voice.VoiceAvatars
+import dev.ii.tools.voice.VoiceEvent
+import dev.ii.tools.voice.VoicePrefs
+import dev.ii.tools.voice.VoiceState
+import dev.ii.tools.voice.VoiceSummary
+import dev.ii.tools.voice.VoiceTopics
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -144,6 +151,11 @@ internal class PcLink(pc: PairedPc?) {
     val perf = MutableStateFlow<PcPerf?>(null)
     val focus = MutableStateFlow<DeckFocus?>(null)
     val display = MutableStateFlow<PcDisplay?>(null)
+    val timers = MutableStateFlow<PcTimers?>(null)
+    val voice = MutableStateFlow<VoiceState?>(null)
+    val voiceSpeak = MutableStateFlow<Set<String>>(emptySet())
+    val voiceSummary = MutableStateFlow<VoiceSummary?>(null)
+    val voiceEvent = MutableStateFlow<VoiceEvent?>(null)
 
     @Volatile var session: Job? = null
     @Volatile var socket: WebSocket? = null
@@ -174,7 +186,7 @@ internal class PcLink(pc: PairedPc?) {
  * Each PC's certificate is self-signed; it is trusted only when its SHA-256 matches the
  * fingerprint from that PC's pairing QR code.
  */
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 object LinkHub {
     private const val PATH = "/iilink/1"
     private const val BACKGROUND_GRACE_MS = 30_000L
@@ -219,6 +231,16 @@ object LinkHub {
     val display: StateFlow<PcDisplay?> = follow(null) { it.display }
     /** The PC's focused window, pushed only while a deck with app folders is on screen. */
     val focus: StateFlow<DeckFocus?> = follow(null) { it.focus }
+    /** Saved timer presets and pomodoro settings, requested only while Focus is on screen. */
+    val timers: StateFlow<PcTimers?> = follow(null) { it.timers }
+    /** Discord voice roster & PC privacy sensors, pushed only while VoiceScreen is open. */
+    val voice: StateFlow<VoiceState?> = follow(null) { it.voice }
+    /** Currently speaking Discord user ids, separate from [voice] so speaking bursts avoid roster recomposition. */
+    val voiceSpeak: StateFlow<Set<String>> = follow(emptySet()) { it.voiceSpeak }
+    /** Lightweight call state for the home card without subscribing to [voice]. */
+    val voiceSummary: StateFlow<VoiceSummary?> = follow(null) { it.voiceSummary }
+    /** Transient participant join/leave event while VoiceScreen is open. */
+    val voiceEvent: StateFlow<VoiceEvent?> = follow(null) { it.voiceEvent }
 
     /** Every paired PC and its state, for the PC switcher. */
     val machines: StateFlow<List<PcEntry>> = combine(links, selected) { l, s -> l to s }
@@ -249,9 +271,40 @@ object LinkHub {
     @Volatile private var focusWanted = false
     @Volatile private var displayWanted = false
     @Volatile private var clipHistoryWanted = false
+    @Volatile private var timersWanted = false
+    @Volatile private var voiceWanted = false
 
     private fun sub(link: PcLink?, what: String, on: Boolean) {
         link?.socket?.send(JSONObject().put("t", "sub").put("what", what).put("on", on).toString())
+    }
+
+    /** Voice & meeting console is on screen: subscribes to `voice`, `voiceSpeak` and privacy sensors. */
+    fun subscribeVoice(on: Boolean) {
+        val want = on && VoicePrefs.isEnabled(app)
+        voiceWanted = want
+        val link = sel
+        if (want) {
+            if (link?.has("voice") == true) sub(link, "voice", true)
+        } else {
+            sub(link, "voice", false)
+            link?.voice?.value = null
+            link?.voiceSpeak?.value = emptySet()
+            link?.voiceEvent?.value = null
+            VoiceAvatars.releaseMemory()
+        }
+    }
+
+    /** Focus & timers screen is on screen: fetches saved timer presets and pomodoro durations. */
+    fun subscribeTimers(on: Boolean) {
+        timersWanted = on
+        if (on) {
+            val link = sel
+            if (link?.has("focus") == true) {
+                link.socket?.send(JSONObject().put("t", "get").put("what", "timers").toString())
+            }
+        } else {
+            sel?.timers?.value = null
+        }
     }
 
     fun subscribeDisplay(on: Boolean) {
@@ -296,6 +349,12 @@ object LinkHub {
             sub(link, "clipHistory", true)
             ClipHistory.refresh()
         }
+        if (timersWanted && link.has("focus")) {
+            link.socket?.send(JSONObject().put("t", "get").put("what", "timers").toString())
+        }
+        if (voiceWanted && link.has("voice") && VoicePrefs.isEnabled(app)) {
+            sub(link, "voice", true)
+        }
     }
 
     private fun unsubscribe(link: PcLink) {
@@ -303,10 +362,16 @@ object LinkHub {
         if (focusWanted) sub(link, "focus", false)
         if (displayWanted) sub(link, "display", false)
         if (clipHistoryWanted) sub(link, "clipHistory", false)
+        if (voiceWanted) sub(link, "voice", false)
         if (PcLyrics.isWatching) link.socket?.send(command(nextId.getAndIncrement(), "pcLyrics", JSONObject().put("a", "watch").put("on", false)))
         link.perf.value = null
         link.focus.value = null
         link.display.value = null
+        link.timers.value = null
+        link.voice.value = null
+        link.voiceSpeak.value = emptySet()
+        link.voiceEvent.value = null
+        VoiceAvatars.releaseMemory()
     }
 
     private lateinit var app: Context
@@ -577,6 +642,7 @@ object LinkHub {
         has("look", Look.have(app))
         has("wallSync", WallSync.have(app))
         has("pcMediaArt", PcMedia.haveArt(app))
+        has("voiceAvatar", VoiceAvatars.have(app))
         return JSONObject().put("t", "caps").put("caps", caps).put("have", have).toString()
     }
 
@@ -999,11 +1065,17 @@ object LinkHub {
         link.display.value = null
         link.apps.value = null
         link.perf.value = null
+        link.timers.value = null
+        link.voice.value = null
+        link.voiceSpeak.value = emptySet()
+        link.voiceSummary.value = null
+        link.voiceEvent.value = null
         link.shown.clear()
         if (link === sel) {
             PcMedia.clear()
             PcLyrics.onLinkLost()
             ClipHistory.onLinkLost()
+            VoiceAvatars.releaseMemory()
         }
         fun owns(topic: String) = (askers[topic] ?: sel) === link
         val alone = online().none { it !== link }
@@ -1130,6 +1202,7 @@ object LinkHub {
                 "screenshot" -> ShotSync.savePcShot(app, inc.file, inc.name)
                 "share" -> PcActions.saveDownload(app, inc.file, inc.name)
                 "pcMediaArt" -> PcMedia.artReceived(app, inc.file, inc.name)
+                "voiceAvatar" -> VoiceAvatars.received(app, inc.file, inc.name)
                 "look" -> Look.received(app, inc.file, inc.name)
                 "wallSync" -> WallSync.received(app, inc.file, inc.name)
                 "wallSave" -> WallSync.saved(app, inc.file, inc.name)
@@ -1216,6 +1289,17 @@ object LinkHub {
             "display" -> if (displayWanted && selected) link.display.value = DeckTopics.display(m)
             "apps" -> link.apps.value = DeckTopics.apps(m)
             "perf" -> if (perfWanted && selected) link.perf.value = PcPerf.from(m)
+            "timers" -> if (timersWanted && selected) link.timers.value = Topics.timers(m)
+            "voiceSummary" -> link.voiceSummary.value = VoiceTopics.summary(m)
+            "voice" -> if (voiceWanted && selected) {
+                val st = VoiceTopics.state(m)
+                link.voice.value = st
+                VoiceAvatars.ensureLoaded(app, st.users)
+            }
+            "voiceSpeak" -> if (voiceWanted && selected) link.voiceSpeak.value = VoiceTopics.speak(m)
+            "voiceEvent" -> if (voiceWanted && selected) {
+                VoiceTopics.event(m)?.let { link.voiceEvent.value = it }
+            }
             "icons" -> Symbols.put(DeckTopics.paths(m))
             "appIcon" -> AppIcons.put(m.optString("name"), m.optString("png"))
             "ok" -> link.pending.remove(m.optInt("id"))?.complete(null)
@@ -1327,6 +1411,65 @@ object LinkHub {
 
     /** Asks the controlled PC's shell to run [actionId]: null once it confirms, else why not ("locked"…). */
     suspend fun run(actionId: String, arg: Any? = null): String? = run(sel, actionId, arg)
+
+    /**
+     * Runs a `voice` command with immediate optimistic state on the controlled PC,
+     * rolling back if the shell refuses.
+     */
+    suspend fun runVoice(arg: JSONObject): String? {
+        val link = sel ?: return "offline"
+        val prevVoice = link.voice.value
+        val prevSummary = link.voiceSummary.value
+        val a = arg.optString("a")
+        if (prevVoice != null) {
+            val next = when (a) {
+                "mute" -> {
+                    val on = if (arg.has("on")) arg.optBoolean("on") else !prevVoice.self.mute
+                    prevVoice.copy(self = prevVoice.self.copy(mute = on))
+                }
+                "deaf" -> {
+                    val on = if (arg.has("on")) arg.optBoolean("on") else !prevVoice.self.deaf
+                    prevVoice.copy(self = prevVoice.self.copy(deaf = on))
+                }
+                "mode" -> {
+                    val mode = arg.optString("mode").ifEmpty {
+                        if (prevVoice.self.mode == "PUSH_TO_TALK") "VOICE_ACTIVITY" else "PUSH_TO_TALK"
+                    }
+                    prevVoice.copy(self = prevVoice.self.copy(mode = mode))
+                }
+                "userMute" -> {
+                    val uid = arg.optString("id")
+                    val m = arg.optBoolean("mute")
+                    prevVoice.copy(users = prevVoice.users.map { if (it.id == uid) it.copy(localMute = m) else it })
+                }
+                else -> prevVoice
+            }
+            link.voice.value = next
+        }
+        if (prevSummary != null && (a == "mute" || a == "deaf")) {
+            link.voiceSummary.value = when (a) {
+                "mute" -> prevSummary.copy(mute = if (arg.has("on")) arg.optBoolean("on") else !prevSummary.mute)
+                else -> prevSummary.copy(deaf = if (arg.has("on")) arg.optBoolean("on") else !prevSummary.deaf)
+            }
+        }
+        val why = run(link, "voice", arg)
+        if (why != null) {
+            if (link.voice.value !== prevVoice) link.voice.value = prevVoice
+            if (link.voiceSummary.value !== prevSummary) link.voiceSummary.value = prevSummary
+        }
+        return why
+    }
+
+    /** Sends a per-user volume (0–200), updating local state immediately while the push catches up. */
+    fun sendVoiceUserVolume(userId: String, vol: Int) {
+        val clamped = vol.coerceIn(0, 200)
+        sel?.voice?.value?.let { cur ->
+            sel?.voice?.value = cur.copy(
+                users = cur.users.map { if (it.id == userId) it.copy(volume = clamped) else it },
+            )
+        }
+        send("voice", JSONObject().put("a", "userVolume").put("id", userId).put("vol", clamped))
+    }
 
     private suspend fun run(link: PcLink?, actionId: String, arg: Any?): String? {
         val ws = link?.socket ?: return "offline"

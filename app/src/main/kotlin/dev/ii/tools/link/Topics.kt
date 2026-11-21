@@ -31,6 +31,19 @@ data class PcAudio(
     val mic: AudioNode? get() = inputs.firstOrNull { it.id == input }
 }
 
+/** The clock app's saved pomodoro durations and timer presets (`get timers`). */
+data class PomodoroConfig(
+    val focus: Int = 1500,
+    val breakTime: Int = 300,
+    val longBreak: Int = 900,
+    val cycles: Int = 4,
+)
+
+data class PcTimers(
+    val presets: List<Int>,
+    val pomodoro: PomodoroConfig,
+)
+
 internal object Topics {
     fun workspaces(m: JSONObject) = Workspaces(
         active = m.optInt("active"),
@@ -60,6 +73,26 @@ internal object Topics {
 
     private fun node(o: JSONObject) =
         AudioNode(o.optInt("id"), o.optString("name"), o.optDouble("vol", 0.0).toFloat(), o.optBoolean("mute"))
+
+    fun timers(m: JSONObject): PcTimers {
+        val presetsArr = m.optJSONArray("presets")
+        val presets = buildList {
+            if (presetsArr != null) {
+                for (i in 0 until presetsArr.length()) {
+                    val s = presetsArr.optInt(i, 0)
+                    if (s > 0) add(s)
+                }
+            }
+        }
+        val p = m.optJSONObject("pomodoro")
+        val pomo = PomodoroConfig(
+            focus = (p?.optInt("focus", 1500) ?: 1500).coerceAtLeast(60),
+            breakTime = (p?.optInt("breakTime", 300) ?: 300).coerceAtLeast(60),
+            longBreak = (p?.optInt("longBreak", 900) ?: 900).coerceAtLeast(60),
+            cycles = (p?.optInt("cycles", 4) ?: 4).coerceAtLeast(1),
+        )
+        return PcTimers(presets = presets, pomodoro = pomo)
+    }
 
     private inline fun <T> JSONArray?.objects(map: (JSONObject) -> T): List<T> {
         if (this == null) return emptyList()
