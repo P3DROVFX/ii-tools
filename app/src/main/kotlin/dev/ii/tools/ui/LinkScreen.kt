@@ -287,6 +287,7 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                     mirrorRadio = it
                     MirrorRadio.setEnabled(ctx, it)
                 }, R.drawable.rounded_speed, summary = stringResource(R.string.mirror_radio_body))
+                TransferModeRow()
                 TailnetAutoRow()
                 PermissionRow(
                     stringResource(R.string.link_battery), stringResource(R.string.settings_battery_body), R.drawable.rounded_battery_full, s.battery,

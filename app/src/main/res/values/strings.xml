@@ -150,6 +150,13 @@
     <string name="widget_label">ii tools deck</string>
     <string name="share_label">Send to PC</string>
     <string name="share_title">Send to PC</string>
+    <string name="share_progress">Sending… %1$d%%</string>
+    <string name="share_too_large">Too large: 64 MB at most, or 16 GB with Faster transfers.</string>
+    <string name="transfer_mode">File transfers</string>
+    <string name="transfer_safe">Safe</string>
+    <string name="transfer_faster">Faster</string>
+    <string name="transfer_safe_body">On the link\'s own connection, beside everything else. Up to 64 MB a file.</string>
+    <string name="transfer_faster_body">Files over 1 MB get a connection of their own, as fast as the network goes and just as encrypted. Up to 16 GB.</string>
     <string name="share_send_as">Send to</string>
     <string name="share_browser">Open in the browser</string>
     <string name="share_ai">Ask the AI</string>

@@ -216,6 +216,11 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   its AI chat; text becomes a note, a reminder or a task; a photo or any file goes
   to `~/Downloads` as KDE Connect does (never overwriting), to the shell's file shelf, or
   (images) to the AI chat.
+- **Faster transfers:** *File transfers* in Settings (and on the Send to PC screen) picks
+  *Safe* (the link's own connection, up to 64 MB a file) or *Faster*: files over 1 MB in
+  either direction get a TLS connection of their own on the link's port, without the
+  WebSocket, at the network's full speed and up to 16 GB. If that connection can't be
+  opened, the file goes the safe way on its own.
 - **Clipboard:** what you copy on the PC (text or image) lands on the phone's clipboard
   while the link is up, and the latest copy when it connects. The phone's clipboard goes
   to the PC on request (Android only lets a focused app read it): the *Clipboard to PC*

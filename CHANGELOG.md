@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Faster file transfers:** a *Safe / Faster* choice in Settings and on the Send to PC
+  screen. Faster sends files over 1 MB, both ways, on an encrypted connection of their own
+  at the network's full speed, up to 16 GB a file; Safe keeps the link's own connection.
 - **Voice and meeting console:** control Discord/Vesktop calls (mute, deafen, voice activity vs
   push-to-talk, speaking roster with cached avatars, per-user volume 0–200% and mute for me,
   join/leave notices), mute or switch the PC's microphone outside a call, adjust Discord's app

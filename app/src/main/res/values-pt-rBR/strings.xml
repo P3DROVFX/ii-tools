@@ -149,6 +149,13 @@
     <string name="widget_label">Deck do ii tools</string>
     <string name="share_label">Enviar ao PC</string>
     <string name="share_title">Enviar ao PC</string>
+    <string name="share_progress">Enviando… %1$d%%</string>
+    <string name="share_too_large">Grande demais: até 64 MB, ou 16 GB com transferências Mais rápidas.</string>
+    <string name="transfer_mode">Transferência de arquivos</string>
+    <string name="transfer_safe">Segura</string>
+    <string name="transfer_faster">Mais rápida</string>
+    <string name="transfer_safe_body">Pela própria conexão do link, junto com todo o resto. Até 64 MB por arquivo.</string>
+    <string name="transfer_faster_body">Arquivos acima de 1 MB ganham uma conexão só deles, na velocidade da rede e com a mesma criptografia. Até 16 GB.</string>
     <string name="share_send_as">Enviar para</string>
     <string name="share_browser">Abrir no navegador</string>
     <string name="share_ai">Perguntar à IA</string>

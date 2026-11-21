@@ -1029,6 +1029,26 @@ câmera em uso. Controla a reunião sem tirar o foco do jogo ou do app aberto no
 - **Settings:** `iiTools.voice.enable` na página ii tools; no app, tile em Ferramentas, a tela
   e o switch também em Settings.
 
+### 5.31 Transferências mais rápidas · **S**
+
+> **Status (2026-11-20): implementado** (shell e app). O helper (`cargo test lane`) e o app compilam,
+> o release está no aparelho, e *Segura* foi verificada pela reconexão ao helper novo. Falta o usuário
+> medir *Mais rápida* com um arquivo grande no aparelho.
+
+Inspirado no Drift (dan-el-7/drift), que **não usa UDP**: ele é rápido por levar os dados numa
+conexão TCP só deles, em blocos grandes, cifrando e lendo em paralelo com o envio. Aqui é igual:
+o gargalo era o WebSocket (máscara RFC 6455 byte a byte no celular, frames de 256 KiB na fila do link).
+
+- **Lane:** a cap `fileLane` vai nos dois sentidos. O app abre a porta TCP do link, manda `IIL1` em claro
+  e faz TLS com o mesmo certificado fixado. Depois vem o token de 32 bytes de uso único, entregue pelo
+  WebSocket, e então os bytes crus em blocos de 1 MiB. `lane.rs` no helper e `FileLane.kt` no app.
+- **Regras:** só arquivos ≥ 1 MiB e nunca `galleryThumb`. O limite sobe de 64 MiB para 16 GiB, e o
+  celular confere se o cache tem espaço. Se a lane falhar, o arquivo volta ao WebSocket sozinho
+  (até 64 MiB).
+- **Settings:** a linha *Transferência de arquivos* (Segura / Mais rápida, padrão Segura) fica em
+  Settings → Conexão e na tela Enviar ao PC. Ela grava a mesma preferência e reenvia `caps`.
+- **Medir:** a vazão com e sem lane num vídeo de alguns GB, no 5 GHz.
+
 ---
 
 ## Resumo
@@ -1040,4 +1060,4 @@ câmera em uso. Controla a reunião sem tirar o foco do jogo ou do app aberto no
 | 2 Baratas | QS tiles e widget · compartilhar para o shell · clipboard com imagens · dados sem ADB · Não Perturbe · Live Updates do PC · screenshot · hotspot e WoL · painel de desempenho |
 | 3 Caras e úteis | Monitor (espelhar/estender) · autenticador · presença · áudio das ligações · resto do KDE Connect · touchpad e teclado |
 | 4 Nicho | Mesa de desenho · apresentador · miniaturas · câmera própria · galeria (ditado e Health Connect pulados) |
-| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable · cards de controle na home · desempenho do celular no PC · HUD de jogo · foco e timers · console de voz e reunião |
+| 5 Dia a dia | Buracos da auditoria (mídia na ligação, filtro por app, pastas e ícones no deck, SMS, medição) · códigos 2FA · avisos à distância · câmera e scanner · deck por app · handoff de mídia · tempo de tela unificado · bateria · wallpaper · localização · histórico do clipboard · brilho e luz noturna · rotinas do celular → shell (com presets) · media mode de letras · microfone próprio · scrcpy sem fio · Enviar ao PC no menu de compartilhar · bateria dos periféricos Bluetooth · avisos de atualização · teclas de volume no PC · microfone sem fio sem toque · editar a home · vários PCs · fora de casa pelo Tailscale · link entre PCs (clipboard, shelf, mídia, WoL, código) · agenda do celular no Timetable · cards de controle na home · desempenho do celular no PC · HUD de jogo · foco e timers · console de voz e reunião · transferências mais rápidas |

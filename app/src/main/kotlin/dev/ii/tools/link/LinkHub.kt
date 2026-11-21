@@ -165,6 +165,8 @@ internal class PcLink(pc: PairedPc?) {
     /** After the PC could not be reached for a burst: no new attempt before this. */
     @Volatile var quietUntil = 0L
     val pending = ConcurrentHashMap<Int, CompletableDeferred<String?>>()
+    /** Uploads waiting for the lane token the PC answers their header with ([FileLane]). */
+    val lanes = ConcurrentHashMap<Int, CompletableDeferred<String>>()
     /** The last push of what only the controlled PC shows (its media, lyrics, live activity), replayed when it is picked. */
     val shown = ConcurrentHashMap<String, JSONObject>()
 
@@ -636,6 +638,7 @@ object LinkHub {
         dev.ii.tools.camera.Webcam.caps(app).forEach { caps.put(it) }
         dev.ii.tools.mic.Mic.caps(app).forEach { caps.put(it) }
         MirrorRadio.caps(app).forEach { caps.put(it) }
+        FileLane.caps(app).forEach { caps.put(it) }
         // The images kept from earlier connections: the shell sends only what is new.
         val have = JSONObject()
         fun has(kind: String, names: List<String>) { if (names.isNotEmpty()) have.put(kind, org.json.JSONArray(names)) }
@@ -1038,6 +1041,8 @@ object LinkHub {
                         LiveHub.listener?.onLinkChanged()
                         link.pending.values.forEach { it.complete("offline") }
                         link.pending.clear()
+                        link.lanes.values.forEach { it.cancel() }
+                        link.lanes.clear()
                     }
                     return if (link.unpairedByPc) Outcome.UNPAIRED else Outcome.ENDED
                 }
@@ -1178,13 +1183,36 @@ object LinkHub {
 
     private fun startFile(link: PcLink, header: JSONObject) {
         link.incoming?.discard()
-        val inc = Incoming(java.io.File(app.cacheDir, "incoming/" + link.key.take(12)), header)
-        if (!inc.valid) {
+        link.incoming = null
+        // A large file comes over a lane of its own (FileLane) when this phone said it takes them.
+        val token = header.optString("lane").ifEmpty { null }
+        val inc = Incoming(java.io.File(app.cacheDir, "incoming/" + link.key.take(12)), header, if (token != null) FileLane.MAX_SIZE else FileLane.LINK_MAX)
+        if (!inc.valid || !inc.fits) {
             inc.discard()
             link.socket?.send(JSONObject().put("t", "err").put("id", inc.id).put("code", "too_large").toString())
             return
         }
-        link.incoming = inc
+        if (token == null) {
+            link.incoming = inc
+            return
+        }
+        val host = (link.status.value as? LinkStatus.Online)?.host
+        val pc = link.pc.value
+        scope.launch {
+            val end = if (host != null && pc != null) FileLane.download(host, pc.port, laneSockets(pc.fingerprint), token, inc) else FileLane.End.UNREACHED
+            when (end) {
+                FileLane.End.DONE -> finishFile(link, inc)
+                // Never reached: the PC sends it over the link instead, under the same id.
+                FileLane.End.UNREACHED -> {
+                    inc.discard()
+                    link.socket?.send(JSONObject().put("t", "lane").put("id", inc.id).put("err", "connect").toString())
+                }
+                else -> {
+                    inc.discard()
+                    link.socket?.send(JSONObject().put("t", "err").put("id", inc.id).put("code", "write").toString())
+                }
+            }
+        }
     }
 
     private fun receiveChunk(link: PcLink, bytes: ByteArray) {
@@ -1196,6 +1224,11 @@ object LinkHub {
         }
         if (!whole) return
         link.incoming = null
+        finishFile(link, inc)
+    }
+
+    /** A whole file from the PC: to what it was for, then `ok`/`err` with its id. */
+    private fun finishFile(link: PcLink, inc: Incoming) {
         scope.launch {
             if (inc.purpose == "share" || inc.purpose == "screenshot") askers["act"] = link
             val ok = when (inc.purpose) {
@@ -1225,6 +1258,7 @@ object LinkHub {
         }
         when (t) {
             "file" -> startFile(link, m)
+            "lane" -> link.lanes.remove(m.optInt("id"))?.complete(m.optString("token"))
             "hello" -> {
                 val actions = m.optJSONArray("actions")
                 val list = buildList {
@@ -1550,12 +1584,37 @@ object LinkHub {
             try {
                 val header = JSONObject().put("t", "file").put("id", id).put("name", name).put("size", size)
                     .put("purpose", purpose).put("target", target)
+                // Faster: a lane of its own (FileLane); the link's socket when it cannot be had.
+                val fast = FileLane.isFast(app)
+                android.util.Log.i("IiLink", "upload $purpose $size B: faster=$fast, PC lane=${link.has("fileLane")}")
+                if (fast && link.has("fileLane") && size >= FileLane.MIN_SIZE && purpose != "galleryThumb") {
+                    val end = uploadLane(link, ws, id, header, reply, size, open, onProgress)
+                    android.util.Log.i("IiLink", "upload $id over the lane: ${end ?: "refused " + reply.getCompleted()}")
+                    when (end) {
+                        FileLane.End.DONE -> {
+                            val outcome = withTimeoutOrNull(60_000) { Reply(reply.await()) }
+                            return@withLock if (outcome == null) "timeout" else outcome.code
+                        }
+                        FileLane.End.READ -> return@withLock "read"
+                        FileLane.End.BROKEN -> return@withLock "offline"
+                        // The PC refused the file itself (too large, turned off…).
+                        null -> return@withLock Reply(reply.await()).code
+                        FileLane.End.UNREACHED -> {
+                            if (size > FileLane.LINK_MAX) return@withLock "offline"
+                            onProgress(0f)
+                            header.remove("lane")
+                        }
+                    }
+                }
+                // Refused before a byte goes: the PC would drop all of it.
+                if (size > FileLane.LINK_MAX) return@withLock "too_large"
                 if (!ws.send(header.toString())) return@withLock "offline"
                 val input = open() ?: return@withLock "read"
                 var sent = 0L
                 input.use { stream ->
                     val buf = ByteArray(FILE_CHUNK)
-                    while (sent < size) {
+                    // The PC answering before the end is a refusal: stop sending.
+                    while (sent < size && !reply.isCompleted) {
                         val n = stream.read(buf, 0, minOf(buf.size.toLong(), size - sent).toInt())
                         if (n <= 0) break
                         while (ws.queueSize() > FILE_QUEUE) delay(15)
@@ -1564,13 +1623,46 @@ object LinkHub {
                         onProgress(sent.toFloat() / size)
                     }
                 }
+                if (reply.isCompleted) return@withLock Reply(reply.await()).code
                 if (sent != size) return@withLock "read"
                 val outcome = withTimeoutOrNull(60_000) { Reply(reply.await()) }
                 if (outcome == null) "timeout" else outcome.code
             } finally {
                 link.pending.remove(id)
+                link.lanes.remove(id)
             }
         }
+    }
+
+    /**
+     * Offers [header] a lane and sends the file down it. Null when the PC answered the
+     * header with a refusal instead of a token (it is in [reply]).
+     */
+    private suspend fun uploadLane(
+        link: PcLink,
+        ws: WebSocket,
+        id: Int,
+        header: JSONObject,
+        reply: CompletableDeferred<String?>,
+        size: Long,
+        open: () -> java.io.InputStream?,
+        onProgress: (Float) -> Unit,
+    ): FileLane.End? {
+        val offer = CompletableDeferred<String>()
+        link.lanes[id] = offer
+        if (!ws.send(JSONObject(header.toString()).put("lane", true).toString())) return FileLane.End.BROKEN
+        val token = withTimeoutOrNull(10_000) {
+            kotlinx.coroutines.selects.select<String?> {
+                offer.onAwait { it }
+                reply.onAwait { null }
+            }
+        }
+        if (token == null && reply.isCompleted) return null
+        if (token == null) android.util.Log.w("IiLink", "no lane token for $id in 10 s")
+        val host = (link.status.value as? LinkStatus.Online)?.host
+        val pc = link.pc.value
+        if (token == null || host == null || pc == null) return FileLane.End.UNREACHED
+        return FileLane.upload(host, pc.port, laneSockets(pc.fingerprint), token, size, open, onProgress)
     }
 
     /** The controlled PC's installed apps; they arrive in [apps]. */
@@ -1700,6 +1792,10 @@ object LinkHub {
         attempt.ws = client.newWebSocket(request, listener)
         return attempt
     }
+
+    /** Sockets that trust only the PC with [fingerprint], for its file lanes. */
+    internal fun laneSockets(fingerprint: String): javax.net.ssl.SSLSocketFactory =
+        SSLContext.getInstance("TLS").apply { init(null, arrayOf(PinnedTrust(fingerprint)), null) }.socketFactory
 
     private fun clientFor(fingerprint: String): OkHttpClient {
         val trust = PinnedTrust(fingerprint)
