@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
 - **Faster file transfers:** a *Safe / Faster* choice in Settings and on the Send to PC
   screen. Faster sends files over 1 MB, both ways, on an encrypted connection of their own
@@ -14,6 +14,13 @@
   alarms from the phone in the shell's clock app design, with the wavy progress ring,
   cycle dots, stopwatch laps, one-tap saved presets, a duration keypad, optional vibration
   on phase changes and a landscape desk-stand layout that keeps the screen on.
+- **Fixes from issue #5:** no crash when the link drops while the app is open (Tailscale
+  off, the shell restarting) or when a shared file was already let go; the touchpad sends
+  each touch's timing so the PC replays bursts at their real pace over Tailscale and slow
+  Wi-Fi; second-screen sound plays on the phone and keeps playing on the PC (a switch on the
+  PC sends it to the phone alone), with a buffer that adapts to the network; the shell can
+  stop the phone ringing; the drawing pad warns when live draw is off or closed on the PC,
+  with *Turn on* and *Reopen*; the webcam in device mode also shows up to PipeWire apps.
 
 ## 1.4.2
 
