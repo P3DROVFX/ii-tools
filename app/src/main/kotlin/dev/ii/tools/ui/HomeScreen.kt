@@ -148,7 +148,11 @@ fun HomeScreen(
     val voiceEnabled by VoicePrefs.enabled(ctx).collectAsStateWithLifecycle()
     val scanner = rememberPairScanner()
     val network = rememberNetworkPermission()
-    val online = status is LinkStatus.Online && shell != null
+    // Capture link StateFlow values as locals so LazyColumn lambdas see a consistent snapshot.
+    val currentStatus = status
+    val currentPc = pc
+    val currentShell = shell
+    val online = currentStatus is LinkStatus.Online && currentShell != null
 
     var editing by rememberSaveable { mutableStateOf(startEditing) }
     val exitEdit = {
@@ -157,7 +161,7 @@ fun HomeScreen(
     BackHandler(editing) { exitEdit() }
 
     // The PC samples its load only while a screen shows it.
-    val showsPerf = online && shell?.caps?.contains("perf") == true && HomeCards.PERF in layout.visible
+    val showsPerf = online && currentShell?.caps?.contains("perf") == true && HomeCards.PERF in layout.visible
     LifecycleResumeEffect(showsPerf) {
         if (showsPerf) LinkHub.subscribePerf(true)
         onPauseOrDispose { if (showsPerf) LinkHub.subscribePerf(false) }
@@ -229,8 +233,8 @@ fun HomeScreen(
                 editDashboard(
                     visibleCards = visibleCards,
                     hiddenCards = hiddenCards,
-                    pc = pc,
-                    shell = shell,
+                    pc = currentPc,
+                    shell = currentShell,
                     online = online,
                     clipHistory = clipHistory,
                     dragState = dragState,
@@ -251,7 +255,7 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item(key = "bar") {
-                    HomeBar(pc = pc, scanner = scanner, onOpen = onOpen)
+                    HomeBar(pc = currentPc, scanner = scanner, onOpen = onOpen)
                 }
                 val latestUpdate = update.latest
                 if (update.visibleOnHome && latestUpdate != null) {
@@ -263,11 +267,10 @@ fun HomeScreen(
                         )
                     }
                 }
-                val current = pc
                 when {
-                    current == null -> item(key = "pair") { PairContent(status, scanner, network) }
-                    online -> dashboard(layout.visible, current, shell!!, clipHistory, voiceEnabled, onOpen)
-                    else -> away(current, status, onOpen)
+                    currentPc == null -> item(key = "pair") { PairContent(currentStatus, scanner, network) }
+                    currentStatus is LinkStatus.Online && currentShell != null -> dashboard(layout.visible, currentPc, currentShell, clipHistory, voiceEnabled, onOpen)
+                    else -> away(currentPc, currentStatus, onOpen)
                 }
             }
         }
@@ -1372,8 +1375,8 @@ private fun VoiceCard(onOpen: (Dest) -> Unit) {
                         maxLines = 1,
                     )
                 }
-                if (inCall) {
-                    val s = summary!!
+                val s = summary
+                if (inCall && s != null) {
                     VoiceCardButton(
                         off = s.mute || s.deaf,
                         on = R.drawable.rounded_mic_fill1,
@@ -1733,7 +1736,9 @@ private fun EditCardContent(
     clipHistory: Boolean,
     onOpen: (Dest) -> Unit,
 ) {
-    val activeOnline = online && pc != null && shell != null
+    val activePc = if (online) pc else null
+    val activeShell = if (online) shell else null
+    val activeOnline = activePc != null && activeShell != null
     val player by PcMedia.player.collectAsStateWithLifecycle()
     val audio by LinkHub.audio.collectAsStateWithLifecycle()
     val liveItems by PcLive.items.collectAsStateWithLifecycle()
@@ -1742,7 +1747,7 @@ private fun EditCardContent(
 
     when (card.id) {
         HomeCards.HERO -> {
-            if (activeOnline) PcHero(pc!!, shell!!, onOpen)
+            if (activePc != null && activeShell != null) PcHero(activePc, activeShell, onOpen)
             else EditCardPlaceholder(card, pc?.name?.takeIf { it.isNotEmpty() } ?: stringResource(R.string.home_edit_offline_preview))
         }
         HomeCards.MEDIA -> {
@@ -1750,7 +1755,7 @@ private fun EditCardContent(
             else EditCardPlaceholder(card, stringResource(if (activeOnline) R.string.home_edit_when_active else R.string.home_edit_offline_preview))
         }
         HomeCards.AUDIO -> {
-            val hasCap = activeOnline && "audio" in shell!!.caps
+            val hasCap = activeShell != null && "audio" in activeShell.caps
             if (hasCap && audio?.output != null) AudioCard(onOpen)
             else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
@@ -1766,54 +1771,54 @@ private fun EditCardContent(
         }
         HomeCards.MONITOR -> SecondScreenCard(onOpen)
         HomeCards.CONTROLS -> {
-            val hasCap = activeOnline && "remote" in shell!!.caps && shell.actions.any { it.id != "lock" }
-            if (hasCap) {
+            val hasCap = activeShell != null && "remote" in activeShell.caps && activeShell.actions.any { it.id != "lock" }
+            if (activeShell != null && hasCap) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SectionHeader(stringResource(R.string.controls_title), stringResource(R.string.remote_short)) { }
-                    ControlsRow(shell!!, onOpen)
+                    ControlsRow(activeShell, onOpen)
                 }
             } else {
                 EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
             }
         }
         HomeCards.DISPLAY -> {
-            val hasCap = activeOnline && "display" in shell!!.caps
+            val hasCap = activeShell != null && "display" in activeShell.caps
             if (hasCap) HomeDisplay(placeholder = { EditCardPlaceholder(card, stringResource(R.string.home_edit_when_active)) })
             else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
         HomeCards.WEBCAM -> WebcamCard(onOpen)
         HomeCards.PERF -> {
-            val hasCap = activeOnline && "perf" in shell!!.caps
+            val hasCap = activeShell != null && "perf" in activeShell.caps
             if (hasCap) PerfCard(onOpen)
             else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
         HomeCards.FOCUS -> {
-            val hasCap = activeOnline && "focus" in shell!!.caps
+            val hasCap = activeShell != null && "focus" in activeShell.caps
             if (hasCap) FocusCard(onOpen)
             else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
         HomeCards.VOICE -> {
-            val hasCap = activeOnline && "voice" in shell!!.caps
+            val hasCap = activeShell != null && "voice" in activeShell.caps
             if (hasCap) VoiceCard(onOpen)
             else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
         HomeCards.MIC -> MicCard(onOpen)
         HomeCards.WORKSPACES -> {
-            val hasCap = activeOnline && "remote" in shell!!.caps
+            val hasCap = activeShell != null && "remote" in activeShell.caps
             if (hasCap && workspaces != null) WorkspacesCard(onOpen)
             else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
         HomeCards.MODES -> ModesCard(onOpen)
         HomeCards.PRESETS -> {
-            val hasCap = activeOnline && "remote" in shell!!.caps
+            val hasCap = activeShell != null && "remote" in activeShell.caps
             if (hasCap && presets?.list?.isNotEmpty() == true) PresetsCard(onOpen)
             else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
-        HomeCards.TOUCHPAD -> TouchpadCard(activeOnline && "touchpad" in shell!!.caps, onOpen)
-        HomeCards.PRESENTER -> PresenterCard(activeOnline && "present" in shell!!.caps, onOpen)
+        HomeCards.TOUCHPAD -> TouchpadCard(activeShell != null && "touchpad" in activeShell.caps, onOpen)
+        HomeCards.PRESENTER -> PresenterCard(activeShell != null && "present" in activeShell.caps, onOpen)
         HomeCards.DECK -> DeckCard(onOpen)
         HomeCards.POWER -> {
-            val hasCap = activeOnline && "power" in shell!!.caps
+            val hasCap = activeShell != null && "power" in activeShell.caps
             if (hasCap) PowerCard() else EditCardPlaceholder(card, editCapSummary(activeOnline, hasCap))
         }
         HomeCards.CLIP -> {
@@ -1822,8 +1827,8 @@ private fun EditCardContent(
                 card,
                 stringResource(
                     when {
-                        !activeOnline -> R.string.home_edit_offline_preview
-                        "clipHistory" !in shell!!.caps -> R.string.home_edit_unsupported
+                        activePc == null || activeShell == null -> R.string.home_edit_offline_preview
+                        "clipHistory" !in activeShell.caps -> R.string.home_edit_unsupported
                         else -> R.string.home_edit_clip_off
                     },
                 ),

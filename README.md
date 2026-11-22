@@ -297,7 +297,8 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   microphone: the PC becomes the phone's Bluetooth headset (HFP) for that call only.
   Needs the phone paired with the PC over Bluetooth.
 - **Drawing pad:** draw on the phone, held sideways, and the ink appears in the shell's
-  live draw on the focused screen, with its tools, colours and undo.
+  live draw on the focused screen, with its tools, colours and undo. When the PC's live
+  draw is off or closed, the pad says so and turns it on or reopens it in one tap.
 - **Second screen:** the phone as a monitor for the PC over USB or Wi-Fi: extend (a new
   screen the phone's size) or mirror the focused screen, with touch as the PC's
   touchscreen. Over Wi-Fi it rides ii link's encrypted connection, the video as sealed UDP
@@ -306,12 +307,14 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   a choice of lowest-latency or smooth frame pacing, and a live chip showing the latency
   from the PC's capture, frame rate and dropped frames. A Tailscale link streams over the
   LAN when the PC is there. USB (adb on the PC, USB debugging on the phone) is used when
-  plugged in. The PC streams best with `ii-wf-recorder` (the shell's
+  plugged in. Over Wi-Fi the PC's sound plays on the phone too, and by default keeps
+  playing on the PC (or goes to the phone alone, a switch in the PC's settings). The PC streams best with `ii-wf-recorder` (the shell's
   `scripts/wf-recorder-ii/build.sh install`): key frames and bitrate changes without
   restarting the encoder.
 - **Webcam:** the phone's camera as the PC's webcam (`/dev/videoN` via `ii_link`) over
   ii link, with lens, zoom, exposure, focus, torch and stabilisation controls, 4:3 or 16:9
-  (720p or 1080p). Keeps streaming with the screen off, and the PC can request the
+  (720p or 1080p). With the loopback device it also shows up as a PipeWire camera, so apps
+  that take cameras through PipeWire (Firefox, OBS) see it too. Keeps streaming with the screen off, and the PC can request the
   camera with the phone confirming from a notification.
 - **Microphone:** the phone as the PC's microphone over ii link (a PipeWire source
   `ii-tools-mic`, raw 48 kHz mono PCM) over Wi-Fi, from the Mic tool or on the PC's
@@ -325,7 +328,8 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   and a talk timer.
 - **Touchpad and keyboard:** the phone as the PC's touchpad (a real multitouch touchpad
   for libinput: tap to click, two-finger scroll, three and four-finger gestures, your
-  touchpad settings) and keyboard (any character, whatever the PC's layout).
+  touchpad settings) and keyboard (any character, whatever the PC's layout). Touches carry
+  their timing, so the PC replays them smoothly over a slow or jittery link such as Tailscale.
 - **Phone files on the PC:** the PC's file manager opens the phone's storage (an SFTP
   server that runs only while the PC uses it, mounted with sshfs), as with KDE Connect.
   Needs *All files access*.

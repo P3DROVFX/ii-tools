@@ -219,8 +219,9 @@ fun VoiceScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
 
             if (inCall && v != null) {
                 item(key = "call_hero") { CallHeroCard(v, readNow) }
-                if (transientEvent != null) {
-                    item(key = "join_leave") { JoinLeaveLine(transientEvent!!) }
+                val ev = transientEvent
+                if (ev != null) {
+                    item(key = "join_leave") { JoinLeaveLine(ev) }
                 }
                 item(key = "roster_hdr") {
                     GroupHeader(stringResource(R.string.voice_participants))

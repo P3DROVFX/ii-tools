@@ -305,6 +305,14 @@
     <string name="draw_title">Mesa de desenho</string>
     <string name="draw_hint">Desenhe aqui: o traço aparece no live draw da tela em foco do PC</string>
     <string name="draw_off">A mesa de desenho está desligada nas configurações do ii tools no PC, ou o live draw está desligado</string>
+    <string name="draw_live_off_title">O live draw está desligado no PC</string>
+    <string name="draw_live_off_body">Ligue para desenhar por este celular</string>
+    <string name="draw_turn_on">Ligar</string>
+    <string name="draw_pad_off_title">Mesa de desenho desligada</string>
+    <string name="draw_pad_off_body">Ligue Mesa de desenho nas configurações do ii tools no PC</string>
+    <string name="draw_closed_title">O live draw está fechado no PC</string>
+    <string name="draw_closed_body">Reabra para continuar desenhando daqui</string>
+    <string name="draw_reopen">Reabrir</string>
     <string name="draw_undo">Desfazer</string>
     <string name="draw_redo">Refazer</string>
     <string name="draw_clear">Limpar</string>

@@ -166,8 +166,11 @@ fun DeckScreen(
         apps?.let(DeckStore::updateAppIcons)
     }
 
+    val currentStatus = status
+    val currentPc = pc
+    val currentShell = shell
     val byId = remember(catalog) { catalog.orEmpty().associateBy { it.id } }
-    val ready = pc != null && status is LinkStatus.Online && shell != null
+    val ready = currentPc != null && currentStatus is LinkStatus.Online && currentShell != null
 
     // Profile folders: the PC pushes its focused window only while this deck has one (or
     // a folder is being edited and needs the open windows to pick from).
@@ -261,11 +264,10 @@ fun DeckScreen(
         },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            val info = shell
             when {
-                pc == null -> Hint(stringResource(R.string.link_needed), Modifier.padding(top = 16.dp))
-                !ready -> Box(Modifier.padding(16.dp)) { CardGroup { StatusRow(pc!!, status) } }
-                info == null || "deck" !in info.caps -> Hint(stringResource(R.string.deck_off), Modifier.padding(top = 16.dp))
+                currentPc == null -> Hint(stringResource(R.string.link_needed), Modifier.padding(top = 16.dp))
+                !ready -> Box(Modifier.padding(16.dp)) { CardGroup { StatusRow(currentPc, currentStatus) } }
+                currentShell == null || "deck" !in currentShell.caps -> Hint(stringResource(R.string.deck_off), Modifier.padding(top = 16.dp))
                 openFolder == null && keys.isEmpty() && !editing -> Hint(stringResource(R.string.deck_empty), Modifier.padding(top = 16.dp))
                 else -> DeckPages(
                     keys = activeKeys,

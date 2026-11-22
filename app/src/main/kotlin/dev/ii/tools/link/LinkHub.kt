@@ -390,6 +390,7 @@ object LinkHub {
             // notice a phone gone (it drops a socket silent for 200 s) and cheap on battery.
             .pingInterval(60, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false)
+            .socketFactory(NoDelaySockets)
             .build()
     }
 
@@ -555,7 +556,7 @@ object LinkHub {
     )
 
     /** Answers and sessions a PC starts: they go back to the PC that asked. */
-    private val TO_ASKER = setOf("gallery", "files", "camera", "mic", "contacts")
+    private val TO_ASKER = setOf("gallery", "files", "camera", "mic", "contacts", "act")
 
     /** The last PC to speak on a topic of [TO_ASKER] (and `act`, `launcherIcons`, `mirror`). */
     private val askers = ConcurrentHashMap<String, PcLink>()
@@ -587,6 +588,9 @@ object LinkHub {
     }
 
     /** Sends [m] to the connected PC with fingerprint [key]: answers that belong to one PC only. */
+    /** Bytes still waiting to go to the controlled PC: a backlog means the link is behind. */
+    fun queued(): Long = sel?.socket?.queueSize() ?: 0L
+
     fun sendToPc(key: String, m: JSONObject): Boolean =
         online().firstOrNull { it.key == key }?.socket?.send(m.toString()) == true
 
@@ -920,15 +924,17 @@ object LinkHub {
      */
     private fun reachableFromHere(pc: PairedPc): Boolean {
         if (pc.hosts.any { !isPrivateAddr(it) }) return true
-        if (pc.tailnet.isNotEmpty() && (Tailnet.isUp(app) || (Tailnet.auto(app) && Tailnet.installed(app)))) return true
-        val cm = app.getSystemService(android.net.ConnectivityManager::class.java) ?: return true
-        @Suppress("DEPRECATION")
-        return cm.allNetworks.any { n ->
-            val caps = cm.getNetworkCapabilities(n) ?: return@any false
-            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
-                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) ||
-                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_USB)
-        }
+        return runCatching {
+            if (pc.tailnet.isNotEmpty() && (Tailnet.isUp(app) || (Tailnet.auto(app) && Tailnet.installed(app)))) return@runCatching true
+            val cm = app.getSystemService(android.net.ConnectivityManager::class.java) ?: return@runCatching true
+            @Suppress("DEPRECATION")
+            cm.allNetworks.any { n ->
+                val caps = cm.getNetworkCapabilities(n) ?: return@any false
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_USB)
+            }
+        }.getOrDefault(true)
     }
 
     /**
@@ -968,35 +974,39 @@ object LinkHub {
 
     private fun watchNetwork() {
         val cm = app.getSystemService(android.net.ConnectivityManager::class.java) ?: return
-        cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: android.net.Network) {
-                networkEpoch.value++
-                scope.launch {
-                    // Addresses settle a moment after the network does.
-                    delay(1_500)
-                    onNetworkChanged()
+        runCatching {
+            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    networkEpoch.value++
+                    scope.launch {
+                        // Addresses settle a moment after the network does.
+                        delay(1_500)
+                        onNetworkChanged()
+                    }
                 }
-            }
 
-            override fun onLost(network: android.net.Network) {
-                scope.launch {
-                    delay(1_500)
-                    onNetworkChanged()
+                override fun onLost(network: android.net.Network) {
+                    scope.launch {
+                        delay(1_500)
+                        onNetworkChanged()
+                    }
                 }
-            }
-        })
+            })
+        }
         // Under a VPN the default network stays the VPN when Wi-Fi changes: Wi-Fi itself
         // tells when the phone comes home (or leaves).
         val wifi = android.net.NetworkRequest.Builder().addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI).build()
-        cm.registerNetworkCallback(wifi, object : android.net.ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: android.net.Network) {
-                networkEpoch.value++
-                scope.launch {
-                    delay(1_500)
-                    onNetworkChanged()
+        runCatching {
+            cm.registerNetworkCallback(wifi, object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    networkEpoch.value++
+                    scope.launch {
+                        delay(1_500)
+                        onNetworkChanged()
+                    }
                 }
-            }
-        })
+            })
+        }
     }
 
     private suspend fun connectOnce(link: PcLink, pc: PairedPc): Outcome {
@@ -1025,9 +1035,10 @@ object LinkHub {
                     try {
                         s.closed.await()
                     } finally {
+                        val err = s.error
                         val why = when {
                             !currentCoroutineContext().isActive -> "local"
-                            s.error != null -> s.error!!.let { e -> e.javaClass.simpleName + (e.message?.let { ": ${it.take(60)}" } ?: "") }
+                            err != null -> err.javaClass.simpleName + (err.message?.let { ": ${it.take(60)}" } ?: "")
                             else -> "closed ${s.closeCode}"
                         }
                         LinkStats.dropped(pc.name.ifEmpty { "PC" }, why, android.os.SystemClock.elapsedRealtime() - upAt)
@@ -1102,10 +1113,10 @@ object LinkHub {
      * one after them); away from it with Tailscale up, the tailnet first, so the phone does
      * not wait out a timeout per LAN address that cannot answer here.
      */
-    private fun candidates(pc: PairedPc): List<String> {
-        if (pc.tailnet.isEmpty() || !Tailnet.isUp(app)) return pc.hosts
-        return if (Tailnet.onLanOf(app, pc.hosts)) pc.hosts + pc.tailnet else pc.tailnet + pc.hosts
-    }
+    private fun candidates(pc: PairedPc): List<String> = runCatching {
+        if (pc.tailnet.isEmpty() || !Tailnet.isUp(app)) pc.hosts
+        else if (Tailnet.onLanOf(app, pc.hosts)) pc.hosts + pc.tailnet else pc.tailnet + pc.hosts
+    }.getOrDefault(pc.hosts)
 
     /** The link to the controlled PC goes over Tailscale right now. */
     fun viaTailnet(): Boolean = Tailnet.isTailnet((status.value as? LinkStatus.Online)?.host)
@@ -1137,20 +1148,22 @@ object LinkHub {
      * LAN, and a VPN this app turned on goes off once nothing uses it.
      */
     private fun onNetworkChanged() {
-        if (!Tailnet.isUp(app)) {
-            if (Tailnet.ours(app)) Tailnet.disconnectIfOurs(app)
-            return
-        }
-        links.value.forEach { link ->
-            val pc = link.pc.value ?: return@forEach
-            val host = (link.status.value as? LinkStatus.Online)?.host
-            if (Tailnet.isTailnet(host) && Tailnet.onLanOf(app, pc.hosts)) {
-                endSession(link)
-                if (foreground || holds.isNotEmpty()) ensureSession(link)
+        runCatching {
+            if (!Tailnet.isUp(app)) {
+                if (Tailnet.ours(app)) Tailnet.disconnectIfOurs(app)
+                return
             }
-        }
-        if (Tailnet.ours(app) && links.value.none { l -> l.pc.value?.let { pc -> !Tailnet.onLanOf(app, pc.hosts) && pc.tailnet.isNotEmpty() && l.session?.isActive == true } == true }) {
-            Tailnet.disconnectIfOurs(app)
+            links.value.forEach { link ->
+                val pc = link.pc.value ?: return@forEach
+                val host = (link.status.value as? LinkStatus.Online)?.host
+                if (Tailnet.isTailnet(host) && Tailnet.onLanOf(app, pc.hosts)) {
+                    endSession(link)
+                    if (foreground || holds.isNotEmpty()) ensureSession(link)
+                }
+            }
+            if (Tailnet.ours(app) && links.value.none { l -> l.pc.value?.let { pc -> !Tailnet.onLanOf(app, pc.hosts) && pc.tailnet.isNotEmpty() && l.session?.isActive == true } == true }) {
+                Tailnet.disconnectIfOurs(app)
+            }
         }
     }
 
@@ -1609,7 +1622,8 @@ object LinkHub {
                 // Refused before a byte goes: the PC would drop all of it.
                 if (size > FileLane.LINK_MAX) return@withLock "too_large"
                 if (!ws.send(header.toString())) return@withLock "offline"
-                val input = open() ?: return@withLock "read"
+                // A shared URI can be gone by now (the sharing app revoked it): fail, not crash.
+                val input = runCatching { open() }.getOrNull() ?: return@withLock "read"
                 var sent = 0L
                 input.use { stream ->
                     val buf = ByteArray(FILE_CHUNK)

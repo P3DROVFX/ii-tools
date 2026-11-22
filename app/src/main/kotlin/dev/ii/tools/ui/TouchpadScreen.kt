@@ -1,5 +1,6 @@
 package dev.ii.tools.ui
 
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
@@ -195,15 +196,17 @@ fun TouchpadScreen(onBack: () -> Unit) {
                         awaitEachGesture {
                             do {
                                 val event = awaitPointerEvent(PointerEventPass.Main)
+                                val changes = event.changes
                                 val w = size.width.toFloat().coerceAtLeast(1f)
                                 val h = size.height.toFloat().coerceAtLeast(1f)
                                 Touchpad.frame(
-                                    event.changes.filter { it.pressed }.map {
+                                    changes.filter { it.pressed }.map {
                                         Triple(it.id.value, it.position.x / w, it.position.y / h)
                                     },
+                                    changes.maxOfOrNull { it.uptimeMillis } ?: SystemClock.uptimeMillis(),
                                 )
-                                event.changes.forEach { it.consume() }
-                            } while (event.changes.any { it.pressed })
+                                changes.forEach { it.consume() }
+                            } while (changes.any { it.pressed })
                         }
                     },
                 contentAlignment = Alignment.Center,
