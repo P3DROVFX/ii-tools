@@ -73,6 +73,8 @@ class ScreenSocket(
     @Volatile private var lastRttMs: Int? = null
     @Volatile private var lastStats: ScreenStats? = null
     @Volatile private var audio: ScreenAudio? = null
+    private var audioGen = 0
+    private var audioLastPts = -1L
     private var reconnectJob: Job? = null
 
     // Off the codec's callback thread: releasing a MediaCodec from its own callback can hang.
@@ -99,7 +101,7 @@ class ScreenSocket(
             open = true
             // The video over UDP when the PC has it (no TCP between encoder and decoder).
             val udpOk = LinkHub.shell.value?.caps?.contains("screenUdp") == true
-            webSocket.send(JSONObject().put("t", "hello").put("token", token).put("udp", udpOk).toString())
+            webSocket.send(JSONObject().put("t", "hello").put("token", token).put("udp", udpOk).put("udpAudio", udpOk).toString())
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
@@ -174,12 +176,15 @@ class ScreenSocket(
         var pts = 0L
         for (i in 1..8) pts = (pts shl 8) or (arr[i].toLong() and 0xFF)
         // The PC's sound (screen.rs `Audio`): its own player, never queued behind video.
+        // The header's pts is its capture's number (0 from a PC before UDP sound).
         if (kind == 8) {
+            audioGen = (pts and 0xFF).toInt()
+            audioLastPts = -1L
             (audio ?: ScreenAudio().also { audio = it }).config(arr.copyOfRange(9, arr.size))
             return
         }
         if (kind == 9) {
-            audio?.packet(pts, arr.copyOfRange(9, arr.size))
+            audioPacket(pts, arr)
             return
         }
         if (kind == 0 || kind == KIND_HEVC_CONFIG) {
@@ -257,7 +262,7 @@ class ScreenSocket(
         if (key == null || key.size != 32) return
         udp?.stop()
         udp = runCatching {
-            ScreenUdp(host, m.optInt("port"), key, m.optInt("sid"), onFrame = { if (running) onPayload(it) }, onLost = ::udpFrameLost)
+            ScreenUdp(host, m.optInt("port"), key, m.optInt("sid"), onFrame = { if (running) onPayload(it) }, onLost = ::udpFrameLost, onAudio = ::onUdpAudio)
                 .also { it.start() }
         }.onFailure { Log.w(StreamMetrics.TAG, "udp: $it") }.getOrNull()
         Log.i(StreamMetrics.TAG, "udp video on ${host}:${m.optInt("port")}")
@@ -365,6 +370,22 @@ class ScreenSocket(
             Log.w(StreamMetrics.TAG, "asking the PC for a key frame")
             if (open) ws?.send("""{"t":"idr"}""")
         }
+    }
+
+    /** A sound packet over UDP: only the current capture's (an older one's can still be in the air). */
+    @Synchronized
+    private fun onUdpAudio(gen: Int, pkt: ByteArray) {
+        if (!running || gen != audioGen || pkt[0].toInt() != 9) return
+        var pts = 0L
+        for (i in 1..8) pts = (pts shl 8) or (pkt[i].toLong() and 0xFF)
+        audioPacket(pts, pkt)
+    }
+
+    /** Each datagram repeats the last packets, and both paths can carry one: each plays once, in order. */
+    private fun audioPacket(pts: Long, pkt: ByteArray) {
+        if (pts <= audioLastPts) return
+        audioLastPts = pts
+        audio?.packet(pts, pkt.copyOfRange(9, pkt.size))
     }
 
     /** The PC stopped sending its sound: let the phone's audio output go. */

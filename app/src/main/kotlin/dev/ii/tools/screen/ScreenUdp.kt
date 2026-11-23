@@ -31,11 +31,15 @@ class ScreenUdp(
     /** A whole frame: the WebSocket's video payload, `[u8 kind][u64 pts][Annex-B]`. */
     private val onFrame: (ByteArray) -> Unit,
     private val onLost: () -> Unit,
+    /** One of the PC's sound packets (`[u8 kind][u64 pts][Opus]`) and its capture's number. */
+    private val onAudio: (Int, ByteArray) -> Unit = { _, _ -> },
 ) {
     companion object {
         private const val MAGIC = 0xA7.toByte()
         private const val T_SHARD: Byte = 1
         private const val T_HELLO: Byte = 2
+        private const val T_AUDIO: Byte = 3
+        private const val AUDIO_HEADER = 11
         private const val SHARD = 1100
         private const val HEADER = 24
         private const val TAG = 16
@@ -149,6 +153,10 @@ class ScreenUdp(
                 break
             }
             val n = pkt.length
+            if (n >= AUDIO_HEADER + TAG && buf[0] == MAGIC && buf[1] == T_AUDIO) {
+                audio(cipher, buf, n)
+                continue
+            }
             if (n < HEADER + TAG || buf[0] != MAGIC || buf[1] != T_SHARD) continue
             val bb = ByteBuffer.wrap(buf, 0, n)
             val counter = bb.getLong(2)
@@ -194,6 +202,31 @@ class ScreenUdp(
                 if (asm.complete) asm.completeAtNs = System.nanoTime()
             }
             flush()
+        }
+    }
+
+    /**
+     * The PC's sound: the last few packets, oldest first, each `[u16 len][packet]`. They
+     * share the video's counter, so they count toward the loss report like shards.
+     */
+    private fun audio(cipher: Cipher, buf: ByteArray, n: Int) {
+        val counter = ByteBuffer.wrap(buf, 0, n).getLong(2)
+        val plain = try {
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, GCMParameterSpec(128, nonce(0, counter)))
+            cipher.updateAAD(buf, 0, AUDIO_HEADER)
+            cipher.doFinal(buf, AUDIO_HEADER, n - AUDIO_HEADER)
+        } catch (_: Exception) {
+            return
+        }
+        counted(counter)
+        val gen = buf[10].toInt() and 0xFF
+        var at = 0
+        while (at + 2 <= plain.size) {
+            val len = ((plain[at].toInt() and 0xFF) shl 8) or (plain[at + 1].toInt() and 0xFF)
+            at += 2
+            if (len < 9 || at + len > plain.size) return
+            onAudio(gen, plain.copyOfRange(at, at + len))
+            at += len
         }
     }
 

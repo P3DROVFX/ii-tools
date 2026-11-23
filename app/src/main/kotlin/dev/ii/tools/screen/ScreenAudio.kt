@@ -29,7 +29,7 @@ class ScreenAudio {
         const val MIN_TARGET_MS = 40
         const val MAX_TARGET_MS = 200
         const val MARGIN_MS = 35.0
-        const val SKIP_SLACK_MS = 60
+        const val SKIP_SLACK_MS = 30
         const val TRACK_BUFFER_MS = 400
         const val MAX_CONCEAL_FRAMES = 20
         const val UNDERRUN_BOOST_MS = 25.0
@@ -161,7 +161,8 @@ class ScreenAudio {
         if (stablePackets >= 100) {
             stablePackets = 0
             if (underrunBoostMs > 0.0) {
-                underrunBoostMs = (underrunBoostMs - 2.0).coerceAtLeast(0.0)
+                // Back down within a few seconds once the Wi-Fi calms: the boost is latency.
+                underrunBoostMs = (underrunBoostMs - 8.0).coerceAtLeast(0.0)
                 updateTarget()
             }
         }

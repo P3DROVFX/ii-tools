@@ -155,8 +155,13 @@ object SecondScreen {
         LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "launcher"))
     }
 
-    /** Request routing PC audio to the phone (or back) during a Wi-Fi session. */
+    /**
+     * Request routing PC audio to the phone (or back) during a Wi-Fi session. The switch
+     * moves at once; the PC's answer (on its first sound packet, or a refusal) confirms it.
+     */
     fun setAudio(on: Boolean) {
+        _audio.value = on
+        if (!on) (activeSession as? ScreenSocket)?.audioOff()
         LinkHub.sendJson(JSONObject().put("t", "screen").put("a", "audio").put("on", on))
     }
 
