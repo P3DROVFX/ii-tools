@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.5.1
+
+- **Second-screen sound over UDP:** the PC's sound rides the same encrypted UDP socket as
+  the video, each datagram carrying the two packets before it, so a slow video frame no
+  longer holds it back and short losses cost nothing. The OpusHead stays on the WebSocket
+  with a capture number, so packets from an old capture are dropped.
+- **A sound switch that sticks:** it moves at once on the phone; the PC confirms on the
+  first sound packet instead of when ffmpeg starts, waits rather than refusing a second
+  tap, applies a tap made while the session starts, and gives up after 5 s without sound.
+  ffmpeg's errors go to the shell's log.
+- **Less sound delay:** no input probing before the capture, a tighter skip margin and a
+  faster return to the short buffer after underruns.
+- **Webcam fixes from issue #5:** the PC reopens the virtual camera's writer when it ends
+  (an app opening the device) instead of ending the session, logs the writer's and the
+  decoder's errors, shows a readable message instead of *device*, and the Arch install
+  hint names the running kernel's headers.
+
 ## 1.5.0
 
 - **Faster file transfers:** a *Safe / Faster* choice in Settings and on the Send to PC
