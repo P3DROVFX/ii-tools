@@ -16,6 +16,12 @@
   (an app opening the device) instead of ending the session, logs the writer's and the
   decoder's errors, shows a readable message instead of *device*, and the Arch install
   hint names the running kernel's headers.
+- **Updates download in the app from both buttons:** the home card's Download no longer
+  opens the browser; both fetch the release APK and check its SHA-256. A notice of its own
+  (*Update downloads* channel) shows the progress, as a Live Update on Android 16, then
+  *Tap to install* or the error. The APK is named by version and reused if the installer
+  was closed, and deleted after the update installs (`MY_PACKAGE_REPLACED`), when it is
+  dismissed, or when a newer release replaces it.
 
 ## 1.5.0
 
