@@ -84,6 +84,9 @@ object AppUpdate {
 
     private const val CHANNEL = "app_updates"
     private const val NOTIF_ID = 0x7570
+    /** The download's own channel and notice: progress, then ready to install or failed. */
+    private const val DL_CHANNEL = "app_update_download"
+    private const val DL_NOTIF_ID = 0x7571
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val checkMutex = Mutex()
@@ -134,8 +137,12 @@ object AppUpdate {
             if (cached.isEmpty() && notified != null) {
                 cancelNotification(app)
             }
-            // The update this APK carried is installed (or obsolete): drop it.
-            if (cached.isEmpty()) scope.launch { File(app.cacheDir, UPDATE_DIR).deleteRecursively() }
+            // The update this APK carried is installed (or obsolete): drop it. Otherwise keep
+            // only the latest release's finished APK, so a second tap installs without
+            // downloading again; a half download or an older release's APK goes.
+            scope.launch {
+                if (cached.isEmpty()) cleanup(app) else pruneDownloads(app, cached.first())
+            }
             initialized = true
             // The link's service keeps the process alive in the background, so a check when
             // the link comes up lets the notification reach someone who has not opened the app.
@@ -161,7 +168,30 @@ object AppUpdate {
             .apply()
         _state.update { it.copy(dismissedTag = tagName) }
         cancelNotification(app)
+        if (_state.value.downloadProgress == null) scope.launch { cleanup(app) }
     }
+
+    /**
+     * Deletes every downloaded APK and the download's notice: the app was updated (see
+     * [UpdateCleanup]), the update was dismissed, or there is none left to install.
+     */
+    fun cleanup(ctx: Context) {
+        val app = ctx.applicationContext
+        File(app.cacheDir, UPDATE_DIR).deleteRecursively()
+        app.getSystemService(NotificationManager::class.java)?.cancel(DL_NOTIF_ID)
+    }
+
+    private fun pruneDownloads(app: Context, latest: ReleaseInfo) {
+        val keep = apkFile(app, latest).name
+        File(app.cacheDir, UPDATE_DIR).listFiles()?.forEach { if (it.name != keep) it.deleteRecursively() }
+    }
+
+    private fun apkFile(app: Context, release: ReleaseInfo): File =
+        File(File(app.cacheDir, UPDATE_DIR), "ii-tools-${release.version}.apk")
+
+    /** A finished download of [release] that still matches GitHub's size. */
+    private fun downloaded(app: Context, release: ReleaseInfo): File? =
+        apkFile(app, release).takeIf { it.isFile && (release.apkSize <= 0L || it.length() == release.apkSize) }
 
     fun ensureChannel(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
@@ -309,31 +339,114 @@ object AppUpdate {
             }
             return
         }
+        // Already downloaded and checked (the installer was closed): install it again.
+        downloaded(app, release)?.let { apk ->
+            notifyDownload(app, release, ready = installIntent(app, apk))
+            openInstaller(app, apk)
+            return
+        }
         _state.update { it.copy(downloadProgress = 0f, error = null) }
+        notifyDownload(app, release, progress = 0)
         scope.launch {
             val dir = File(app.cacheDir, UPDATE_DIR).apply { deleteRecursively(); mkdirs() }
-            val part = File(dir, "update.apk.part")
-            val apk = File(dir, "update.apk")
-            val err = download(url, release, part)
+            val apk = apkFile(app, release)
+            val part = File(dir, "${apk.name}.part")
+            val err = download(app, url, release, part)
             if (err != null || !part.renameTo(apk)) {
                 part.delete()
-                _state.update { it.copy(downloadProgress = null, error = err ?: UpdateError.NETWORK) }
+                val e = err ?: UpdateError.NETWORK
+                _state.update { it.copy(downloadProgress = null, error = e) }
+                notifyDownload(app, release, failed = e)
                 return@launch
             }
             _state.update { it.copy(downloadProgress = null) }
-            val uri = FileProvider.getUriForFile(app, "${app.packageName}.files", apk)
-            runCatching {
-                app.startActivity(
-                    Intent(Intent.ACTION_VIEW)
-                        .setDataAndType(uri, APK_MIME)
-                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            }.onFailure { Log.w(TAG, "Couldn't open the installer", it) }
+            // The notice installs too: the installer can't open over another app, and
+            // closing it leaves the APK for a second try.
+            notifyDownload(app, release, ready = installIntent(app, apk))
+            openInstaller(app, apk)
         }
     }
 
+    private fun installIntent(app: Context, apk: File): Intent {
+        val uri = FileProvider.getUriForFile(app, "${app.packageName}.files", apk)
+        return Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, APK_MIME)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    private fun openInstaller(app: Context, apk: File) {
+        runCatching { app.startActivity(installIntent(app, apk)) }
+            .onFailure { Log.w(TAG, "Couldn't open the installer", it) }
+    }
+
+    private fun ensureDownloadChannel(ctx: Context) {
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        nm.createNotificationChannel(
+            NotificationChannel(DL_CHANNEL, ctx.getString(R.string.update_dl_channel), NotificationManager.IMPORTANCE_LOW).apply {
+                description = ctx.getString(R.string.update_dl_channel_desc)
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+            },
+        )
+    }
+
+    /**
+     * The download's notice: [progress] (0–100) while it runs, as an Android 16 Live Update;
+     * then [ready] (tap to install) or [failed] (tap to open the update page).
+     */
+    private fun notifyDownload(app: Context, release: ReleaseInfo, progress: Int? = null, ready: Intent? = null, failed: UpdateError? = null) {
+        if (app.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        ensureDownloadChannel(app)
+        val version = release.version.toString()
+        val openPage = PendingIntent.getActivity(
+            app, 1,
+            Intent(app, UpdateActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val b = Notification.Builder(app, DL_CHANNEL)
+            .setSmallIcon(R.drawable.rounded_download)
+            .setOnlyAlertOnce(true)
+            .setCategory(Notification.CATEGORY_PROGRESS)
+        when {
+            ready != null -> b
+                .setContentTitle(app.getString(R.string.update_dl_ready_title, version))
+                .setContentText(app.getString(R.string.update_dl_ready_body))
+                .setContentIntent(PendingIntent.getActivity(app, 2, ready, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
+                .setAutoCancel(true)
+            failed != null -> b
+                .setContentTitle(app.getString(R.string.update_dl_failed_title, version))
+                .setContentText(updateErrorMessage(app, failed))
+                .setContentIntent(openPage)
+                .setAutoCancel(true)
+            else -> {
+                val p = (progress ?: 0).coerceIn(0, 100)
+                b.setContentTitle(app.getString(R.string.update_dl_title, version))
+                    .setContentText(app.getString(R.string.update_downloading, p))
+                    .setContentIntent(openPage)
+                    .setOngoing(true)
+                if (Build.VERSION.SDK_INT >= 36) {
+                    b.setStyle(Notification.ProgressStyle().setStyledByProgress(true).setProgress(p))
+                        .setShortCriticalText("$p%")
+                        .setRequestPromotedOngoing(true)
+                } else {
+                    b.setProgress(100, p, false)
+                }
+            }
+        }
+        runCatching { app.getSystemService(NotificationManager::class.java)?.notify(DL_NOTIF_ID, b.build()) }
+    }
+
+    private fun updateErrorMessage(app: Context, e: UpdateError): String = when (e) {
+        UpdateError.RATE_LIMITED -> app.getString(R.string.update_err_rate_limit)
+        UpdateError.HTTP -> app.getString(R.string.update_err_http, _state.value.lastHttpCode)
+        UpdateError.PARSE -> app.getString(R.string.update_err_parse)
+        UpdateError.CHECKSUM -> app.getString(R.string.update_err_checksum)
+        UpdateError.NETWORK -> app.getString(R.string.update_err_network)
+    }
+
     /** Streams [url] into [out]; returns null on success or the reason it failed. */
-    private fun download(url: String, release: ReleaseInfo, out: File): UpdateError? {
+    private fun download(app: Context, url: String, release: ReleaseInfo, out: File): UpdateError? {
         val req = Request.Builder()
             .url(url)
             .header("User-Agent", "ii-tools/${_state.value.currentVersion}")
@@ -363,6 +476,7 @@ object AppUpdate {
                                 if (pct != lastPct) {
                                     lastPct = pct
                                     _state.update { it.copy(downloadProgress = (done.toFloat() / total).coerceIn(0f, 1f)) }
+                                    notifyDownload(app, release, progress = pct)
                                 }
                             }
                         }

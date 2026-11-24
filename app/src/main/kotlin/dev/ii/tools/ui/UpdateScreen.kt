@@ -327,6 +327,7 @@ private fun UpdateHeroCard(
 @Composable
 internal fun HomeUpdateCard(
     release: ReleaseInfo,
+    downloadProgress: Float?,
     onOpenUpdate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -397,9 +398,16 @@ internal fun HomeUpdateCard(
                     modifier = Modifier.weight(1f),
                 )
                 if (release.apkUrl != null) {
+                    // Downloads in the app, as the update page does: no browser, the same
+                    // checksum check and the download's notice.
                     DashedPill(
-                        text = stringResource(R.string.update_download_short),
-                        onClick = { openExternalUrl(ctx, release.apkUrl) },
+                        text = if (downloadProgress != null) {
+                            stringResource(R.string.update_downloading, (downloadProgress * 100).toInt())
+                        } else {
+                            stringResource(R.string.update_download_short)
+                        },
+                        // A second tap while it runs does nothing (install() ignores it).
+                        onClick = { AppUpdate.install(ctx, release) },
                         icon = R.drawable.rounded_download,
                         outline = cs.onTertiaryContainer,
                         content = cs.onTertiaryContainer,

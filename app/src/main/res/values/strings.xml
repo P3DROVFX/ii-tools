@@ -858,6 +858,12 @@
     <string name="update_channel_desc">Silent notice when a new version of ii tools is released on GitHub.</string>
     <string name="update_notif_title">ii tools %1$s is available</string>
     <string name="update_notif_body">Tap to see what\'s new and download the update.</string>
+    <string name="update_dl_channel">Update downloads</string>
+    <string name="update_dl_channel_desc">Progress of an ii tools update being downloaded, and when it is ready to install.</string>
+    <string name="update_dl_title">Downloading ii tools %1$s</string>
+    <string name="update_dl_ready_title">ii tools %1$s is ready</string>
+    <string name="update_dl_ready_body">Tap to install the update.</string>
+    <string name="update_dl_failed_title">Couldn\'t download ii tools %1$s</string>
     <string name="home_card_live">Live activity</string>
     <string name="home_edit_title">Edit home screen</string>
     <string name="home_edit_action">Edit</string>

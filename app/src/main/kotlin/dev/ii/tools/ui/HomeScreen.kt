@@ -262,6 +262,7 @@ fun HomeScreen(
                     item(key = "update_${latestUpdate.tagName}") {
                         HomeUpdateCard(
                             release = latestUpdate,
+                            downloadProgress = update.downloadProgress,
                             onOpenUpdate = { onOpen(Dest.UPDATE) },
                             onDismiss = { AppUpdate.dismiss(ctx, latestUpdate.tagName) },
                         )

@@ -242,6 +242,15 @@
             android:name=".UpdateActivity"
             android:exported="false" />
 
+        <!-- After an update: deletes the APK that carried it and its notice. -->
+        <receiver
+            android:name=".update.UpdateCleanup"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- The webcam, held sideways like the camera it stands for. singleTop: the
              "start" notification reaches an open screen instead of stacking another. -->
         <activity
