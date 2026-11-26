@@ -1096,4 +1096,21 @@
     <string name="home_card_voice_desc">Controles de chamada do Discord, mic do PC e sensores</string>
     <string name="voice_card_idle">Sem chamada ativa</string>
     <string name="voice_card_tap">Toque para abrir</string>
+    <!-- Diagnostics & logs -->
+    <string name="diag_title">Diagnóstico e logs</string>
+    <string name="diag_send_log">Enviar log de diagnóstico</string>
+    <string name="diag_no_crashes_summary">Nenhum crash registrado · dados do aparelho, link e eventos recentes</string>
+    <plurals name="diag_crashes_summary">
+        <item quantity="one">%1$d crash registrado · %2$d KB</item>
+        <item quantity="other">%1$d crashes registrados · %2$d KB</item>
+    </plurals>
+    <string name="diag_share_title">Enviar log de diagnóstico</string>
+    <string name="diag_share_short">Enviar</string>
+    <string name="diag_copy_short">Copiar</string>
+    <string name="diag_copied">Log copiado para a área de transferência</string>
+    <string name="diag_share_failed">Não foi possível exportar o log</string>
+    <string name="diag_clear">Limpar logs</string>
+    <string name="diag_clear_body">Apagar crashes salvos e eventos recentes</string>
+    <string name="diag_cleared">Logs apagados</string>
+    <string name="diag_sheet_body">Inclui dados do aparelho, crashes e eventos recentes. Nunca inclui senhas, tokens ou textos de notificações.</string>
 </resources>

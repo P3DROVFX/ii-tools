@@ -9,6 +9,7 @@ import dev.ii.tools.link.LinkHub
 class IiToolsApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        dev.ii.tools.diag.AppLog.init(this)
         LinkHub.init(this)
         dev.ii.tools.audio.VolumeKeys.init(this)
         dev.ii.tools.media.PcLyrics.init(this)

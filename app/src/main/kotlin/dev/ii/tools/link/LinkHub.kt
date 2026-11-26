@@ -1782,7 +1782,13 @@ object LinkHub {
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val m = runCatching { JSONObject(text) }.getOrNull() ?: return
-                if (!first.isCompleted) first.complete(m) else handle(link, m)
+                if (!first.isCompleted) {
+                    first.complete(m)
+                } else {
+                    runCatching { handle(link, m) }.onFailure {
+                        dev.ii.tools.diag.AppLog.e("LinkHub", "handle ${m.optString("t")} failed", it)
+                    }
+                }
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {

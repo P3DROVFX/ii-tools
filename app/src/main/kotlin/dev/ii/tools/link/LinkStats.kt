@@ -41,6 +41,7 @@ object LinkStats {
         if (!::app.isInitialized) return
         connects++
         android.util.Log.i("IiLink", "connected to $pc at $host (#$connects)")
+        dev.ii.tools.diag.AppLog.i("IiLink", "connected to $pc (#$connects)")
         save()
     }
 
@@ -50,7 +51,7 @@ object LinkStats {
         drops[reason] = (drops[reason] ?: 0) + 1
         recent += JSONObject().put("at", System.currentTimeMillis()).put("pc", pc).put("reason", reason).put("upMs", upMs)
         while (recent.size > KEEP) recent.removeAt(0)
-        android.util.Log.i("IiLink", "link to $pc down after ${upMs / 1000} s: $reason")
+        dev.ii.tools.diag.AppLog.w("IiLink", "link to $pc down after ${upMs / 1000} s: $reason")
         save()
     }
 

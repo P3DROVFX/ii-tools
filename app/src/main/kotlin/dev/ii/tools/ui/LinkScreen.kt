@@ -8,23 +8,31 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,6 +63,8 @@ import dev.ii.tools.calls.CallWatcher
 import dev.ii.tools.clip.ClipHistory
 import dev.ii.tools.clip.ClipSync
 import dev.ii.tools.clip.ClipWatchService
+import dev.ii.tools.diag.AppLog
+import dev.ii.tools.diag.LogSummary
 import dev.ii.tools.files.FileServer
 import dev.ii.tools.focus.FocusPrefs
 import dev.ii.tools.gallery.Gallery
@@ -84,7 +96,9 @@ import dev.ii.tools.usage.PhoneUsage
 import dev.ii.tools.ui.theme.Expressive
 import dev.ii.tools.update.AppUpdate
 import dev.ii.tools.voice.VoicePrefs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import dev.ii.tools.calendar.PhoneCalendar
@@ -245,6 +259,8 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
 
     var confirmForget by remember { mutableStateOf(false) }
     var switching by remember { mutableStateOf(false) }
+    var showLogs by remember { mutableStateOf(false) }
+    val logSummary by AppLog.summary.collectAsStateWithLifecycle()
     val machines by LinkHub.machines.collectAsStateWithLifecycle()
     val missing = listOf(
         s.listener, s.post, s.phone, s.contacts, s.bluetooth, calendarOk, calWrite, s.photos, s.gallery, s.files, s.usageAccess, !s.restricted, s.copyService, s.battery, s.overlay, network.granted, cameraPerm.granted,
@@ -574,10 +590,53 @@ fun SettingsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
                 )
             }
         }
+
+        item { GroupHeader(stringResource(R.string.diag_title)) }
+        item {
+            val sizeKb = ((logSummary.sizeBytes + 1023L) / 1024L).coerceAtLeast(1L)
+            val summaryText = if (logSummary.crashCount > 0) {
+                pluralStringResource(R.plurals.diag_crashes_summary, logSummary.crashCount, logSummary.crashCount, sizeKb)
+            } else {
+                stringResource(R.string.diag_no_crashes_summary)
+            }
+            CardGroup {
+                ToolRow(
+                    title = stringResource(R.string.diag_send_log),
+                    summary = summaryText,
+                    icon = R.drawable.rounded_bug_report,
+                    tint = if (logSummary.crashCount > 0) Tint.ERROR else Tint.SECONDARY,
+                    onClick = { showLogs = true },
+                    trailing = {
+                        FilledTonalButton(
+                            onClick = {
+                                if (!AppLog.shareReport(ctx)) {
+                                    Toast.makeText(ctx, R.string.diag_share_failed, Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shapes = ButtonDefaults.shapes(),
+                        ) {
+                            Text(stringResource(R.string.diag_share_short))
+                        }
+                    },
+                )
+                if (logSummary.sizeBytes > 0L) {
+                    ToolRow(
+                        title = stringResource(R.string.diag_clear),
+                        summary = stringResource(R.string.diag_clear_body),
+                        icon = R.drawable.rounded_delete,
+                        onClick = {
+                            AppLog.clear(ctx)
+                            Toast.makeText(ctx, R.string.diag_cleared, Toast.LENGTH_SHORT).show()
+                        },
+                    )
+                }
+            }
+        }
         item { Hint(stringResource(R.string.settings_license), Modifier.fillMaxWidth().padding(top = 8.dp)) }
     }
 
     if (confirmForget) ForgetSheet(onDismiss = { confirmForget = false })
+    if (showLogs) DiagnosticLogSheet(summary = logSummary, onDismiss = { showLogs = false })
     if (switching) {
         PcSwitcherSheet(
             onDismiss = { switching = false },
@@ -806,6 +865,93 @@ private fun HomePreview(cards: Int) {
                     .clip(RoundedCornerShape(8.dp))
                     .background(cs.secondary.copy(alpha = 0.35f)),
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DiagnosticLogSheet(summary: LogSummary, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val cs = MaterialTheme.colorScheme
+    var report by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(summary) {
+        report = withContext(Dispatchers.IO) { AppLog.buildReport(ctx) }
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Layer.pane) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                IconBadge(R.drawable.rounded_bug_report, if (summary.crashCount > 0) Tint.ERROR else Tint.PRIMARY)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.diag_title), style = Expressive.wide(22.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(stringResource(R.string.diag_sheet_body), style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                }
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 160.dp, max = 340.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Layer.field)
+                    .padding(14.dp),
+            ) {
+                val text = report
+                if (text == null) {
+                    LoadingIndicator(Modifier.size(32.dp).align(Alignment.Center))
+                } else {
+                    Text(
+                        text = text,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                        color = cs.onSurface,
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                FilledPill(
+                    text = stringResource(R.string.diag_share_short),
+                    onClick = {
+                        if (!AppLog.shareReport(ctx)) {
+                            Toast.makeText(ctx, R.string.diag_share_failed, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    icon = R.drawable.rounded_share,
+                    modifier = Modifier.weight(1f),
+                )
+                TonalPill(
+                    text = stringResource(R.string.diag_copy_short),
+                    onClick = {
+                        val text = report ?: return@TonalPill
+                        val cm = ctx.getSystemService(ClipboardManager::class.java)
+                        cm.setPrimaryClip(ClipData.newPlainText("ii tools diagnostic log", text))
+                        Toast.makeText(ctx, R.string.diag_copied, Toast.LENGTH_SHORT).show()
+                    },
+                    icon = R.drawable.rounded_content_copy,
+                    height = 52.dp,
+                )
+                if (summary.sizeBytes > 0L) {
+                    IconButton(
+                        onClick = {
+                            AppLog.clear(ctx)
+                            Toast.makeText(ctx, R.string.diag_cleared, Toast.LENGTH_SHORT).show()
+                        },
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = Layer.onPane, contentColor = cs.onSurface),
+                        modifier = Modifier.size(52.dp),
+                    ) {
+                        Icon(painterResource(R.drawable.rounded_delete), stringResource(R.string.diag_clear))
+                    }
+                }
+            }
         }
     }
 }

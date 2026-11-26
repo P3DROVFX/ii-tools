@@ -3,6 +3,7 @@
      and the PC's wallpaper for the phone's wallpaper app. -->
 <paths>
     <cache-path name="clip" path="clip/" />
+    <cache-path name="diag" path="diag/" />
     <cache-path name="updates" path="updates/" />
     <files-path name="wallsync" path="wallsync/" />
 </paths>

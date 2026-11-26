@@ -1089,4 +1089,21 @@
     <string name="home_card_voice_desc">Discord call controls, PC mic and active sensors</string>
     <string name="voice_card_idle">No active call</string>
     <string name="voice_card_tap">Tap to open</string>
+    <!-- Diagnostics & logs -->
+    <string name="diag_title">Diagnostics &amp; logs</string>
+    <string name="diag_send_log">Send diagnostic log</string>
+    <string name="diag_no_crashes_summary">No crashes recorded · device info, link stats and recent events</string>
+    <plurals name="diag_crashes_summary">
+        <item quantity="one">%1$d crash recorded · %2$d KB</item>
+        <item quantity="other">%1$d crashes recorded · %2$d KB</item>
+    </plurals>
+    <string name="diag_share_title">Share diagnostic log</string>
+    <string name="diag_share_short">Share</string>
+    <string name="diag_copy_short">Copy</string>
+    <string name="diag_copied">Log copied to clipboard</string>
+    <string name="diag_share_failed">Could not export the log</string>
+    <string name="diag_clear">Clear logs</string>
+    <string name="diag_clear_body">Remove saved crashes and recent events</string>
+    <string name="diag_cleared">Logs cleared</string>
+    <string name="diag_sheet_body">Includes device info, crashes, and recent events. Never includes passwords, tokens, or notification text.</string>
 </resources>

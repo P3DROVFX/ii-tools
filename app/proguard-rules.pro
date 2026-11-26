@@ -16,3 +16,6 @@
 
 # Shizuku starts the stats user service by class name in a shell-uid process.
 -keep class dev.ii.tools.shell.ShellStatsService { <init>(...); }
+
+# Keep file names and line numbers so in-app crash reports from release builds stay readable.
+-keepattributes SourceFile,LineNumberTable

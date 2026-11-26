@@ -9,7 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
+import androidx.annotation.RequiresApi
 import dev.ii.tools.R
+import dev.ii.tools.diag.AppLog
 import dev.ii.tools.focus.FocusHub
 import dev.ii.tools.link.LinkHub
 import kotlinx.coroutines.CoroutineScope
@@ -130,9 +132,13 @@ object PcLive {
         if (items != null) for (i in 0 until items.length()) items.optJSONObject(i)?.let { now[it.optString("id")] = it }
         for ((id, item) in now) {
             if (shown[id]?.toString() == item.toString()) continue
-            nm.notify(TAG, id.hashCode(), build(ctx, item))
+            runCatching { nm.notify(TAG, id.hashCode(), build(ctx, item)) }
+                .onFailure { AppLog.e("PcLive", "notify failed for $id (${item.optString("kind")})", it) }
         }
-        (shown.keys - now.keys).forEach { nm.cancel(TAG, it.hashCode()) }
+        (shown.keys - now.keys).forEach { id ->
+            runCatching { nm.cancel(TAG, id.hashCode()) }
+                .onFailure { AppLog.e("PcLive", "cancel failed for $id", it) }
+        }
         shown.clear()
         shown.putAll(now)
         publish()
@@ -198,16 +204,13 @@ object PcLive {
         if (kind == "progress") {
             val p = item.optInt("progress", -1)
             if (Build.VERSION.SDK_INT >= 36) {
-                b.setStyle(Notification.ProgressStyle().setStyledByProgress(true).apply {
-                    if (p >= 0) setProgress(p) else setProgressIndeterminate(true)
-                })
-                if (p >= 0) b.setShortCriticalText("$p%")
+                Api36.applyProgress(b, p)
             } else {
                 b.setProgress(100, p.coerceAtLeast(0), p < 0)
             }
         }
         // Android 16 Live Updates: on the lock screen and as a status bar chip.
-        if (Build.VERSION.SDK_INT >= 36) b.setRequestPromotedOngoing(true)
+        if (Build.VERSION.SDK_INT >= 36) Api36.promoteOngoing(b)
         val actions = item.optJSONArray("actions")
         if (actions != null) for (i in 0 until actions.length()) {
             val a = actions.optJSONObject(i) ?: continue
@@ -218,6 +221,20 @@ object PcLive {
             b.addAction(Notification.Action.Builder(Icon.createWithResource(ctx, icon), a.optString("label"), pi).build())
         }
         return b.build()
+    }
+
+    @RequiresApi(36)
+    private object Api36 {
+        fun applyProgress(b: Notification.Builder, progress: Int) {
+            b.setStyle(Notification.ProgressStyle().setStyledByProgress(true).apply {
+                if (progress >= 0) setProgress(progress) else setProgressIndeterminate(true)
+            })
+            if (progress >= 0) b.setShortCriticalText("$progress%")
+        }
+
+        fun promoteOngoing(b: Notification.Builder) {
+            b.setRequestPromotedOngoing(true)
+        }
     }
 }
 
