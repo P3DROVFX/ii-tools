@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.5.2
+
+- **Lock state on Home & remote unlock:** when the PC's lock screen is active, the home hides
+  all other cards and shortcuts, keeping only the PC hero, a new M3E *Unlock shell* password
+  card (submits on Enter or button, returns wrong-password errors from PAM over the encrypted
+  link), and a pinned *Touchpad* card. On the shell, `cmd unlock` verifies via the active
+  `LockScreen`'s `PamContext` and other remote/deck/power/share/clip commands are refused with
+  `locked` while locked.
+- **In-app diagnostics & crash logs:** installs an uncaught exception handler and rotating
+  event log (`AppLog`), includes `ApplicationExitInfo` (native crashes/ANRs), `LinkStats`,
+  device/ROM info, and the app's own PID logcat in an exportable `.txt` report from
+  *Settings → Diagnostics & logs* (preview, copy, share, clear; never records passwords,
+  tokens, or notification text). Keeps `SourceFile,LineNumberTable` in release builds for
+  readable traces.
+- **Safer PC live notifications (issue #6):** guards `PcLive` notification calls and
+  `LinkHub.onMessage` dispatch against crashes and isolates Android 16's `ProgressStyle` /
+  promoted-ongoing APIs into a `@RequiresApi(36)` helper.
+
 ## 1.5.1
 
 - **Second-screen sound over UDP:** the PC's sound rides the same encrypted UDP socket as
