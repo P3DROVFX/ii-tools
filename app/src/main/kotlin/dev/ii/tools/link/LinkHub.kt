@@ -200,6 +200,8 @@ object LinkHub {
     private const val ALWAYS = "always"
     private const val QUIET_MS = 300_000L
     private const val REPLY_TIMEOUT_MS = 5_000L
+    /** PAM fail-delay can take a few seconds before rejecting a wrong password. */
+    private const val UNLOCK_TIMEOUT_MS = 12_000L
     private const val FILE_CHUNK = 256 * 1024
     /** OkHttp closes a socket whose queue passes 16 MiB; stay well under it. */
     private const val FILE_QUEUE = 2L * 1024 * 1024
@@ -1459,6 +1461,9 @@ object LinkHub {
     /** Asks the controlled PC's shell to run [actionId]: null once it confirms, else why not ("locked"…). */
     suspend fun run(actionId: String, arg: Any? = null): String? = run(sel, actionId, arg)
 
+    /** Verifies [password] against the controlled PC's lock screen: null on unlock, else the error code. */
+    suspend fun unlock(password: String): String? = run(sel, "unlock", password, UNLOCK_TIMEOUT_MS)
+
     /**
      * Runs a `voice` command with immediate optimistic state on the controlled PC,
      * rolling back if the shell refuses.
@@ -1518,14 +1523,14 @@ object LinkHub {
         send("voice", JSONObject().put("a", "userVolume").put("id", userId).put("vol", clamped))
     }
 
-    private suspend fun run(link: PcLink?, actionId: String, arg: Any?): String? {
+    private suspend fun run(link: PcLink?, actionId: String, arg: Any?, timeoutMs: Long = REPLY_TIMEOUT_MS): String? {
         val ws = link?.socket ?: return "offline"
         val id = nextId.getAndIncrement()
         val reply = CompletableDeferred<String?>()
         link.pending[id] = reply
         ws.send(command(id, actionId, arg))
         // Wrapped: a null reply means "done", which a bare withTimeoutOrNull would confuse with a timeout.
-        val outcome = withTimeoutOrNull(REPLY_TIMEOUT_MS) { Reply(reply.await()) }
+        val outcome = withTimeoutOrNull(timeoutMs) { Reply(reply.await()) }
         link.pending.remove(id)
         return if (outcome == null) "timeout" else outcome.code
     }

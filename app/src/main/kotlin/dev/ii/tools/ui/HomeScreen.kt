@@ -5,6 +5,7 @@ package dev.ii.tools.ui
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -37,7 +38,11 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -52,6 +57,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
@@ -76,6 +83,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -91,6 +99,10 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -143,6 +155,7 @@ fun HomeScreen(
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val pc by LinkHub.pc.collectAsStateWithLifecycle()
     val shell by LinkHub.shell.collectAsStateWithLifecycle()
+    val active by LinkHub.active.collectAsStateWithLifecycle()
     val update by AppUpdate.state.collectAsStateWithLifecycle()
     val layout by HomeLayoutStore.layout(ctx).collectAsStateWithLifecycle()
     val voiceEnabled by VoicePrefs.enabled(ctx).collectAsStateWithLifecycle()
@@ -153,6 +166,7 @@ fun HomeScreen(
     val currentPc = pc
     val currentShell = shell
     val online = currentStatus is LinkStatus.Online && currentShell != null
+    val locked = online && "lock" in active
 
     var editing by rememberSaveable { mutableStateOf(startEditing) }
     val exitEdit = {
@@ -161,7 +175,7 @@ fun HomeScreen(
     BackHandler(editing) { exitEdit() }
 
     // The PC samples its load only while a screen shows it.
-    val showsPerf = online && currentShell?.caps?.contains("perf") == true && HomeCards.PERF in layout.visible
+    val showsPerf = online && !locked && currentShell?.caps?.contains("perf") == true && HomeCards.PERF in layout.visible
     LifecycleResumeEffect(showsPerf) {
         if (showsPerf) LinkHub.subscribePerf(true)
         onPauseOrDispose { if (showsPerf) LinkHub.subscribePerf(false) }
@@ -255,10 +269,10 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item(key = "bar") {
-                    HomeBar(pc = currentPc, scanner = scanner, onOpen = onOpen)
+                    HomeBar(pc = currentPc, locked = locked, scanner = scanner, onOpen = onOpen)
                 }
                 val latestUpdate = update.latest
-                if (update.visibleOnHome && latestUpdate != null) {
+                if (update.visibleOnHome && latestUpdate != null && !locked) {
                     item(key = "update_${latestUpdate.tagName}") {
                         HomeUpdateCard(
                             release = latestUpdate,
@@ -270,6 +284,7 @@ fun HomeScreen(
                 }
                 when {
                     currentPc == null -> item(key = "pair") { PairContent(currentStatus, scanner, network) }
+                    currentStatus is LinkStatus.Online && currentShell != null && locked -> lockedDashboard(currentPc, currentShell, onOpen)
                     currentStatus is LinkStatus.Online && currentShell != null -> dashboard(layout.visible, currentPc, currentShell, clipHistory, voiceEnabled, onOpen)
                     else -> away(currentPc, currentStatus, onOpen)
                 }
@@ -279,7 +294,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeBar(pc: PairedPc?, scanner: PairScanner, onOpen: (Dest) -> Unit) {
+private fun HomeBar(pc: PairedPc?, locked: Boolean, scanner: PairScanner, onOpen: (Dest) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val machines by LinkHub.machines.collectAsStateWithLifecycle()
@@ -295,7 +310,7 @@ private fun HomeBar(pc: PairedPc?, scanner: PairScanner, onOpen: (Dest) -> Unit)
                 modifier = Modifier.weight(1f),
             )
         }
-        if (pc != null) {
+        if (pc != null && !locked) {
             BarButton(R.drawable.rounded_content_paste_go, stringResource(R.string.clip_send)) {
                 scope.launch {
                     val msg = when (ClipSync.sendCurrent(ctx)) {
@@ -377,6 +392,204 @@ private fun BarButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit
     ) { Icon(painterResource(icon), label, Modifier.size(22.dp)) }
 }
 
+// ── Locked ────────────────────────────────────────────────────────────────
+
+/**
+ * When the PC's lock screen is up, every other toggle and card gives way to the hero,
+ * the password unlock card, and a pinned touchpad.
+ */
+private fun LazyListScope.lockedDashboard(
+    pc: PairedPc,
+    shell: ShellInfo,
+    onOpen: (Dest) -> Unit,
+) {
+    item(key = HomeCards.HERO) { PcHero(pc, shell, onOpen, lockedMode = true) }
+    item(key = "unlockShell") { UnlockShellCard(supported = "unlock" in shell.caps) }
+    item(key = HomeCards.TOUCHPAD) { TouchpadCard("touchpad" in shell.caps, onOpen) }
+}
+
+/** Password prompt to unlock the PC's lock screen directly over ii link. */
+@Composable
+private fun UnlockShellCard(supported: Boolean) {
+    val cs = MaterialTheme.colorScheme
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    var password by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+    var unlocking by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    // Never keep the typed password in memory once the lock screen clears.
+    DisposableEffect(Unit) {
+        onDispose { password = "" }
+    }
+
+    val submit: () -> Unit = submit@{
+        val pw = password
+        if (!supported || unlocking || pw.isEmpty()) return@submit
+        haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+        unlocking = true
+        error = null
+        scope.launch {
+            val why = LinkHub.unlock(pw)
+            unlocking = false
+            if (why == null) {
+                password = ""
+                haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+            } else {
+                if (why == "wrong_password") password = ""
+                error = why
+                haptics.performHapticFeedback(HapticFeedbackType.Reject)
+            }
+        }
+    }
+
+    val hasError = error != null
+    ExpressiveCard(Layer.pane, cs.onSurface) {
+        Ornament(
+            shape = if (hasError) MaterialShapes.SoftBurst else MaterialShapes.Cookie9Sided,
+            size = 240.dp,
+            color = if (hasError) cs.error else cs.primary,
+            alignment = Alignment.TopEnd,
+            x = 96.dp,
+            y = (-84).dp,
+            alpha = 0.08f,
+        )
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                StateShape(
+                    active = unlocking || password.isNotEmpty() || hasError,
+                    size = 52.dp,
+                    color = if (hasError) cs.errorContainer else cs.primaryContainer,
+                    on = if (hasError) MaterialShapes.SoftBurst else MaterialShapes.Cookie9Sided,
+                ) {
+                    when {
+                        unlocking -> LoadingIndicator(Modifier.size(28.dp), color = cs.onPrimaryContainer)
+                        hasError -> Icon(painterResource(R.drawable.rounded_lock_fill1), null, tint = cs.onErrorContainer, modifier = Modifier.size(24.dp))
+                        else -> Icon(painterResource(R.drawable.rounded_lock_open_right), null, tint = cs.onPrimaryContainer, modifier = Modifier.size(24.dp))
+                    }
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Caption(
+                        stringResource(R.string.home_locked),
+                        color = if (hasError) cs.error else cs.primary,
+                    )
+                    Text(
+                        stringResource(R.string.home_unlock_title),
+                        style = Expressive.wide(22.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            if (!supported) {
+                Text(
+                    stringResource(R.string.home_unlock_unsupported),
+                    style = Expressive.live(14.sp),
+                    color = cs.onSurfaceVariant,
+                )
+            } else {
+                TextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        if (error != null) error = null
+                    },
+                    enabled = !unlocking,
+                    singleLine = true,
+                    isError = hasError,
+                    placeholder = { Text(stringResource(R.string.home_unlock_placeholder)) },
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                        autoCorrectEnabled = false,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                                showPassword = !showPassword
+                            },
+                            enabled = !unlocking,
+                        ) {
+                            Icon(
+                                painterResource(if (showPassword) R.drawable.rounded_visibility_off else R.drawable.rounded_visibility),
+                                stringResource(if (showPassword) R.string.home_unlock_hide_password else R.string.home_unlock_show_password),
+                            )
+                        }
+                    },
+                    shape = RoundedCornerShape(24.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Layer.field,
+                        unfocusedContainerColor = Layer.field,
+                        disabledContainerColor = Layer.field.copy(alpha = 0.6f),
+                        errorContainerColor = cs.errorContainer.copy(alpha = 0.45f),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        errorIndicatorColor = Color.Transparent,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                AnimatedVisibility(visible = hasError) {
+                    val message = when (error) {
+                        "wrong_password" -> stringResource(R.string.home_unlock_err_wrong)
+                        "busy" -> stringResource(R.string.home_unlock_err_busy)
+                        "disabled" -> stringResource(R.string.home_unlock_err_disabled)
+                        "unavailable" -> stringResource(R.string.home_unlock_err_unavailable)
+                        else -> stringResource(R.string.home_unlock_err_failed)
+                    }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(cs.errorContainer)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.rounded_lock_fill1),
+                            null,
+                            tint = cs.onErrorContainer,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            message,
+                            style = Expressive.title(13.sp),
+                            color = cs.onErrorContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = submit,
+                    enabled = !unlocking && password.isNotEmpty(),
+                    shapes = ButtonDefaults.shapes(),
+                    colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
+                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                ) {
+                    if (unlocking) {
+                        LoadingIndicator(Modifier.size(22.dp), color = cs.onPrimary)
+                        Spacer(Modifier.width(10.dp))
+                        Text(stringResource(R.string.home_unlock_checking), style = Expressive.title(15.sp), maxLines = 1)
+                    } else {
+                        Icon(painterResource(R.drawable.rounded_lock_open_right), null, Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.home_unlock_action), style = Expressive.title(15.sp), maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ── Connected ─────────────────────────────────────────────────────────────
 
 private fun LazyListScope.dashboard(
@@ -429,7 +642,7 @@ private fun LazyListScope.dashboard(
 
 /** The PC, big: where the shell's wallpaper will go, its name and the lock. */
 @Composable
-private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
+private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit, lockedMode: Boolean = false) {
     val cs = MaterialTheme.colorScheme
     val status by LinkHub.status.collectAsStateWithLifecycle()
     val active by LinkHub.active.collectAsStateWithLifecycle()
@@ -437,10 +650,14 @@ private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
     val modes by LinkHub.modes.collectAsStateWithLifecycle()
     val runner = rememberActionRunner()
     val lock = shell.actions.firstOrNull { it.id == "lock" }
-    val subtitle = listOfNotNull(
-        workspaces?.active?.takeIf { it > 0 }?.let { stringResource(R.string.home_workspace, it) },
-        modes?.let { m -> m.list.firstOrNull { it.id == m.active }?.name },
-    ).joinToString(" · ")
+    val subtitle = if (lockedMode) {
+        stringResource(R.string.home_locked)
+    } else {
+        listOfNotNull(
+            workspaces?.active?.takeIf { it > 0 }?.let { stringResource(R.string.home_workspace, it) },
+            modes?.let { m -> m.list.firstOrNull { it.id == m.active }?.name },
+        ).joinToString(" · ")
+    }
     val wall by Look.wallpaper.collectAsStateWithLifecycle()
     val wallImage = remember(wall) { wall?.asImageBitmap() }
     ExpressiveCard(cs.primaryContainer, cs.onPrimaryContainer, Modifier.height(260.dp)) {
@@ -457,7 +674,7 @@ private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Box(Modifier.size(10.dp).clip(CircleShape).background(cs.primary))
+                Box(Modifier.size(10.dp).clip(CircleShape).background(if (lockedMode) cs.tertiary else cs.primary))
                 Text(
                     onlineLabel((status as? LinkStatus.Online)?.host),
                     style = Expressive.title(14.sp),
@@ -467,10 +684,12 @@ private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
                 )
             }
             Spacer(Modifier.weight(1f))
-            IconButton(
-                onClick = { onOpen(Dest.WALLPAPER) },
-                colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceContainerHigh, contentColor = cs.onSurface),
-            ) { Icon(painterResource(R.drawable.rounded_wallpaper), stringResource(R.string.wallpaper_title), Modifier.size(20.dp)) }
+            if (!lockedMode) {
+                IconButton(
+                    onClick = { onOpen(Dest.WALLPAPER) },
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = cs.surfaceContainerHigh, contentColor = cs.onSurface),
+                ) { Icon(painterResource(R.drawable.rounded_wallpaper), stringResource(R.string.wallpaper_title), Modifier.size(20.dp)) }
+            }
         }
         Row(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp).height(IntrinsicSize.Min),
@@ -483,7 +702,7 @@ private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
                 if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (lock != null) {
-                val locked = lock.id in active
+                val locked = lockedMode || lock.id in active
                 val note = runner.notes[lock.id]
                 Column(
                     Modifier
@@ -491,7 +710,7 @@ private fun PcHero(pc: PairedPc, shell: ShellInfo, onOpen: (Dest) -> Unit) {
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(24.dp))
                         .background(if (note != null) cs.errorContainer else cs.primary)
-                        .clickable { runner.run(lock.id) }
+                        .then(if (locked) Modifier else Modifier.clickable { runner.run(lock.id) })
                         .padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
