@@ -147,11 +147,16 @@ object HealthConnectSource {
         return out
     }
 
-    /** The origin "Steps from: Health Connect" means: the non-phone origin with the most steps over 30 days. */
-    private suspend fun stepsOrigins(c: Context, stepsFrom: String): Set<DataOrigin> {
+    /** The origin "Steps from: Health Connect" means: the non-phone origin with the most steps over 30 days (falling back to the full window when recent days have none). */
+    private suspend fun stepsOrigins(c: Context, stepsFrom: String, start: Instant, end: Instant): Set<DataOrigin> {
         val now = Instant.now()
-        val range = TimeRangeFilter.between(now.minus(Duration.ofDays(30)), now)
-        val all = client(c).aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL), range)).dataOrigins
+        val cutoff = now.minus(Duration.ofDays(30))
+        var range = TimeRangeFilter.between(cutoff, now)
+        var all = client(c).aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL), range)).dataOrigins
+        if (all.isEmpty() && start.isBefore(cutoff)) {
+            range = TimeRangeFilter.between(start, end)
+            all = client(c).aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL), range)).dataOrigins
+        }
         val (phone, apps) = all.partition { it.packageName.startsWith(PHONE_COUNTER) }
         if (stepsFrom == "phone") return phone.toSet()
         if (apps.size <= 1) return (apps.ifEmpty { phone }).take(1).toSet()
@@ -207,7 +212,7 @@ object HealthConnectSource {
         }
         clock.lap("totals")
         if (read(StepsRecord::class) in g) guarded("steps") {
-            val origins = stepsOrigins(c, stepsFrom)
+            val origins = stepsOrigins(c, stepsFrom, start, end)
             if (origins.isNotEmpty()) hourly(c, setOf(StepsRecord.COUNT_TOTAL), start, end, origins) { t, r ->
                 r[StepsRecord.COUNT_TOTAL]?.let { out.total("steps", t, it.toDouble()) }
             }
