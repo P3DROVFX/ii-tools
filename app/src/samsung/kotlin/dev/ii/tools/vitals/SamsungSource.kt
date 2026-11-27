@@ -23,6 +23,7 @@ import com.samsung.android.sdk.health.data.request.LocalTimeGroup
 import com.samsung.android.sdk.health.data.request.LocalTimeGroupUnit
 import com.samsung.android.sdk.health.data.request.Ordering
 import com.samsung.android.sdk.health.data.request.ReadDataRequest
+import kotlinx.coroutines.CancellationException
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -135,6 +136,8 @@ object SamsungSource {
     private suspend fun guarded(what: String, block: suspend () -> Unit) {
         try {
             block()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "samsung $what: ${e.javaClass.simpleName} code=${(e as? HealthDataException)?.errorCode}")
         }

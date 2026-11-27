@@ -16,6 +16,7 @@ import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import kotlinx.coroutines.CancellationException
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -127,6 +128,8 @@ object HealthConnectSource {
 
     private suspend fun <T> guarded(what: String, block: suspend () -> T): T? = try {
         block()
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
         if (quota(e)) throw QuotaException(e)
         Log.w(TAG, "healthConnect $what: ${e.javaClass.simpleName}")

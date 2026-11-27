@@ -51,6 +51,8 @@ object Vitals {
     @Volatile private var ctx: Context? = null
     @Volatile private var readable = false
     @Volatile private var oldest: LocalDate? = null
+    /** meta.oldest per Steps-from choice: the first day with data a build from [oldest] found. */
+    private val firstData = ConcurrentHashMap<String, LocalDate>()
     @Volatile private var sources: Pair<String, String>? = null
     private var loop: Job? = null
     private var interval = CHECK_MS
@@ -189,8 +191,9 @@ object Vitals {
             if (points == null) {
                 msg.put("points", JSONObject.NULL).put("error", if (off) "off" else "none")
             } else {
-                // A frame holds about 15 000 points; a longer route keeps every n-th one.
-                val step = (points.size + MAX_ROUTE_POINTS - 1) / MAX_ROUTE_POINTS
+                // A frame holds about 15 000 points; a longer route keeps every n-th one, plus the
+                // last, so n spaces the other MAX - 1 (ceil((size - 1) / (MAX - 1)), 1 for one point).
+                val step = (points.size - 2) / (MAX_ROUTE_POINTS - 1) + 1
                 msg.put("points", org.json.JSONArray(points.filterIndexed { i, _ -> i % step == 0 || i == points.lastIndex }.map { p ->
                     org.json.JSONArray(listOf(p[0], Days.num(p[1] as Double, 6), Days.num(p[2] as Double, 6), (p[3] as Double?)?.let { Days.num(it, 1) } ?: JSONObject.NULL))
                 }))
@@ -239,7 +242,7 @@ object Vitals {
         }
         val days = if (cont) peer.pending else {
             val start = minOf(from ?: oldest(c) ?: today, today)
-            build(c, start, today, stepsFrom).days
+            build(c, start, today, stepsFrom).days.filter { wanted(peer, it, today) }
         }
         val meta = if (cont) null else meta(c, stepsFrom, lastDevices, days.lastOrNull { it.hasData }?.date)
         val (page, rest) = split(days, meta)
@@ -253,6 +256,15 @@ object Vitals {
         }
         Page(more, rest.firstOrNull()?.date?.toString().orEmpty(), page.size, text.toByteArray().size)
     }
+
+    /**
+     * Days with no data under this Steps-from choice are left out (under auto, the months only
+     * the phone's own counter covers). Today always goes: an answer has at least one day, and
+     * early in the day it may have nothing yet. So does a day that emptied after this PC was sent
+     * it, or the PC would keep the deleted data.
+     */
+    private fun wanted(peer: Peer, d: Days.Day, today: LocalDate) =
+        d.hasData || d.date == today || peer.sent[d.date.toString()].let { it != null && it != d.hash }
 
     private fun message(days: List<Days.Day>, meta: String?, next: String?): String = buildString {
         append("{\"t\":\"vitals\"")
@@ -309,6 +321,7 @@ object Vitals {
             days += Days.build(d, zone, sam.days[d], hc.days[d], stepsFrom)
             d = d.plusDays(1)
         }
+        if (oldest?.let { !from.isAfter(it) } == true) days.firstOrNull { it.hasData }?.let { firstData[stepsFrom] = it.date }
         Log.i(TAG, "build ${days.size} days: samsung ${t1 - t0} ms, healthConnect ${t2 - t1} ms, days ${System.currentTimeMillis() - t2} ms")
         return Built(days)
     }
@@ -339,7 +352,7 @@ object Vitals {
                 profile.putAll(SamsungSource.profile(c))
             }
             if (profile.isNotEmpty()) m["profile"] = profile
-            oldest(c)?.let { m["oldest"] = it.toString() }
+            firstData[stepsFrom]?.let { m["oldest"] = it.toString() }
             newest?.let { m["newest"] = it.toString() }
         }
         return Days.json(m)
@@ -347,6 +360,7 @@ object Vitals {
 
     // ── Pushes ───────────────────────────────────────────────────────────
 
+    @Synchronized
     private fun ensureLoop(c: Context) {
         if (loop?.isActive == true) return
         loop = scope.launch {
@@ -376,7 +390,7 @@ object Vitals {
         val builds = HashMap<String, Built>()
         for (peer in peers.values) {
             val built = builds.getOrPut(peer.stepsFrom) { build(c, minOf(from, today), today, peer.stepsFrom) }
-            val changed = built.days.filter { peer.sent[it.date.toString()] != it.hash }
+            val changed = built.days.filter { peer.sent[it.date.toString()] != it.hash && wanted(peer, it, today) }
             val meta = meta(c, peer.stepsFrom, lastDevices, built.days.lastOrNull { it.hasData }?.date).takeIf { it != peer.lastMeta }
             if (changed.isEmpty() && meta == null) continue
             var rest = changed
