@@ -564,6 +564,13 @@ Microfone do celular alimentando o `DictationService` do shell.
 Passos, sono e batimentos para o `HealthService` do shell.
 
 > **Pulado (2026-11-13):** não vale o custo e o esforço.
+>
+> **Retomado e feito (2026-11-27), na branch `feat/vitals`.** Virou o ii Vitals: Health
+> Connect e, quando o SDK está no build, o Samsung Health Data SDK (só leitura, uma fonte
+> por tipo e dia, Samsung primeiro), na tela *Vitals*. O PC pede o histórico inteiro uma vez
+> e depois só os dias que mudaram (cap `vitals`, `get vitals` paginado em até 900 KB,
+> checagem a cada 10 min só enquanto conectado, rotas de treino opcionais). Vai para o app
+> ii Vitals do shell, não para o `HealthService` (que segue sendo o System Health).
 
 ### 4.5 Miniaturas ao vivo dos workspaces · **M**
 

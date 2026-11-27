@@ -11,6 +11,7 @@ class IiToolsApp : Application() {
         super.onCreate()
         dev.ii.tools.diag.AppLog.init(this)
         LinkHub.init(this)
+        dev.ii.tools.vitals.Vitals.start(this)
         dev.ii.tools.audio.VolumeKeys.init(this)
         dev.ii.tools.media.PcLyrics.init(this)
         dev.ii.tools.update.AppUpdate.init(this)

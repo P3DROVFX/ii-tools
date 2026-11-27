@@ -71,6 +71,7 @@ private val sync = listOf(
     Tool(Dest.ROUTINES, R.drawable.rounded_routine, R.string.routines_title),
     Tool(Dest.PHONE_DATA, R.drawable.rounded_contacts, R.string.data_title),
     Tool(Dest.CALENDAR, R.drawable.rounded_calendar_month, R.string.cal_title),
+    Tool(Dest.VITALS, R.drawable.rounded_watch, R.string.vitals_title),
     Tool(Dest.PC_LINK, R.drawable.rounded_timer, R.string.pclink_title),
     Tool(Dest.WALLPAPER, R.drawable.rounded_wallpaper, R.string.wallpaper_title),
 )
@@ -101,6 +102,7 @@ fun ToolsScreen(onBack: () -> Unit, onOpen: (Dest) -> Unit) {
         if (Gallery.isEnabled(ctx) && !Gallery.canReadImages(ctx)) add(Dest.GALLERY)
         if (PhoneUsage.isEnabled(ctx) && !PhoneUsage.hasPermission(ctx)) add(Dest.PHONE_DATA)
         if (dev.ii.tools.calendar.PhoneCalendar.isEnabled(ctx) && !dev.ii.tools.calendar.PhoneCalendar.canRead(ctx)) add(Dest.CALENDAR)
+        if (dev.ii.tools.vitals.Vitals.isShared(ctx) && dev.ii.tools.vitals.Vitals.caps(ctx).isEmpty()) add(Dest.VITALS)
     }
     val all = control.size + sync.size + device.size
     ToolScaffold(

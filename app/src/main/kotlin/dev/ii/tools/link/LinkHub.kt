@@ -593,8 +593,11 @@ object LinkHub {
     /** Bytes still waiting to go to the controlled PC: a backlog means the link is behind. */
     fun queued(): Long = sel?.socket?.queueSize() ?: 0L
 
-    fun sendToPc(key: String, m: JSONObject): Boolean =
-        online().firstOrNull { it.key == key }?.socket?.send(m.toString()) == true
+    fun sendToPc(key: String, m: JSONObject): Boolean = sendRawToPc(key, m.toString())
+
+    /** [sendToPc] for a message already serialized (Vitals pages, sized to fit a frame). */
+    fun sendRawToPc(key: String, text: String): Boolean =
+        online().firstOrNull { it.key == key }?.socket?.send(text) == true
 
     private var burstJob: Job? = null
 
@@ -641,6 +644,7 @@ object LinkHub {
         FileServer.caps(app).forEach { caps.put(it) }
         Gallery.caps(app).forEach { caps.put(it) }
         PhoneUsage.caps(app).forEach { caps.put(it) }
+        dev.ii.tools.vitals.Vitals.caps(app).forEach { caps.put(it) }
         dev.ii.tools.camera.Webcam.caps(app).forEach { caps.put(it) }
         dev.ii.tools.mic.Mic.caps(app).forEach { caps.put(it) }
         MirrorRadio.caps(app).forEach { caps.put(it) }
@@ -1103,6 +1107,7 @@ object LinkHub {
         if (owns("mic")) dev.ii.tools.mic.Mic.onLinkLost()
         if (owns("mirror")) MirrorRadio.onLinkLost()
         dev.ii.tools.calendar.PhoneCalendar.onLinkLost(link.key)
+        dev.ii.tools.vitals.Vitals.onLinkLost(link.key)
         dev.ii.tools.phonedata.PhonePerf.onLinkLost(link.key)
         if (alone) {
             PhoneUsage.onLinkDisconnected()
@@ -1307,6 +1312,7 @@ object LinkHub {
                 if (link.has("dnd")) DndSync.report()
                 if (link.has("media")) PhoneMedia.sendAll()
                 PhoneUsage.onShellHello(app)
+                dev.ii.tools.vitals.Vitals.onShellHello(app, link.key, link.has("vitals"))
                 NotifMirror.onShellHello(app)
                 Gallery.syncObserver(app)
                 if (selected) {
@@ -1370,6 +1376,8 @@ object LinkHub {
                 "photos" -> m.optJSONArray("keys")?.let { k -> PhoneData.onPhotosAsked(List(k.length()) { k.optString(it) }) }
                 "phoneUsage" -> PhoneUsage.onGet(app, m.optString("since"))
                 "calendar" -> dev.ii.tools.calendar.PhoneCalendar.onAsked(app, link.key, m)
+                "vitals" -> dev.ii.tools.vitals.Vitals.onGet(app, link.key, m)
+                "vitalsRoute" -> dev.ii.tools.vitals.Vitals.onRoute(app, link.key, m.optString("id"))
             }
             "calendarEdit" -> dev.ii.tools.calendar.PhoneCalendar.onEdit(app, link.key, m)
             "notifAct" -> NotifMirror.command(m)

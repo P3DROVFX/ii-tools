@@ -13,6 +13,10 @@ val signingProps = Properties().apply {
 }
 fun signing(prop: String, env: String): String? = signingProps.getProperty(prop) ?: System.getenv(env)
 
+// The Samsung Health Data SDK's download needs a Samsung login, so it cannot be committed: its
+// source builds only when the AAR sits in app/libs (CI: the SAMSUNG_HEALTH_AAR_BASE64 secret).
+val samsungAar = file("libs").listFiles { f -> f.name.matches(Regex("samsung-health-data-api-.*\\.aar")) }?.firstOrNull()
+
 android {
     namespace = "dev.ii.tools"
     compileSdk = 37
@@ -23,7 +27,10 @@ android {
         targetSdk = 37
         versionCode = 10502 // major * 10000 + minor * 100 + patch
         versionName = "1.5.2"
+        buildConfigField("boolean", "SAMSUNG_HEALTH", (samsungAar != null).toString())
     }
+
+    sourceSets.getByName("main").kotlin.srcDir(if (samsungAar != null) "src/samsung/kotlin" else "src/nosamsung/kotlin")
 
     val releaseSigning = signing("storeFile", "II_KEYSTORE_FILE")?.let { file ->
         signingConfigs.create("release") {
@@ -86,5 +93,12 @@ dependencies {
     implementation(libs.apache.sshd.sftp)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
+    implementation(libs.health.connect.client)
+    if (samsungAar != null) {
+        implementation(files(samsungAar))
+        implementation(libs.gson)
+        // The AAR is built with @Parcelize and needs its runtime classes.
+        implementation(libs.kotlin.parcelize.runtime)
+    }
     debugImplementation(libs.compose.ui.tooling)
 }

@@ -24,6 +24,9 @@ concurrency:
 env:
   # The release key's certificate (README, "Install"): every release must carry it.
   CERT_SHA256: 9a1c024a4131dd667f6c72fd959947bfaa251dc97f1fe53c7cf18ecc94b374f1
+  # Optional: the Samsung Health Data SDK (README, "ii Vitals"), base64. Without it the
+  # release reads Health Connect only.
+  SAMSUNG_HEALTH_AAR_BASE64: ${{ secrets.SAMSUNG_HEALTH_AAR_BASE64 }}
 
 jobs:
   release:
@@ -69,6 +72,12 @@ jobs:
           echo "$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin | sort -V | tail -1)" >> "$GITHUB_PATH"
 
       - uses: gradle/actions/setup-gradle@v5
+
+      - name: Samsung Health Data SDK
+        if: env.SAMSUNG_HEALTH_AAR_BASE64 != ''
+        run: |
+          mkdir -p app/libs
+          echo "$SAMSUNG_HEALTH_AAR_BASE64" | base64 -d > app/libs/samsung-health-data-api-ci.aar
 
       - name: Build the APK
         env:

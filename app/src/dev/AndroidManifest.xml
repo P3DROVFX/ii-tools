@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Dev builds only: start a second-screen session from adb, for stream testing. -->
+<!-- Dev builds only: start a second-screen session from adb, for stream testing; dump what
+     `get vitals` answers, for checking the pages against the contract. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity
@@ -7,5 +8,9 @@
             android:exported="true"
             android:excludeFromRecents="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <receiver
+            android:name=".DevVitalsDump"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
     </application>
 </manifest>
