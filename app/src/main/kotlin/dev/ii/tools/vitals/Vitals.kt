@@ -180,9 +180,14 @@ object Vitals {
         val app = c.applicationContext
         scope.launch {
             val msg = JSONObject().put("t", "vitalsRoute").put("id", id)
-            val points = if (!isShared(app) || !routesOn(app)) null else runCatching { route(app, id) }.getOrNull()
+            val off = !isShared(app) || !routesOn(app)
+            // A failed read is not "none", which the PC keeps for good: unanswered, it asks again later.
+            val points = if (off) null else runCatching { route(app, id) }.getOrElse {
+                Log.w(TAG, "route: ${it.javaClass.simpleName}")
+                return@launch
+            }
             if (points == null) {
-                msg.put("points", JSONObject.NULL).put("error", if (!routesOn(app)) "off" else "none")
+                msg.put("points", JSONObject.NULL).put("error", if (off) "off" else "none")
             } else {
                 // A frame holds about 15 000 points; a longer route keeps every n-th one.
                 val step = (points.size + MAX_ROUTE_POINTS - 1) / MAX_ROUTE_POINTS

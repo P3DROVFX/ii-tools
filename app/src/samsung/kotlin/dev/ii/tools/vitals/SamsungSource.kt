@@ -88,6 +88,9 @@ object SamsungSource {
             store(a).requestPermissions(permissions, a)
         } catch (e: ResolvablePlatformException) {
             if (e.hasResolution) e.resolve(a)
+        } catch (e: Exception) {
+            // Called from the screen's coroutine: anything else the SDK throws would crash the app.
+            Log.w(TAG, "samsung permissions: ${e.javaClass.simpleName} code=${(e as? HealthDataException)?.errorCode}")
         }
     }
 
@@ -142,7 +145,9 @@ object SamsungSource {
         fun has(t: DataType) = Permission.of(t, AccessType.READ) in g
         val fromL = from.atStartOfDay()
         val toL = to.plusDays(1).atStartOfDay()
-        val fromI = from.atStartOfDay(out.zone).toInstant()
+        // A day earlier: a night that began the evening before belongs to the first day too, and
+        // what the extra day reads lands on a day the caller does not build.
+        val fromI = from.minusDays(1).atStartOfDay(out.zone).toInstant()
         val toI = to.plusDays(1).atStartOfDay(out.zone).toInstant()
 
         if (has(DataTypes.STEPS)) guarded("steps") { hourly(c, DataType.StepsType.TOTAL, fromL, toL) { t, v -> out.totalLocal("steps", t, v.toDouble()) } }
@@ -202,7 +207,7 @@ object SamsungSource {
                             DataType.SleepType.StageType.AWAKE -> "awake"
                             else -> "asleep"
                         }
-                        listOf((it.startTime.toEpochMilli() - start) / 60_000, Duration.between(it.startTime, it.endTime).toMinutes(), kind)
+                        Triple(it.startTime.toEpochMilli(), it.endTime.toEpochMilli(), kind)
                     }
                     // Samsung scores the night, not each part of it: the score goes on its longest session.
                     val score = if (s === longest) p.getValue(DataType.SleepType.SLEEP_SCORE) else null

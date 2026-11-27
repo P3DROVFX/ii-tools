@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.math.abs
+import kotlin.math.pow
 import kotlin.math.round
 
 /** One sample key on one day: running min/max/mean, the newest value, and per-minute bins. */
@@ -175,7 +176,7 @@ object Days {
     }
 
     fun num(v: Double, dp: Int): Number = if (dp == 0) round(v).toLong() else {
-        val f = if (dp == 1) 10.0 else 100.0
+        val f = 10.0.pow(dp)
         val r = round(v * f) / f
         if (r == round(r) && abs(r) < 1e15) r.toLong() else r
     }

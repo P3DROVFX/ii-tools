@@ -172,7 +172,8 @@ object HealthConnectSource {
 
     suspend fun collect(c: Context, from: LocalDate, to: LocalDate, out: Collected, stepsFrom: String, routes: Boolean) {
         if (!available(c)) return
-        val g = granted(c)
+        // Unguarded, a refusal here would fail the whole build, Samsung's reads included.
+        val g = guarded("permissions") { granted(c) } ?: return
         val start = from.atStartOfDay(out.zone).toInstant()
         val end = minOf(to.plusDays(1).atStartOfDay(out.zone).toInstant(), Instant.now().plus(Duration.ofHours(1)))
         if (end <= start) return
@@ -184,9 +185,21 @@ object HealthConnectSource {
             client(c).aggregate(AggregateRequest(allowed.values.map { it.first }.toSet(), TimeRangeFilter.between(start, end)))
         }
         val metrics = allowed.filterValues { whole?.get(it.first) != null }
-        if (metrics.isNotEmpty()) guarded("totals") {
-            hourly(c, metrics.values.map { it.first }.toSet(), start, end, emptySet()) { t, r ->
-                for ((key, m) in metrics) r[m.first]?.let { out.total(key, t, m.second(it)) }
+        // Total calories come back for every hour, filled from the BMR, even with no records, and
+        // the slices' dataOrigins name the app for those too: only days a record touches keep the key.
+        val plain = metrics - "totalKcal"
+        if (plain.isNotEmpty()) guarded("totals") {
+            hourly(c, plain.values.map { it.first }.toSet(), start, end, emptySet()) { t, r ->
+                for ((key, m) in plain) r[m.first]?.let { out.total(key, t, m.second(it)) }
+            }
+        }
+        metrics["totalKcal"]?.let { m ->
+            guarded("totalKcal") {
+                val real = readAll(c, TotalCaloriesBurnedRecord::class, start, end)
+                    .flatMap { listOf(out.date(it.startTime), out.date(maxOf(it.startTime, it.endTime.minusMillis(1)))) }.toSet()
+                if (real.isNotEmpty()) hourly(c, setOf(m.first), start, end, emptySet()) { t, r ->
+                    if (out.date(t) in real) r[m.first]?.let { out.total("totalKcal", t, m.second(it)) }
+                }
             }
         }
         clock.lap("totals")
@@ -197,8 +210,11 @@ object HealthConnectSource {
             }
         }
         clock.lap("steps")
+        // Records are matched by their start: a night that began the evening before belongs to the
+        // first day too. What the extra day reads lands on a day the caller does not build.
+        val since = start.minus(Duration.ofDays(1))
         for (cls in known(c).filter { it in records && read(it) in g }) {
-            val list = guarded(cls.simpleName.orEmpty()) { readAll(c, cls, start, end) } ?: continue
+            val list = guarded(cls.simpleName.orEmpty()) { readAll(c, cls, since, end) } ?: continue
             for (r in list) add(c, out, r, g, routes)
             if (list.isNotEmpty()) clock.lap("${cls.simpleName}:${list.size}")
         }
@@ -286,7 +302,7 @@ object HealthConnectSource {
                 SleepSessionRecord.STAGE_TYPE_AWAKE, SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED, SleepSessionRecord.STAGE_TYPE_OUT_OF_BED -> "awake"
                 else -> "asleep"
             }
-            listOf((it.startTime.toEpochMilli() - start) / 60_000, Duration.between(it.startTime, it.endTime).toMinutes(), kind)
+            Triple(it.startTime.toEpochMilli(), it.endTime.toEpochMilli(), kind)
         }
         return sleepJson(start, r.endTime.toEpochMilli(), null, stages)
     }
@@ -415,11 +431,27 @@ object HealthConnectSource {
     }
 }
 
-/** CONTRACT §2 Sleep, shared by both sources. */
-fun sleepJson(start: Long, end: Long, score: Int?, stages: List<List<Any>>): Map<String, Any?> = buildMap {
+/** CONTRACT §2 Sleep, shared by both sources; [raw] stages are (start ms, end ms, kind). */
+fun sleepJson(start: Long, end: Long, score: Int?, raw: List<Triple<Long, Long, String>>): Map<String, Any?> = buildMap {
     put("start", start)
     put("end", end)
     score?.let { put("score", it) }
+    // Boundaries are rounded to whole minutes, not each duration: rounding durations alone
+    // leaves 0-minute stages and offsets that drift from the session. Overlaps are cut at the
+    // previous stage's end, what collapses to nothing is dropped, and touching stages of the
+    // same kind become one.
+    fun minute(t: Long) = (t.coerceIn(start, maxOf(start, end)) - start + 30_000) / 60_000
+    val stages = ArrayList<MutableList<Any>>()
+    var prevEnd = 0L
+    for ((s, e, kind) in raw.sortedBy { it.first }) {
+        val a = maxOf(minute(s), prevEnd)
+        val b = minute(e)
+        if (b <= a) continue
+        val last = stages.lastOrNull()
+        if (last != null && last[2] == kind && (last[0] as Long) + (last[1] as Long) == a) last[1] = b - (last[0] as Long)
+        else stages += mutableListOf<Any>(a, b - a, kind)
+        prevEnd = b
+    }
     if (stages.isNotEmpty() && end > start) {
         val awake = stages.filter { it[2] == "awake" }.sumOf { it[1] as Long }
         put("efficiency", (100 - awake * 100 * 60_000 / (end - start)).coerceIn(0, 100))
