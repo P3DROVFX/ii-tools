@@ -99,6 +99,8 @@ without the ones you refuse; that feature just stays off.
 | `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS` | Its own notifications and Android 16 Live Updates |
 | `SYSTEM_ALERT_WINDOW` (Display over other apps) | Only to let the PC turn on the microphone while the phone is in the background; nothing is drawn |
 | `BLUETOOTH_CONNECT` | The battery of the phone's connected Bluetooth devices, for the PC |
+| Health Connect `READ_*`, `READ_HEALTH_DATA_HISTORY`, `READ_HEALTH_DATA_IN_BACKGROUND` | ii Vitals: health data for the PC, only with *Share with the PC* on |
+| `READ_EXERCISE_ROUTES` | Only with *Send workout routes* on |
 
 ## Roadmap
 
@@ -265,6 +267,19 @@ The full contract is the shell's `scripts/iiLink/PROTOCOL.md`.
   khal's. On the PC, *Settings → ii tools → Phone calendar* (also in the Timetable's
   settings) decides which calendars show, which copy wins, colours, declined
   invitations and reminders.
+- **ii Vitals:** your health data in the shell's ii Vitals app: steps, distance, floors,
+  calories and active time (by the hour), heart rate (minute bins from the watch), resting
+  heart rate, HRV, SpO2, skin temperature, sleep with its stages and score, workouts, body
+  composition, blood pressure, glucose, temperatures, nutrition, water, cycle tracking and
+  mindfulness, plus Samsung's Energy Score, goals and profile (birth date, sex, height).
+  Only types with data are sent. It is read-only: nothing is ever written to either store.
+  Turn it on in *Tools → Vitals*: allow Health Connect (every type, the full history and
+  background reads), and Samsung Health when the build has its SDK, then *Share with the
+  PC*. Each type comes from one source per day, Samsung first (more history, heart rate
+  minutes instead of hours late), Health Connect otherwise. The PC fetches the whole
+  history once and then asks from a week before its newest day; while linked the phone
+  rebuilds the last 8 days every 10 minutes (and everything once a day) and sends only the
+  days that changed. Workout routes leave the phone only with *Send workout routes* on.
 - **Do Not Disturb:** the shell's own (and modes chosen on the PC) silence the phone; the
   phone's turns on the shell's, or a mode. Only changes are sent, so turning it off by
   hand on either side sticks.
@@ -452,6 +467,14 @@ A signed release comes from `./gradlew assembleRelease`, with the key in `keysto
 (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; gitignored) or in the
 `II_KEYSTORE_FILE`, `II_KEYSTORE_PASSWORD`, `II_KEY_ALIAS` and `II_KEY_PASSWORD` environment
 variables. Without a key it is signed with the debug one, so anyone can build it.
+
+**Samsung Health Data SDK (optional).** ii Vitals reads Samsung Health directly when the
+SDK is built in. Its download needs a Samsung developer login, so it is not in the repo:
+put `samsung-health-data-api-<version>.aar` from the SDK zip into `app/libs/` (gitignored),
+or set the `SAMSUNG_HEALTH_AAR_BASE64` secret for CI (`base64 -w0` of the AAR). Without it
+the app builds as before and Health Connect provides every type. Samsung only lets an app
+it has not approved read with Samsung Health's developer mode for data read on; partner
+approval for `dev.ii.tools` and the release key's SHA-256 lifts that.
 
 Releases are made by CI from a tag (`.github/workflows/release.yml`): bump `versionName` and
 `versionCode`, write `.github/releases/<version>.md` (its README has the format), commit, then

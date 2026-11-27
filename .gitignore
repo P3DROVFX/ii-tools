@@ -9,3 +9,5 @@ local.properties
 AGENTS.md
 
 keystore.properties
+# The Samsung Health Data SDK (login-gated download, never committed).
+app/libs/*.aar

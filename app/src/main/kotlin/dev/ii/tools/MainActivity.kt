@@ -89,6 +89,7 @@ private fun activityFor(dest: Dest): Class<out ScreenActivity> = when (dest) {
     Dest.GALLERY -> GalleryActivity::class.java
     Dest.PHONE_DATA -> PhoneDataActivity::class.java
     Dest.CALENDAR -> CalendarActivity::class.java
+    Dest.VITALS -> VitalsActivity::class.java
     Dest.PC_LINK -> PcLinkActivity::class.java
     Dest.CALLS -> CallsActivity::class.java
     Dest.ROUTINES -> RoutinesActivity::class.java
@@ -326,6 +327,11 @@ class PhoneDataActivity : ScreenActivity() {
 class CalendarActivity : ScreenActivity() {
     @Composable
     override fun Screen() = CalendarScreen(onBack = ::finish)
+}
+
+class VitalsActivity : ScreenActivity() {
+    @Composable
+    override fun Screen() = dev.ii.tools.ui.VitalsScreen(onBack = ::finish)
 }
 
 class PcLinkActivity : ScreenActivity() {

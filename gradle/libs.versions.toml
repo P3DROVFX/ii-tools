@@ -17,6 +17,10 @@ codeScanner = "16.1.0"
 sshd = "2.20.1"
 # Shell-level stats (CPU use, sensor temperatures, GPU) through Shizuku, when the user runs it.
 shizuku = "13.1.5"
+# ii Vitals: health data for the PC. Stable only (1.2.0 is still alpha).
+healthConnect = "1.1.0"
+# The Samsung Health Data SDK's dependencies (the SDK itself is a local AAR, app/libs).
+gson = "2.13.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -36,6 +40,9 @@ apache-sshd-core = { group = "org.apache.sshd", name = "sshd-core", version.ref 
 apache-sshd-sftp = { group = "org.apache.sshd", name = "sshd-sftp", version.ref = "sshd" }
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
+health-connect-client = { group = "androidx.health.connect", name = "connect-client", version.ref = "healthConnect" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+kotlin-parcelize-runtime = { group = "org.jetbrains.kotlin", name = "kotlin-parcelize-runtime", version.ref = "kotlin" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
